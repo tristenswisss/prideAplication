@@ -1,42 +1,26 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, FlatList, Image, Alert } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { eventService } from "../../services/eventService"
-import { useAuth } from "../../Contexts/AuthContexts"
 import type { Event } from "../../types"
 import type { EventsScreenProps } from "../../types/navigation"
 
 export default function EventsScreen({ navigation }: EventsScreenProps) {
   const [events, setEvents] = useState<Event[]>([])
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [loading, setLoading] = useState(false)
-  const { user } = useAuth()
-
-  const categories = [
-    { id: "all", name: "All Events", icon: "event", color: "#FF6B6B" },
-    { id: "celebration", name: "Celebrations", icon: "celebration", color: "#4ECDC4" },
-    { id: "networking", name: "Networking", icon: "people", color: "#45B7D1" },
-    { id: "entertainment", name: "Entertainment", icon: "local-play", color: "#96CEB4" },
-    { id: "education", name: "Education", icon: "school", color: "#FFEAA7" },
-    { id: "support", name: "Support", icon: "favorite", color: "#DDA0DD" },
-  ]
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<"all" | "upcoming" | "today" | "this_week">("all")
 
   useEffect(() => {
     loadEvents()
-  }, [selectedCategory])
+  }, [])
 
   const loadEvents = async () => {
     try {
       setLoading(true)
-      let data: Event[]
-      if (selectedCategory === "all") {
-        data = await eventService.getUpcomingEvents()
-      } else {
-        data = await eventService.getEventsByCategory(selectedCategory)
-      }
+      const data = await eventService.getAllEvents()
       setEvents(data)
     } catch (error) {
       console.error("Error loading events:", error)
@@ -46,161 +30,173 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+  const getFilteredEvents = () => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-    if (date.toDateString() === today.toDateString()) {
-      return "Today"
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return "Tomorrow"
-    } else {
-      return date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      })
-    }
-  }
+    return events.filter((event) => {
+      const eventDate = new Date(event.date)
 
-  const formatTime = (timeString: string) => {
-    const time = new Date(`2000-01-01T${timeString}`)
-    return time.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
+      switch (filter) {
+        case "upcoming":
+          return eventDate > now
+        case "today":
+          return eventDate >= today && eventDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        case "this_week":
+          return eventDate > now && eventDate <= weekFromNow
+        default:
+          return true
+      }
     })
   }
 
-  const renderCategoryItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[styles.categoryButton, selectedCategory === item.id && { backgroundColor: item.color }]}
-      onPress={() => setSelectedCategory(item.id)}
-    >
-      <MaterialIcons name={item.icon as any} size={16} color={selectedCategory === item.id ? "white" : item.color} />
-      <Text
-        style={[
-          styles.categoryText,
-          selectedCategory === item.id && { color: "white" },
-          selectedCategory !== item.id && { color: item.color },
-        ]}
-      >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  )
+  const renderEvent = ({ item }: { item: Event }) => {
+    const eventDate = new Date(item.date)
+    const isUpcoming = eventDate > new Date()
 
-  const renderEventCard = ({ item }: { item: Event }) => (
-    <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("EventDetails", { event: item })}>
-      <Image source={{ uri: item.image_url }} style={styles.eventImage} />
-
-      <View style={styles.eventContent}>
-        <View style={styles.eventHeader}>
-          <View style={styles.eventDate}>
-            <Text style={styles.eventDateText}>{formatDate(item.date)}</Text>
-            <Text style={styles.eventTimeText}>{formatTime(item.start_time)}</Text>
+    return (
+      <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("EventDetails", { event: item })}>
+        <View style={styles.eventImageContainer}>
+          <View style={styles.placeholderImage}>
+            <MaterialIcons name="event" size={40} color="#ccc" />
           </View>
-          <View style={styles.eventPrice}>
-            {item.is_free ? (
-              <Text style={styles.freeText}>FREE</Text>
-            ) : (
-              <Text style={styles.priceText}>${item.price}</Text>
-            )}
-          </View>
-        </View>
-
-        <Text style={styles.eventTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-
-        <View style={styles.eventLocation}>
-          <MaterialIcons name="location-on" size={16} color="#666" />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {item.location}
-          </Text>
-        </View>
-
-        <Text style={styles.eventDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-
-        <View style={styles.eventFooter}>
-          <View style={styles.attendeeInfo}>
-            <MaterialIcons name="people" size={16} color="#666" />
-            <Text style={styles.attendeeText}>
-              {item.attendee_count} going
-              {item.max_attendees && ` • ${item.max_attendees} max`}
-            </Text>
-          </View>
-
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryBadgeText}>{item.category.toUpperCase()}</Text>
-          </View>
-        </View>
-
-        <View style={styles.eventTags}>
-          {item.tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
+          {/* Removed isVirtual badge since it's not in the Event type */}
+          {!item.is_free && item.price && (
+            <View style={styles.priceBadge}>
+              <Text style={styles.priceText}>{item.price === 0 ? "Free" : `$${item.price}`}</Text>
             </View>
-          ))}
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
-  )
+
+        <View style={styles.eventInfo}>
+          <View style={styles.eventHeader}>
+            <Text style={styles.eventTitle}>{item.title}</Text>
+            <View style={styles.attendeeCount}>
+              <MaterialIcons name="people" size={16} color="#666" />
+              <Text style={styles.attendeeText}>{item.attendee_count}</Text>
+            </View>
+          </View>
+
+          <View style={styles.eventMeta}>
+            <View style={styles.metaItem}>
+              <MaterialIcons name="schedule" size={16} color="#666" />
+              <Text style={styles.metaText}>
+                {eventDate.toLocaleDateString()} at{" "}
+                {eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <MaterialIcons name="location-on" size={16} color="#666" />
+              <Text style={styles.metaText}>{item.location}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <MaterialIcons name="person" size={16} color="#666" />
+              <Text style={styles.metaText}>by {item.organizer?.name || "Unknown"}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.eventDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+
+          <View style={styles.eventTags}>
+            <View style={styles.categoryTag}>
+              <Text style={styles.categoryTagText}>{item.category.toUpperCase()}</Text>
+            </View>
+            {item.tags.slice(0, 2).map((tag, index) => (
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>#{tag}</Text>
+              </View>
+            ))}
+          </View>
+
+          {isUpcoming && (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity style={styles.interestedButton}>
+                <MaterialIcons name="star-border" size={16} color="#FF6B6B" />
+                <Text style={styles.interestedButtonText}>Interested</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.goingButton}>
+                <MaterialIcons name="check" size={16} color="white" />
+                <Text style={styles.goingButtonText}>Going</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    )
+  }
+
+  const filteredEvents = getFilteredEvents()
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>Events</Text>
-            <Text style={styles.headerSubtitle}>Discover Pride community events</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.notificationButton}
-            onPress={() => Alert.alert("Notifications", "Notification center coming soon!")}
-          >
-            <MaterialIcons name="notifications" size={24} color="white" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Events</Text>
+          <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
         </View>
+
+        <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent")}>
+          <MaterialIcons name="add" size={24} color="white" />
+          <Text style={styles.createButtonText}>Create Event</Text>
+        </TouchableOpacity>
       </LinearGradient>
 
-      {/* Category Filter */}
-      <FlatList
-        data={categories}
-        renderItem={renderCategoryItem}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryContainer}
-      />
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
+        {(["all", "upcoming", "today", "this_week"] as const).map((filterOption) => (
+          <TouchableOpacity
+            key={filterOption}
+            style={[styles.filterTab, filter === filterOption && styles.activeFilterTab]}
+            onPress={() => setFilter(filterOption)}
+          >
+            <Text style={[styles.filterTabText, filter === filterOption && styles.activeFilterTabText]}>
+              {filterOption === "all"
+                ? "All"
+                : filterOption === "upcoming"
+                  ? "Upcoming"
+                  : filterOption === "today"
+                    ? "Today"
+                    : "This Week"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      {/* Events List */}
-      <FlatList
-        data={events}
-        renderItem={renderEventCard}
-        keyExtractor={(item) => item.id}
-        style={styles.eventsList}
-        contentContainerStyle={styles.eventsListContent}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={loadEvents}
-      />
-
-      {/* Create Event Button */}
-      <TouchableOpacity
-        style={styles.createEventButton}
-        onPress={() => Alert.alert("Coming Soon", "Event creation will be available soon")}
-      >
-        <MaterialIcons name="add" size={24} color="white" />
-      </TouchableOpacity>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading events...</Text>
+        </View>
+      ) : filteredEvents.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <MaterialIcons name="event-note" size={80} color="#ccc" />
+          <Text style={styles.emptyTitle}>No Events Found</Text>
+          <Text style={styles.emptyDescription}>
+            {filter === "all"
+              ? "No events available at the moment."
+              : filter === "today"
+                ? "No events happening today."
+                : filter === "this_week"
+                  ? "No events this week."
+                  : "No upcoming events found."}
+          </Text>
+          <TouchableOpacity style={styles.createEventButton} onPress={() => navigation.navigate("CreateEvent")}>
+            <Text style={styles.createEventButtonText}>Create First Event</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredEvents}
+          renderItem={renderEvent}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshing={loading}
+          onRefresh={loadEvents}
+        />
+      )}
     </SafeAreaView>
   )
 }
@@ -216,9 +212,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 28,
@@ -231,52 +225,87 @@ const styles = StyleSheet.create({
     color: "white",
     opacity: 0.9,
   },
-  notificationButton: {
-    position: "relative",
-    padding: 8,
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    backgroundColor: "#FF4444",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  notificationBadgeText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  categoryContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  categoryButton: {
+  createButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-    elevation: 2,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignSelf: "flex-start",
   },
-  categoryText: {
-    marginLeft: 5,
-    fontSize: 12,
+  createButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+  },
+  filterContainer: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 25,
+    padding: 4,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 20,
+  },
+  activeFilterTab: {
+    backgroundColor: "#FF6B6B",
+  },
+  filterTabText: {
+    fontSize: 13,
+    color: "#666",
     fontWeight: "600",
   },
-  eventsList: {
-    flex: 1,
+  activeFilterTabText: {
+    color: "white",
   },
-  eventsListContent: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  emptyDescription: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 30,
+  },
+  createEventButton: {
+    backgroundColor: "#FF6B6B",
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+  },
+  createEventButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  listContainer: {
     padding: 20,
   },
   eventCard: {
@@ -290,129 +319,137 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  eventImage: {
-    width: "100%",
+  eventImageContainer: {
+    position: "relative",
+  },
+  placeholderImage: {
     height: 150,
     backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  eventContent: {
+  priceBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "#FF6B6B",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  priceText: {
+    fontSize: 12,
+    color: "white",
+    fontWeight: "bold",
+  },
+  eventInfo: {
     padding: 15,
   },
   eventHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  eventDate: {
     alignItems: "flex-start",
-  },
-  eventDateText: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#FF6B6B",
-  },
-  eventTimeText: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  eventPrice: {
-    backgroundColor: "#f8f9fa",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  freeText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#4CAF50",
-  },
-  priceText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#333",
+    marginBottom: 10,
   },
   eventTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 8,
-    lineHeight: 24,
+    flex: 1,
+    marginRight: 10,
   },
-  eventLocation: {
+  attendeeCount: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
   },
-  locationText: {
+  attendeeText: {
+    marginLeft: 4,
     fontSize: 14,
     color: "#666",
-    marginLeft: 4,
-    flex: 1,
+  },
+  eventMeta: {
+    marginBottom: 10,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  metaText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#666",
   },
   eventDescription: {
     fontSize: 14,
     color: "#666",
     lineHeight: 20,
-    marginBottom: 12,
-  },
-  eventFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  attendeeInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  attendeeText: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 4,
-  },
-  categoryBadge: {
-    backgroundColor: "#4ECDC4",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  categoryBadgeText: {
-    fontSize: 10,
-    color: "white",
-    fontWeight: "bold",
+    marginBottom: 15,
   },
   eventTags: {
     flexDirection: "row",
     flexWrap: "wrap",
+    marginBottom: 15,
+  },
+  categoryTag: {
+    backgroundColor: "#FF6B6B",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  categoryTagText: {
+    fontSize: 10,
+    color: "white",
+    fontWeight: "bold",
   },
   tag: {
     backgroundColor: "#f0f0f0",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    marginRight: 6,
+    marginRight: 8,
     marginBottom: 4,
   },
   tagText: {
     fontSize: 10,
     color: "#666",
+    fontWeight: "600",
   },
-  createEventButton: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    backgroundColor: "#FF6B6B",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  actionButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  interestedButton: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#FF6B6B",
+  },
+  interestedButtonText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: "#FF6B6B",
+    fontWeight: "600",
+  },
+  goingButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: "#FF6B6B",
+  },
+  goingButtonText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: "white",
+    fontWeight: "600",
   },
 })

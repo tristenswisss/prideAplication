@@ -18,15 +18,15 @@ import { LinearGradient } from "expo-linear-gradient"
 import { liveEventService } from "../../services/liveEventService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { LiveEvent, LiveMessage } from "../../types/messaging"
+import { liveStreamingService, type StreamRecording } from "../../services/liveStreamingService"
+import { callingService } from "../../services/callingService"
 
-interface LiveEventScreenProps {
-  navigation: any
-  route: {
-    params: {
-      liveEvent: LiveEvent
-    }
-  }
-}
+// Import the type for StackScreenProps
+import type { StackScreenProps } from "@react-navigation/stack"
+import type { EventsStackParamList } from "../../types/navigation"
+
+// Define the props type using the navigation type
+type LiveEventScreenProps = StackScreenProps<EventsStackParamList, "LiveEvent">
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window")
 
@@ -40,6 +40,11 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const flatListRef = useRef<FlatList>(null)
 
   const { user } = useAuth()
+
+  const [isRecording, setIsRecording] = useState(false)
+  const [currentRecording, setCurrentRecording] = useState<StreamRecording | null>(null)
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
+  const [streamQuality, setStreamQuality] = useState<"720p" | "1080p" | "4K">("1080p")
 
   useEffect(() => {
     if (liveEvent.is_live) {
@@ -177,6 +182,70 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
     )
   }
 
+  const handleStartRecording = async () => {
+    if (!user) return
+
+    try {
+      const recording = await liveStreamingService.startRecording(liveEvent.id, {
+        resolution: streamQuality,
+        bitrate: streamQuality === "4K" ? 8000 : streamQuality === "1080p" ? 5000 : 3000,
+        fps: 30,
+      })
+      setCurrentRecording(recording)
+      setIsRecording(true)
+      Alert.alert("Recording Started", "Live stream recording has started")
+    } catch (error) {
+      Alert.alert("Error", "Failed to start recording")
+    }
+  }
+
+  const handleStopRecording = async () => {
+    try {
+      const recording = await liveStreamingService.stopRecording(liveEvent.id)
+      setCurrentRecording(recording)
+      setIsRecording(false)
+      Alert.alert("Recording Saved", "Your recording has been saved and will be available in your recordings library")
+    } catch (error) {
+      Alert.alert("Error", "Failed to stop recording")
+    }
+  }
+
+  const handleStartScreenShare = async () => {
+    if (!user) return
+
+    try {
+      await callingService.startScreenShare(user.id, liveEvent.id)
+      setIsScreenSharing(true)
+      Alert.alert("Screen Sharing", "Screen sharing has started")
+    } catch (error) {
+      Alert.alert("Error", "Failed to start screen sharing")
+    }
+  }
+
+  const handleStopScreenShare = async () => {
+    try {
+      await callingService.stopScreenShare(liveEvent.id)
+      setIsScreenSharing(false)
+      Alert.alert("Screen Sharing Stopped", "Screen sharing has been stopped")
+    } catch (error) {
+      Alert.alert("Error", "Failed to stop screen sharing")
+    }
+  }
+
+  const handleQualityChange = async (quality: "720p" | "1080p" | "4K") => {
+    try {
+      await liveStreamingService.updateStreamQuality(liveEvent.id, {
+        resolution: quality,
+        bitrate: quality === "4K" ? 8000 : quality === "1080p" ? 5000 : 3000,
+        fps: 30,
+      })
+      setStreamQuality(quality)
+      Alert.alert("Quality Updated", `Stream quality changed to ${quality}`)
+    } catch (error) {
+      Alert.alert("Error", "Failed to update stream quality")
+    }
+  }
+
   if (!liveEvent.is_live) {
     return (
       <SafeAreaView style={styles.container}>
@@ -244,6 +313,43 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
             <Text style={styles.reactionEmoji}>🔥</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Host Controls (only show if user is the host) */}
+        {user?.id === liveEvent.host_id && (
+          <View style={styles.hostControls}>
+            <TouchableOpacity
+              style={[styles.hostControlButton, isRecording && styles.activeHostControl]}
+              onPress={isRecording ? handleStopRecording : handleStartRecording}
+            >
+              <MaterialIcons
+                name={isRecording ? "stop" : "fiber-manual-record"}
+                size={20}
+                color={isRecording ? "white" : "#FF4444"}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.hostControlButton, isScreenSharing && styles.activeHostControl]}
+              onPress={isScreenSharing ? handleStopScreenShare : handleStartScreenShare}
+            >
+              <MaterialIcons name="screen-share" size={20} color={isScreenSharing ? "white" : "#4ECDC4"} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.hostControlButton}
+              onPress={() => {
+                Alert.alert("Stream Quality", "Select stream quality", [
+                  { text: "720p", onPress: () => handleQualityChange("720p") },
+                  { text: "1080p", onPress: () => handleQualityChange("1080p") },
+                  { text: "4K", onPress: () => handleQualityChange("4K") },
+                  { text: "Cancel", style: "cancel" },
+                ])
+              }}
+            >
+              <MaterialIcons name="high-quality" size={20} color="#FFA726" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Chat Toggle */}
         <TouchableOpacity style={styles.chatToggle} onPress={() => setShowChat(!showChat)}>
@@ -541,5 +647,23 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  hostControls: {
+    position: "absolute",
+    left: 15,
+    bottom: 80,
+    flexDirection: "column",
+  },
+  hostControlButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  activeHostControl: {
+    backgroundColor: "#FF6B6B",
   },
 })

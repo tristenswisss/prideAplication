@@ -1,159 +1,239 @@
 "use client"
-
 import { NavigationContainer } from "@react-navigation/native"
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { createStackNavigator } from "@react-navigation/stack"
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { MaterialIcons } from "@expo/vector-icons"
 import { StatusBar } from "expo-status-bar"
+import { View, ActivityIndicator } from "react-native"
 
+// Contexts
 import { AuthProvider, useAuth } from "./Contexts/AuthContexts"
 import { OfflineProvider } from "./Contexts/OfflineContext"
+
+// Screens
 import AuthScreen from "./src/screens/AuthScreen"
 import LoadingScreen from "./src/screens/LoadingScreen"
-import OfflineStatus from "./components/OfflineStatus"
 import HomeScreen from "./src/screens/HomeScreen"
-import BusinessDetailsScreen from "./src/screens/BusinessDetailScreen"
-import WriteReviewScreen from "./src/screens/writeReviewScreen"
-import CommunityScreen from "./src/screens/CommunityScreen"
-import UserProfileScreen from "./src/screens/UserProfileScreen"
-import MessagesScreen from "./src/screens/MessageScreen"
-import ChatScreen from "./src/screens/ChatScreen"
-import EventsScreen from "./src/screens/EventsScreen"
-import EventDetailsScreen from "./src/screens/EventsDetailScreen"
-import LiveEventsScreen from "./src/screens/LiveEventsScreeen"
-import LiveEventScreen from "./src/screens/LiveEventScreen"
-import NotificationsScreen from "./src/screens/notificationScreen"
 import SearchScreen from "./src/screens/SearchScreen"
+import EventsScreen from "./src/screens/EventsScreen"
+import CommunityScreen from "./src/screens/CommunityScreen"
 import ProfileScreen from "./src/screens/ProfileScreen"
+import BusinessDetailScreen from "./src/screens/BusinessDetailScreen"
+import WriteReviewScreen from "./src/screens/writeReviewScreen"
+import EventsDetailScreen from "./src/screens/EventsDetailScreen"
+import LiveEventScreen from "./src/screens/LiveEventScreen"
+import RecordingsScreen from "./src/screens/RecordingsScreen"
+import UserProfileScreen from "./src/screens/UserProfileScreen"
+import ChatScreen from "./src/screens/ChatScreen"
+import MessageScreen from "./src/screens/MessageScreen"
+import SafetyScreen from "./src/screens/SafetyScreen"
+import BuddySystemScreen from "./src/screens/BuddySystemScreen"
+import MentalHealthScreen from "./src/screens/MentalHealthScreen"
+import NotificationScreen from "./src/screens/notificationScreen"
+import EditProfileScreen from "./src/screens/EditProfileScreen"
+import SavedPlacesScreen from "./src/screens/SavedPlacesScreen"
+import MyEventsScreen from "./src/screens/MyEventsScreen"
+import NotificationSettingsScreen from "./src/screens/NotificationSettingsScreen"
+import PrivacySafetyScreen from "./src/screens/PrivacySafetyScreen"
+import HelpSupportScreen from "./src/screens/HelpSupportScreen"
+import CreateEventScreen from "./src/screens/CreateEventScreen"
 
+// Components
+import OfflineStatus from "./components/OfflineStatus"
+
+// Types
 import type {
-  RootTabParamList,
+  RootStackParamList,
+  AuthStackParamList,
+  TabParamList,
   HomeStackParamList,
+  SearchStackParamList,
   EventsStackParamList,
   CommunityStackParamList,
-  MessagesStackParamList,
+  ProfileStackParamList,
 } from "./types/navigation"
 
-const Tab = createBottomTabNavigator<RootTabParamList>()
+const RootStack = createStackNavigator<RootStackParamList>()
+const AuthStack = createStackNavigator<AuthStackParamList>()
+const Tab = createBottomTabNavigator<TabParamList>()
 const HomeStack = createStackNavigator<HomeStackParamList>()
+const SearchStack = createStackNavigator<SearchStackParamList>()
 const EventsStack = createStackNavigator<EventsStackParamList>()
 const CommunityStack = createStackNavigator<CommunityStackParamList>()
-const MessagesStack = createStackNavigator<MessagesStackParamList>()
+const ProfileStack = createStackNavigator<ProfileStackParamList>()
 
-function HomeStackNavigator() {
+// Auth Stack Navigator
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Loading" component={LoadingScreen} />
+      <AuthStack.Screen name="Auth" component={AuthScreen} />
+    </AuthStack.Navigator>
+  )
+}
+
+// Home Stack Navigator
+function HomeNavigator() {
   return (
     <HomeStack.Navigator>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
-      <HomeStack.Screen name="BusinessDetails" component={BusinessDetailsScreen} options={{ headerShown: false }} />
-      <HomeStack.Screen name="WriteReview" component={WriteReviewScreen} options={{ headerShown: false }} />
-      <HomeStack.Screen name="Search" component={SearchScreen} options={{ headerShown: false }} />
+      <HomeStack.Screen
+        name="BusinessDetails"
+        component={BusinessDetailScreen}
+        options={{ title: "Business Details" }}
+      />
+      <HomeStack.Screen name="WriteReview" component={WriteReviewScreen} options={{ title: "Write Review" }} />
     </HomeStack.Navigator>
   )
 }
 
-function EventsStackNavigator() {
+// Search Stack Navigator
+function SearchNavigator() {
+  return (
+    <SearchStack.Navigator>
+      <SearchStack.Screen name="SearchMain" component={SearchScreen} options={{ headerShown: false }} />
+      <SearchStack.Screen
+        name="BusinessDetails"
+        component={BusinessDetailScreen}
+        options={{ title: "Business Details" }}
+      />
+      <SearchStack.Screen name="WriteReview" component={WriteReviewScreen} options={{ title: "Write Review" }} />
+    </SearchStack.Navigator>
+  )
+}
+
+// Events Stack Navigator
+function EventsNavigator() {
   return (
     <EventsStack.Navigator>
       <EventsStack.Screen name="EventsMain" component={EventsScreen} options={{ headerShown: false }} />
-      <EventsStack.Screen name="EventDetails" component={EventDetailsScreen} options={{ headerShown: false }} />
-      <EventsStack.Screen name="LiveEvents" component={LiveEventsScreen} options={{ headerShown: false }} />
+      <EventsStack.Screen name="EventDetails" component={EventsDetailScreen} options={{ title: "Event Details" }} />
       <EventsStack.Screen name="LiveEvent" component={LiveEventScreen} options={{ headerShown: false }} />
-      <EventsStack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+      <EventsStack.Screen name="Recordings" component={RecordingsScreen} options={{ title: "Recordings" }} />
+      <EventsStack.Screen name="CreateEvent" component={CreateEventScreen} options={{ headerShown: false }} />
     </EventsStack.Navigator>
   )
 }
 
-function CommunityStackNavigator() {
+// Community Stack Navigator
+function CommunityNavigator() {
   return (
     <CommunityStack.Navigator>
       <CommunityStack.Screen name="CommunityMain" component={CommunityScreen} options={{ headerShown: false }} />
-      <CommunityStack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+      <CommunityStack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: "Profile" }} />
+      <CommunityStack.Screen name="Chat" component={ChatScreen} options={{ title: "Chat" }} />
+      <CommunityStack.Screen name="Messages" component={MessageScreen} options={{ title: "Messages" }} />
     </CommunityStack.Navigator>
   )
 }
 
-function MessagesStackNavigator() {
+// Profile Stack Navigator
+function ProfileNavigator() {
   return (
-    <MessagesStack.Navigator>
-      <MessagesStack.Screen name="MessagesMain" component={MessagesScreen} options={{ headerShown: false }} />
-      <MessagesStack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
-    </MessagesStack.Navigator>
+    <ProfileStack.Navigator>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: "Profile" }} />
+      <ProfileStack.Screen name="Safety" component={SafetyScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="BuddySystem" component={BuddySystemScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="MentalHealth" component={MentalHealthScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="Notifications" component={NotificationScreen} options={{ title: "Notifications" }} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="SavedPlaces" component={SavedPlacesScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="MyEvents" component={MyEventsScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen
+        name="NotificationSettings"
+        component={NotificationSettingsScreen}
+        options={{ headerShown: false }}
+      />
+      <ProfileStack.Screen name="PrivacySafety" component={PrivacySafetyScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="HelpSupport" component={HelpSupportScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen
+        name="BusinessDetails"
+        component={BusinessDetailScreen}
+        options={{ title: "Business Details" }}
+      />
+    </ProfileStack.Navigator>
   )
 }
 
-function MainTabs() {
+// Main Tab Navigator
+function TabNavigator() {
   return (
-    <>
-      <OfflineStatus />
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName: keyof typeof MaterialIcons.glyphMap
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof MaterialIcons.glyphMap
 
-            if (route.name === "Home") {
+          switch (route.name) {
+            case "Home":
               iconName = "home"
-            } else if (route.name === "Community") {
-              iconName = "people"
-            } else if (route.name === "Events") {
+              break
+            case "Search":
+              iconName = "search"
+              break
+            case "Events":
               iconName = "event"
-            } else if (route.name === "Messages") {
-              iconName = "chat"
-            } else if (route.name === "Profile") {
+              break
+            case "Community":
+              iconName = "people"
+              break
+            case "Profile":
               iconName = "person"
-            } else {
-              iconName = "help"
-            }
+              break
+            default:
+              iconName = "home"
+          }
 
-            return <MaterialIcons name={iconName} size={size} color={color} />
-          },
-          tabBarActiveTintColor: "#FF6B6B",
-          tabBarInactiveTintColor: "gray",
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: "#fff",
-            borderTopWidth: 1,
-            borderTopColor: "#f0f0f0",
-            paddingBottom: 5,
-            paddingTop: 5,
-            height: 60,
-          },
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: "600",
-          },
-        })}
-      >
-        <Tab.Screen name="Home" component={HomeStackNavigator} />
-        <Tab.Screen name="Community" component={CommunityStackNavigator} />
-        <Tab.Screen name="Events" component={EventsStackNavigator} />
-        <Tab.Screen name="Messages" component={MessagesStackNavigator} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
-      </Tab.Navigator>
-    </>
+          return <MaterialIcons name={iconName} size={size} color={color} />
+        },
+        tabBarActiveTintColor: "#FF6B6B",
+        tabBarInactiveTintColor: "gray",
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeNavigator} />
+      <Tab.Screen name="Search" component={SearchNavigator} />
+      <Tab.Screen name="Events" component={EventsNavigator} />
+      <Tab.Screen name="Community" component={CommunityNavigator} />
+      <Tab.Screen name="Profile" component={ProfileNavigator} />
+    </Tab.Navigator>
   )
 }
 
+// Main App Component
 function AppContent() {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <LoadingScreen />
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#FF6B6B" />
+      </View>
+    )
   }
 
   return (
     <NavigationContainer>
-      {user ? <MainTabs /> : <AuthScreen />}
-      <StatusBar style="light" />
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          <RootStack.Screen name="Main" component={TabNavigator} />
+        ) : (
+          <RootStack.Screen name="Auth" component={AuthNavigator} />
+        )}
+      </RootStack.Navigator>
+      <OfflineStatus />
     </NavigationContainer>
   )
 }
 
+// Root App Component
 export default function App() {
   return (
-    <OfflineProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <OfflineProvider>
+        <StatusBar style="auto" />
         <AppContent />
-      </AuthProvider>
-    </OfflineProvider>
+      </OfflineProvider>
+    </AuthProvider>
   )
 }

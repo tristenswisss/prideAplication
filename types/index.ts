@@ -120,3 +120,6 @@ export interface Post {
   created_at: string
   updated_at: string
 }
+
+// Export LiveEvent from messaging.ts for consistency
+export type { LiveEvent, LiveMessage } from "./messaging"

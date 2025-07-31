@@ -13,11 +13,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Modal,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { messagingService } from "../../services/messagingService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Message, Conversation } from "../../types/messaging"
+import MessageReactions from "../../components/MessageReactions"
+import MessageThreads from "../../components/MessageThreads"
+import CallInterface from "../../components/CallInterface"
+import { callingService, type CallSession } from "../../services/callingService"
 
 interface ChatScreenProps {
   navigation: any
@@ -37,6 +42,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const flatListRef = useRef<FlatList>(null)
 
   const { user } = useAuth()
+
+  const [showThreads, setShowThreads] = useState(false)
+  const [selectedThreadMessage, setSelectedThreadMessage] = useState<Message | null>(null)
+  const [activeCall, setActiveCall] = useState<CallSession | null>(null)
+  const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: any[] }>({})
 
   useEffect(() => {
     loadMessages()
@@ -62,11 +72,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       ),
       headerRight: () => (
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerAction}>
-            <MaterialIcons name="videocam" size={24} color="#4ECDC4" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerAction}>
+          <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("voice")}>
             <MaterialIcons name="call" size={24} color="#4ECDC4" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("video")}>
+            <MaterialIcons name="videocam" size={24} color="#4ECDC4" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerAction}>
             <MaterialIcons name="more-vert" size={24} color="#333" />
@@ -119,6 +129,72 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     }
   }
 
+  const handleAddReaction = async (messageId: string, emoji: string) => {
+    // In a real app, this would call an API
+    const currentReactions = messageReactions[messageId] || []
+    const existingReaction = currentReactions.find((r) => r.emoji === emoji)
+
+    if (existingReaction) {
+      existingReaction.count += 1
+      existingReaction.hasReacted = true
+    } else {
+      currentReactions.push({
+        emoji,
+        count: 1,
+        users: [user?.id],
+        hasReacted: true,
+      })
+    }
+
+    setMessageReactions({
+      ...messageReactions,
+      [messageId]: currentReactions,
+    })
+  }
+
+  const handleRemoveReaction = async (messageId: string, emoji: string) => {
+    const currentReactions = messageReactions[messageId] || []
+    const reactionIndex = currentReactions.findIndex((r) => r.emoji === emoji)
+
+    if (reactionIndex !== -1) {
+      const reaction = currentReactions[reactionIndex]
+      if (reaction.count > 1) {
+        reaction.count -= 1
+        reaction.hasReacted = false
+      } else {
+        currentReactions.splice(reactionIndex, 1)
+      }
+    }
+
+    setMessageReactions({
+      ...messageReactions,
+      [messageId]: currentReactions,
+    })
+  }
+
+  const handleStartCall = async (type: "voice" | "video") => {
+    if (!user || !conversation.participant_profiles?.[0]) return
+
+    try {
+      const callSession = await callingService.initiateCall(user.id, conversation.participant_profiles[0].id, type)
+      setActiveCall(callSession)
+    } catch (error) {
+      Alert.alert("Error", "Failed to start call")
+    }
+  }
+
+  const handleOpenThread = (message: Message) => {
+    setSelectedThreadMessage(message)
+    setShowThreads(true)
+  }
+
+  const handleSendThreadReply = async (content: string) => {
+    if (!selectedThreadMessage || !user) return
+
+    // In a real app, this would send a threaded reply
+    console.log("Sending thread reply:", content)
+  }
+
   const getConversationName = (): string => {
     if (conversation.is_group) {
       return conversation.group_name || "Group Chat"
@@ -145,6 +221,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     const previousMessage = index > 0 ? messages[index - 1] : null
     const showAvatar = !isOwnMessage && (!previousMessage || previousMessage.sender_id !== item.sender_id)
     const showName = conversation.is_group && !isOwnMessage && showAvatar
+    const reactions = messageReactions[item.id] || []
 
     return (
       <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
@@ -177,6 +254,20 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               </View>
             )}
           </View>
+
+          {/* Message Reactions */}
+          <MessageReactions
+            messageId={item.id}
+            reactions={reactions}
+            onAddReaction={(emoji) => handleAddReaction(item.id, emoji)}
+            onRemoveReaction={(emoji) => handleRemoveReaction(item.id, emoji)}
+          />
+
+          {/* Thread Button */}
+          <TouchableOpacity style={styles.threadButton} onPress={() => handleOpenThread(item)}>
+            <MaterialIcons name="forum" size={14} color="#666" />
+            <Text style={styles.threadButtonText}>Reply in thread</Text>
+          </TouchableOpacity>
         </View>
 
         {!showAvatar && !isOwnMessage && <View style={styles.avatarSpacer} />}
@@ -232,6 +323,23 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Message Threads Modal */}
+      {selectedThreadMessage && (
+        <MessageThreads
+          parentMessage={selectedThreadMessage}
+          visible={showThreads}
+          onClose={() => setShowThreads(false)}
+          onSendReply={handleSendThreadReply}
+        />
+      )}
+
+      {/* Call Interface */}
+      {activeCall && (
+        <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
+          <CallInterface callSession={activeCall} onEndCall={() => setActiveCall(null)} />
+        </Modal>
+      )}
     </SafeAreaView>
   )
 }
@@ -419,5 +527,16 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: "#f0f0f0",
+  },
+  threadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5,
+    paddingVertical: 2,
+  },
+  threadButtonText: {
+    fontSize: 11,
+    color: "#666",
+    marginLeft: 4,
   },
 })
