@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from "react"
 import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Alert, SafeAreaView, Linking } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -119,7 +119,13 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
       <ScrollView>
         {/* Header Image */}
         <View style={styles.imageContainer}>
-          <Image source={{ uri: event.image_url }} style={styles.headerImage} />
+          {event.image_url ? (
+            <Image source={{ uri: event.image_url }} style={styles.headerImage} />
+          ) : (
+            <View style={styles.placeholderImage}>
+              <MaterialIcons name="event" size={80} color="#ccc" />
+            </View>
+          )}
           <LinearGradient colors={["transparent", "rgba(0,0,0,0.7)"]} style={styles.imageOverlay}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -195,7 +201,7 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
           <View style={styles.tagsSection}>
             <Text style={styles.sectionTitle}>Tags</Text>
             <View style={styles.tags}>
-              {event.tags.map((tag, index) => (
+              {event.tags.map((tag: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined, index: Key | null | undefined) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>{tag}</Text>
                 </View>
@@ -300,6 +306,13 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     padding: 20,
     paddingTop: 50,
+  },
+  placeholderImage: {
+    width: "100%",
+    height: 250,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
   },
   backButton: {
     width: 40,

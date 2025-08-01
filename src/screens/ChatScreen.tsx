@@ -17,6 +17,7 @@ import {
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { messagingService } from "../../services/messagingService"
+import { imageUploadService } from "../../services/imageUploadService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Message, Conversation } from "../../types/messaging"
 import MessageReactions from "../../components/MessageReactions"
@@ -42,6 +43,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const flatListRef = useRef<FlatList>(null)
 
   const { user } = useAuth()
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
   const [showThreads, setShowThreads] = useState(false)
   const [selectedThreadMessage, setSelectedThreadMessage] = useState<Message | null>(null)
@@ -106,24 +108,43 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   }
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user || sending) return
+    if ((!newMessage.trim() && !selectedImage) || !user || sending) return
 
-    const messageContent = newMessage.trim()
-    setNewMessage("")
     setSending(true)
 
     try {
-      const message = await messagingService.sendMessage(conversation.id, user.id, messageContent)
+      let messageContent = newMessage.trim()
+      let messageType: "text" | "image" = "text"
+      let metadata = undefined
+
+      // If we have an image, upload it and send as image message
+      if (selectedImage) {
+        const imageUrl = await imageUploadService.uploadImage(selectedImage)
+        messageType = "image"
+        metadata = { image_url: imageUrl }
+        messageContent = "Image"
+      }
+
+      const message = await messagingService.sendMessage(
+        conversation.id,
+        user.id,
+        messageContent,
+        messageType,
+        metadata,
+      )
       setMessages((prev) => [...prev, message])
 
       // Scroll to bottom
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true })
       }, 100)
+
+      // Clear inputs
+      setNewMessage("")
+      setSelectedImage(null)
     } catch (error) {
       console.error("Error sending message:", error)
       Alert.alert("Error", "Failed to send message")
-      setNewMessage(messageContent) // Restore message
     } finally {
       setSending(false)
     }
@@ -186,6 +207,32 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const handleOpenThread = (message: Message) => {
     setSelectedThreadMessage(message)
     setShowThreads(true)
+  }
+
+  const handlePickImage = async () => {
+    try {
+      const image = await imageUploadService.pickImage()
+      if (image) {
+        setSelectedImage(image.uri)
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image")
+    }
+  }
+
+  const handleTakePhoto = async () => {
+    try {
+      const image = await imageUploadService.takePhoto()
+      if (image) {
+        setSelectedImage(image.uri)
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to take photo")
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null)
   }
 
   const handleSendThreadReply = async (content: string) => {
@@ -298,28 +345,37 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
         {/* Message Input */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
+          <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
             <MaterialIcons name="add" size={24} color="#4ECDC4" />
           </TouchableOpacity>
 
           <View style={styles.textInputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Type a message..."
-              value={newMessage}
-              onChangeText={setNewMessage}
-              multiline
-              maxLength={1000}
-              placeholderTextColor="#666"
-            />
+            {selectedImage ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+                <TouchableOpacity style={styles.removeImageButton} onPress={handleRemoveImage}>
+                  <MaterialIcons name="close" size={16} color="white" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type a message..."
+                value={newMessage}
+                onChangeText={setNewMessage}
+                multiline
+                maxLength={1000}
+                placeholderTextColor="#666"
+              />
+            )}
           </View>
 
           <TouchableOpacity
-            style={[styles.sendButton, (!newMessage.trim() || sending) && styles.sendButtonDisabled]}
+            style={[styles.sendButton, (!newMessage.trim() && !selectedImage || sending) && styles.sendButtonDisabled]}
             onPress={handleSendMessage}
-            disabled={!newMessage.trim() || sending}
+            disabled={(!newMessage.trim() && !selectedImage) || sending}
           >
-            <MaterialIcons name="send" size={20} color={newMessage.trim() && !sending ? "white" : "#ccc"} />
+            <MaterialIcons name="send" size={20} color={(newMessage.trim() || selectedImage) && !sending ? "white" : "#ccc"} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -515,6 +571,28 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlignVertical: "center",
     minHeight: 24,
+  },
+  imagePreviewContainer: {
+    position: "relative",
+    width: 80,
+    height: 80,
+    marginRight: 10,
+  },
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 10,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF6B6B",
+    borderRadius: 15,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendButton: {
     width: 40,

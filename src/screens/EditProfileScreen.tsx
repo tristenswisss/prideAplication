@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput, Alert } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
+import { imageUploadService } from "../../services/imageUploadService"
 import type { EditProfileScreenProps } from "../../types/navigation"
 
 export default function EditProfileScreen({ navigation }: EditProfileScreenProps) {
@@ -20,6 +21,7 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
     pronouns: "",
     interests: user?.interests || [],
   })
+  const [profileImage, setProfileImage] = useState<string | null>(user?.avatar_url || null)
 
   const [privacySettings, setPrivacySettings] = useState({
     profileVisible: true,
@@ -44,6 +46,28 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
     "Community Events",
   ]
 
+  const handlePickImage = async () => {
+    try {
+      const image = await imageUploadService.pickImage()
+      if (image) {
+        setProfileImage(image.uri)
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image")
+    }
+  }
+
+  const handleTakePhoto = async () => {
+    try {
+      const image = await imageUploadService.takePhoto()
+      if (image) {
+        setProfileImage(image.uri)
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to take photo")
+    }
+  }
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       Alert.alert("Error", "Name is required")
@@ -52,6 +76,12 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
 
     setLoading(true)
     try {
+      // Upload image if selected
+      let avatarUrl = ""
+      if (profileImage && profileImage !== user?.avatar_url) {
+        avatarUrl = await imageUploadService.uploadImage(profileImage)
+      }
+
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000))
       Alert.alert("Success", "Profile updated successfully!")
@@ -98,13 +128,23 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Profile Photo</Text>
           <View style={styles.photoContainer}>
-            <View style={styles.photoPlaceholder}>
-              <MaterialIcons name="person" size={60} color="#ccc" />
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={styles.profileImage} />
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <MaterialIcons name="person" size={60} color="#ccc" />
+              </View>
+            )}
+            <View style={styles.changePhotoActions}>
+              <TouchableOpacity style={styles.changePhotoButton} onPress={handlePickImage}>
+                <MaterialIcons name="photo-library" size={20} color="#FF6B6B" />
+                <Text style={styles.changePhotoText}>Choose Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.changePhotoButton} onPress={handleTakePhoto}>
+                <MaterialIcons name="camera-alt" size={20} color="#FF6B6B" />
+                <Text style={styles.changePhotoText}>Take Photo</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.changePhotoButton}>
-              <MaterialIcons name="camera-alt" size={20} color="#FF6B6B" />
-              <Text style={styles.changePhotoText}>Change Photo</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -313,6 +353,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 15,
+  },
   photoPlaceholder: {
     width: 100,
     height: 100,
@@ -322,6 +368,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 15,
   },
+  changePhotoActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
   changePhotoButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -330,6 +381,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#FF6B6B",
+    marginHorizontal: 5,
   },
   changePhotoText: {
     marginLeft: 8,

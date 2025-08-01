@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList } from "react-native"
+import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView } from "react-native"
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
 import * as Location from "expo-location"
 import { LinearGradient } from "expo-linear-gradient"
@@ -110,24 +110,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     return "#95E1D3"
   }
 
-  const renderCategoryItem = ({ item }: { item: Category }) => (
-    <TouchableOpacity
-      style={[styles.categoryButton, selectedCategory === item.id && { backgroundColor: item.color }]}
-      onPress={() => setSelectedCategory(item.id)}
-    >
-      <MaterialIcons name={item.icon as any} size={16} color={selectedCategory === item.id ? "white" : item.color} />
-      <Text
-        style={[
-          styles.categoryText,
-          selectedCategory === item.id && { color: "white" },
-          selectedCategory !== item.id && { color: item.color },
-        ]}
-      >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  )
-
   const renderBusinessCard = ({ item }: { item: Business }) => (
     <TouchableOpacity
       style={styles.businessCard}
@@ -205,14 +187,39 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       </View>
 
       {/* Category Filter */}
-      <FlatList
-        data={categories}
-        renderItem={renderCategoryItem}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryContainer}
-      />
+      <View style={styles.categoryTabsContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryTabsContent}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.categoryTab,
+                selectedCategory === category.id && { backgroundColor: category.color },
+              ]}
+              onPress={() => setSelectedCategory(category.id)}
+            >
+              <MaterialIcons
+                name={category.icon as any}
+                size={16}
+                color={selectedCategory === category.id ? "white" : category.color}
+              />
+              <Text
+                style={[
+                  styles.categoryTabText,
+                  selectedCategory === category.id && { color: "white" },
+                  selectedCategory !== category.id && { color: category.color },
+                ]}
+              >
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Map or List View */}
       {showMap ? (
@@ -286,8 +293,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    paddingTop: 40,
-    paddingBottom: 20,
+    paddingTop: 30,
+    paddingBottom: 15,
     paddingHorizontal: 20,
   },
   headerTitle: {
@@ -324,7 +331,7 @@ const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: "row",
     backgroundColor: "white",
-    marginHorizontal: 20,
+    marginHorizontal: 10,
     marginTop: 10,
     borderRadius: 25,
     padding: 4,
@@ -349,37 +356,17 @@ const styles = StyleSheet.create({
   activeToggleText: {
     color: "white",
   },
-  categoryContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  categoryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 10,
-    elevation: 2,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    minWidth: 80,
-    justifyContent: "center",
-  },
-  categoryText: {
-    marginLeft: 6,
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-  },
   mapContainer: {
     flex: 1,
+    flexGrow: 1,
+    height: "98%",
     position: "relative",
+    
   },
   map: {
     flex: 1,
+    height: "100%",
+    
   },
   legend: {
     position: "absolute",
@@ -517,4 +504,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
+  categoryTabsContainer: {
+    height: 50,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+  },
+  categoryTabsContent: {
+    alignItems: "center",
+    paddingVertical: 5,
+  },
+  categoryTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+  categoryTabText: {
+    marginLeft: 5,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 })
+
+

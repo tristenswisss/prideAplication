@@ -35,6 +35,18 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   const [filters, setFilters] = useState<SearchFilters>({})
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<"all" | "businesses" | "events">("all")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  
+  const categories = [
+    { id: "all", name: "All", icon: "apps", color: "#FF6B6B" },
+    { id: "restaurant", name: "Food", icon: "restaurant", color: "#4ECDC4" },
+    { id: "bar", name: "Bars", icon: "local-bar", color: "#45B7D1" },
+    { id: "healthcare", name: "Health", icon: "local-hospital", color: "#96CEB4" },
+    { id: "shopping", name: "Shopping", icon: "shopping-bag", color: "#FFEAA7" },
+    { id: "service", name: "Services", icon: "build", color: "#DDA0DD" },
+    { id: "hotel", name: "Hotels", icon: "hotel", color: "#98D8C8" },
+    { id: "entertainment", name: "Fun", icon: "local-play", color: "#F7DC6F" },
+  ]
 
   const { isOnline, isOfflineMode } = useOffline()
 
@@ -49,6 +61,12 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
       setSuggestions([])
     }
   }, [query])
+
+  useEffect(() => {
+    if (selectedCategory !== "all" || filters.category) {
+      performSearch()
+    }
+  }, [selectedCategory, filters.category])
 
   const loadSearchHistory = async () => {
     try {
@@ -69,7 +87,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   }
 
   const performSearch = async (searchQuery: string = query) => {
-    if (!searchQuery.trim()) return
+    if (!searchQuery.trim() && !filters.category) return
 
     try {
       setLoading(true)
@@ -129,6 +147,34 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
     >
       <MaterialIcons name="history" size={16} color="#666" />
       <Text style={styles.historyText}>{item}</Text>
+    </TouchableOpacity>
+  )
+
+  const renderCategoryItem = ({ item }: { item: typeof categories[0] }) => (
+    <TouchableOpacity
+      style={[styles.categoryButton, selectedCategory === item.id && { backgroundColor: item.color }]}
+      onPress={() => {
+        setSelectedCategory(item.id)
+        if (item.id !== "all") {
+          setFilters({ ...filters, category: item.id })
+        } else {
+          const newFilters = { ...filters }
+          delete newFilters.category
+          setFilters(newFilters)
+        }
+        performSearch()
+      }}
+    >
+      <MaterialIcons name={item.icon as any} size={16} color={selectedCategory === item.id ? "white" : item.color} />
+      <Text
+        style={[
+          styles.categoryText,
+          selectedCategory === item.id && { color: "white" },
+          selectedCategory !== item.id && { color: item.color },
+        ]}
+      >
+        {item.name}
+      </Text>
     </TouchableOpacity>
   )
 
@@ -344,6 +390,17 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
           </View>
         )}
       </LinearGradient>
+
+      {/* Category Filter */}
+      <View style={styles.categoryContainer}>
+        <FlatList
+          data={categories}
+          renderItem={renderCategoryItem}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        />
+      </View>
 
       {/* Filters Panel */}
       {showFilters && renderFilters()}
@@ -579,6 +636,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     textTransform: "capitalize",
+  },
+  categoryContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  categoryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 2,
+    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    minWidth: 70,
+    minHeight: 40,
+    justifyContent: "center",
+  },
+  categoryText: {
+    marginLeft: 5,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
   activeCategoryFilterText: {
     color: "white",

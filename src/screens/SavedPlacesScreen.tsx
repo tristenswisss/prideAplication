@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { Business } from "../../types"
@@ -118,9 +118,13 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
       onPress={() => (navigation as any).navigate("Home", { screen: "BusinessDetails", params: { business: item } })}
     >
       <View style={styles.placeImageContainer}>
-        <View style={styles.placeholderImage}>
-          <MaterialIcons name="place" size={40} color="#ccc" />
-        </View>
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={styles.placeImage} />
+        ) : (
+          <View style={styles.placeholderImage}>
+            <MaterialIcons name="place" size={40} color="#ccc" />
+          </View>
+        )}
         <TouchableOpacity style={styles.removeButton} onPress={() => removeSavedPlace(item.id)}>
           <MaterialIcons name="favorite" size={20} color="#FF6B6B" />
         </TouchableOpacity>
@@ -351,6 +355,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
+  },
+  placeImage: {
+    height: 150,
+    width: "100%",
   },
   removeButton: {
     position: "absolute",

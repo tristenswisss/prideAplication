@@ -11,11 +11,13 @@ import {
   TextInput,
   Alert,
   Switch,
+  Image,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { eventCreationService } from "../../services/eventCreationService"
+import { imageUploadService } from "../../services/imageUploadService"
 import type { CreateEventScreenProps } from "../../types/navigation"
 
 export default function CreateEventScreen({ navigation }: CreateEventScreenProps) {
@@ -32,6 +34,7 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
     maxAttendees: 100,
     tags: [] as string[],
   })
+  const [eventImage, setEventImage] = useState<string | null>(null)
 
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showEndDatePicker, setShowEndDatePicker] = useState(false)
@@ -40,6 +43,28 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
 
   const categories = eventCreationService.getEventCategories()
   const popularTags = eventCreationService.getPopularTags()
+
+  const handlePickImage = async () => {
+    try {
+      const image = await imageUploadService.pickImage()
+      if (image) {
+        setEventImage(image.uri)
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image")
+    }
+  }
+
+  const handleTakePhoto = async () => {
+    try {
+      const image = await imageUploadService.takePhoto()
+      if (image) {
+        setEventImage(image.uri)
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to take photo")
+    }
+  }
 
   const handleCreateEvent = async () => {
     const validation = eventCreationService.validateEventData({
@@ -55,10 +80,17 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
 
     setLoading(true)
     try {
+      // Upload image if selected
+      let imageUrl = ""
+      if (eventImage) {
+        imageUrl = await imageUploadService.uploadImage(eventImage)
+      }
+
       await eventCreationService.createEvent({
         ...formData,
         date: formData.date.toISOString(),
         endDate: formData.endDate.toISOString(),
+        imageUrl: imageUrl || "",
       })
 
       Alert.alert("Success", "Event created successfully!", [{ text: "OK", onPress: () => navigation.goBack() }])
@@ -123,6 +155,31 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Event Image */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Event Image</Text>
+          <View style={styles.imageContainer}>
+            {eventImage ? (
+              <Image source={{ uri: eventImage }} style={styles.eventImage} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <MaterialIcons name="image" size={40} color="#ccc" />
+                <Text style={styles.imagePlaceholderText}>No image selected</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.imageActions}>
+            <TouchableOpacity style={styles.imageButton} onPress={handlePickImage}>
+              <MaterialIcons name="photo-library" size={20} color="#FF6B6B" />
+              <Text style={styles.imageButtonText}>Choose Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imageButton} onPress={handleTakePhoto}>
+              <MaterialIcons name="camera-alt" size={20} color="#FF6B6B" />
+              <Text style={styles.imageButtonText}>Take Photo</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Basic Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
@@ -550,5 +607,48 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
     marginRight: 6,
+  },
+  imageContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  eventImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 10,
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: 200,
+    borderRadius: 10,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePlaceholderText: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 10,
+  },
+  imageActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 15,
+  },
+  imageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#FF6B6B",
+  },
+  imageButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#FF6B6B",
+    fontWeight: "600",
   },
 })

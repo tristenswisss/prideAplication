@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { Event } from "../../types"
@@ -147,9 +147,13 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
     return (
       <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("Events", { screen: "EventDetails", params: { event: item } })}>
         <View style={styles.eventImageContainer}>
-          <View style={styles.placeholderImage}>
-            <MaterialIcons name="event" size={40} color="#ccc" />
-          </View>
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={styles.eventImage} />
+          ) : (
+            <View style={styles.placeholderImage}>
+              <MaterialIcons name="event" size={40} color="#ccc" />
+            </View>
+          )}
           <View style={[styles.statusBadge, styles[`${item.rsvpStatus}Badge`]]}>
             <Text style={styles.statusText}>
               {item.rsvpStatus === "going" ? "Going" : item.rsvpStatus === "interested" ? "Interested" : "Not Going"}
@@ -390,6 +394,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
+  },
+  eventImage: {
+    height: 120,
+    width: "100%",
   },
   statusBadge: {
     position: "absolute",

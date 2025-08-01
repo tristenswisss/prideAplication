@@ -17,6 +17,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { socialService } from "../../services/socialService"
+import { imageUploadService } from "../../services/imageUploadService"
 import { pushNotificationService } from "../../services/pushNotificationService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, Comment } from "../../types/social"
@@ -28,6 +29,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [newPostContent, setNewPostContent] = useState("")
+  const [newPostImages, setNewPostImages] = useState<string[]>([])
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
@@ -67,6 +69,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     if (!newPostContent.trim() || !user) return
 
     try {
+      // Upload images if selected
+      const uploadedImages = []
+      for (const imageUri of newPostImages) {
+        const imageUrl = await imageUploadService.uploadImage(imageUri)
+        uploadedImages.push(imageUrl)
+      }
+
       const newPost = await socialService.createPost({
         user_id: user.id,
         user: {
@@ -83,19 +92,46 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           updated_at: user.created_at,
         },
         content: newPostContent,
-        images: [],
+        images: uploadedImages,
         tags: extractHashtags(newPostContent),
         visibility: "public",
       })
 
       setPosts([newPost, ...posts])
       setNewPostContent("")
+      setNewPostImages([])
       setShowCreatePost(false)
       Alert.alert("Success", "Your post has been shared!")
     } catch (error) {
       console.error("Error creating post:", error)
       Alert.alert("Error", "Failed to create post")
     }
+  }
+
+  const handlePickImage = async () => {
+    try {
+      const image = await imageUploadService.pickImage()
+      if (image && newPostImages.length < 5) {
+        setNewPostImages([...newPostImages, image.uri])
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image")
+    }
+  }
+
+  const handleTakePhoto = async () => {
+    try {
+      const image = await imageUploadService.takePhoto()
+      if (image && newPostImages.length < 5) {
+        setNewPostImages([...newPostImages, image.uri])
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to take photo")
+    }
+  }
+
+  const handleRemoveImage = (index: number) => {
+    setNewPostImages(newPostImages.filter((_, i) => i !== index))
   }
 
   const handleLikePost = async (postId: string) => {
@@ -387,10 +423,31 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             />
           </View>
 
+          {/* Image Preview */}
+          {newPostImages.length > 0 && (
+            <ScrollView horizontal style={styles.imagePreviewContainer}>
+              {newPostImages.map((imageUri, index) => (
+                <View key={index} style={styles.imagePreviewItem}>
+                  <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => handleRemoveImage(index)}
+                  >
+                    <MaterialIcons name="close" size={16} color="white" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
           <View style={styles.createPostActions}>
-            <TouchableOpacity style={styles.createPostAction}>
-              <MaterialIcons name="photo" size={24} color="#4ECDC4" />
+            <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
+              <MaterialIcons name="photo-library" size={24} color="#4ECDC4" />
               <Text style={styles.createPostActionText}>Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
+              <MaterialIcons name="camera-alt" size={24} color="#4ECDC4" />
+              <Text style={styles.createPostActionText}>Camera</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.createPostAction}>
               <MaterialIcons name="location-on" size={24} color="#4ECDC4" />
@@ -653,6 +710,30 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlignVertical: "top",
     minHeight: 100,
+  },
+  imagePreviewContainer: {
+    marginHorizontal: 20,
+    marginVertical: 10,
+  },
+  imagePreviewItem: {
+    position: "relative",
+    marginRight: 10,
+  },
+  imagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF6B6B",
+    borderRadius: 15,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   createPostActions: {
     flexDirection: "row",

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { eventService } from "../../services/eventService"
@@ -57,17 +57,21 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 
     return (
       <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("EventDetails", { event: item })}>
-        <View style={styles.eventImageContainer}>
+      <View style={styles.eventImageContainer}>
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={styles.eventImage} />
+        ) : (
           <View style={styles.placeholderImage}>
             <MaterialIcons name="event" size={40} color="#ccc" />
           </View>
-          {/* Removed isVirtual badge since it's not in the Event type */}
-          {!item.is_free && item.price && (
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceText}>{item.price === 0 ? "Free" : `$${item.price}`}</Text>
-            </View>
-          )}
-        </View>
+        )}
+        {/* Removed isVirtual badge since it's not in the Event type */}
+        {!item.is_free && item.price && (
+          <View style={styles.priceBadge}>
+            <Text style={styles.priceText}>{item.price === 0 ? "Free" : `$${item.price}`}</Text>
+          </View>
+        )}
+      </View>
 
         <View style={styles.eventInfo}>
           <View style={styles.eventHeader}>
@@ -327,6 +331,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
+  },
+  eventImage: {
+    height: 150,
+    width: "100%",
   },
   priceBadge: {
     position: "absolute",

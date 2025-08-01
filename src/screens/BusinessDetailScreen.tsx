@@ -173,7 +173,13 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
       <ScrollView>
         {/* Header Image */}
         <View style={styles.imageContainer}>
-          <Image source={{ uri: business.image_url }} style={styles.headerImage} />
+          {business.image_url ? (
+            <Image source={{ uri: business.image_url }} style={styles.headerImage} />
+          ) : (
+            <View style={styles.placeholderImage}>
+              <MaterialIcons name="business" size={80} color="#ccc" />
+            </View>
+          )}
           <LinearGradient colors={["transparent", "rgba(0,0,0,0.7)"]} style={styles.imageOverlay}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -337,6 +343,13 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     padding: 20,
     paddingTop: 50,
+  },
+  placeholderImage: {
+    width: "100%",
+    height: 250,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
   },
   backButton: {
     width: 40,
