@@ -69,12 +69,12 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps) {
   })
 
   return (
-    <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.container}>
+    <LinearGradient colors={["black", "black"]} style={styles.container}>
       <View style={styles.content}>
         <Animated.View style={[styles.logo, { transform: [{ translateY: bounce }] }]}>
           <Text style={styles.logoText}>🏳️‍🌈</Text>
         </Animated.View>
-        <Text style={styles.title}>Pride App</Text>
+        <Text style={styles.title}>Mirae App</Text>
       </View>
     </LinearGradient>
   )

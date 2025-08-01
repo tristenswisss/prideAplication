@@ -348,7 +348,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -2,
     right: -2,
-    backgroundColor: "#FF4444",
+    backgroundColor: "black",
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   resetFiltersText: {
-    color: "#FF6B6B",
+    color: "gold",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   activeCategoryFilter: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
   },
   categoryFilterText: {
     fontSize: 12,
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   clearHistoryText: {
-    color: "#FF6B6B",
+    color: "gold",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   },
   activeResultsTab: {
     borderBottomWidth: 2,
-    borderBottomColor: "#FF6B6B",
+    borderBottomColor: "black",
   },
   resultsTabText: {
     fontSize: 14,
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   activeResultsTabText: {
-    color: "#FF6B6B",
+    color: "gold",
   },
   resultsList: {
     flex: 1,

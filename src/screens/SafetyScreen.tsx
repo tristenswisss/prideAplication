@@ -149,7 +149,7 @@ export default function SafetyScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#FF8E53"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <MaterialIcons name="arrow-back" size={24} color="white" />

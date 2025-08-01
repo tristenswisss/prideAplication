@@ -86,7 +86,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   const renderOption = (option: (typeof profileOptions)[0]) => (
     <TouchableOpacity key={option.title} style={styles.option} onPress={option.onPress}>
       <View style={styles.optionIcon}>
-        <MaterialIcons name={option.icon as any} size={24} color="#FF6B6B" />
+        <MaterialIcons name={option.icon as any} size={24} color="black" />
       </View>
       <View style={styles.optionContent}>
         <Text style={styles.optionTitle}>{option.title}</Text>
@@ -98,7 +98,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     borderRadius: 15,
     width: 30,
     height: 30,
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     marginHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: "#fff5f5",
+    backgroundColor: "black",
     borderWidth: 1,
     borderColor: "#ffebee",
   },
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     fontWeight: "600",
-    color: "#F44336",
+    color: "white",
   },
   appInfo: {
     alignItems: "center",

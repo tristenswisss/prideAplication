@@ -31,7 +31,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [isOfflineMode, setIsOfflineMode] = useState(false)
 
   const categories: Category[] = [
-    { id: "all", name: "All", icon: "apps", color: "#FF6B6B" },
+    { id: "all", name: "All", icon: "apps", color: "black" },
     { id: "restaurant", name: "Food", icon: "restaurant", color: "#4ECDC4" },
     { id: "bar", name: "Bars", icon: "local-bar", color: "#45B7D1" },
     { id: "healthcare", name: "Health", icon: "local-hospital", color: "#96CEB4" },
@@ -150,7 +150,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <Text style={styles.headerTitle}>SafePlaces</Text>
         <Text style={styles.headerSubtitle}>Find LGBTQ+ friendly spaces</Text>
 
@@ -163,7 +163,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={getCurrentLocation} style={styles.locationButton}>
-            <MaterialIcons name="my-location" size={20} color="#FF6B6B" />
+            <MaterialIcons name="my-location" size={20} color="black" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   activeToggle: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
   },
   toggleText: {
     marginLeft: 5,

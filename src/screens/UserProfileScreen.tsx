@@ -138,7 +138,7 @@ export default function UserProfileScreen({ navigation, route }: UserProfileScre
       <ScrollView style={styles.content}>
         {/* Cover Image */}
         <View style={styles.coverImageContainer}>
-          <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.coverImage} />
+          <LinearGradient colors={["black", "black"]} style={styles.coverImage} />
         </View>
 
         {/* Profile Info */}
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   },
   followButton: {
     flex: 1,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: "center",
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: "#FF6B6B",
+    borderBottomColor: "black",
   },
   tabText: {
     fontSize: 14,

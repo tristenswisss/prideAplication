@@ -111,7 +111,7 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -137,11 +137,11 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
             )}
             <View style={styles.changePhotoActions}>
               <TouchableOpacity style={styles.changePhotoButton} onPress={handlePickImage}>
-                <MaterialIcons name="photo-library" size={20} color="#FF6B6B" />
+                <MaterialIcons name="photo-library" size={20} color="black" />
                 <Text style={styles.changePhotoText}>Choose Photo</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.changePhotoButton} onPress={handleTakePhoto}>
-                <MaterialIcons name="camera-alt" size={20} color="#FF6B6B" />
+                <MaterialIcons name="camera-alt" size={20} color="black" />
                 <Text style={styles.changePhotoText}>Take Photo</Text>
               </TouchableOpacity>
             </View>
@@ -380,12 +380,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#FF6B6B",
+    borderColor: "black",
     marginHorizontal: 5,
   },
   changePhotoText: {
     marginLeft: 8,
-    color: "#FF6B6B",
+    color: "black",
     fontWeight: "600",
   },
   inputGroup: {
@@ -469,7 +469,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   toggleActive: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
+     borderRadius: 15,
   },
   toggleThumb: {
     width: 26,

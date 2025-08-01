@@ -124,7 +124,7 @@ export default function NotificationsScreen({ navigation }: NotificationsScreenP
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   unreadNotification: {
     borderLeftWidth: 4,
-    borderLeftColor: "#FF6B6B",
+    borderLeftColor: "black",
   },
   notificationIcon: {
     width: 40,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     marginLeft: 10,
   },
   emptyState: {

@@ -279,7 +279,7 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
             <View style={styles.reviewsHeader}>
               <Text style={styles.sectionTitle}>Reviews</Text>
               <TouchableOpacity style={styles.writeReviewButton} onPress={handleWriteReview}>
-                <MaterialIcons name="edit" size={16} color="#FF6B6B" />
+                <MaterialIcons name="edit" size={16} color="black" />
                 <Text style={styles.writeReviewText}>Write Review</Text>
               </TouchableOpacity>
             </View>
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   category: {
     fontSize: 14,
-    color: "#FF6B6B",
+    color: "black",
     fontWeight: "600",
   },
   ratingSection: {
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   tag: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -517,10 +517,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: "#FF6B6B",
+    borderColor: "black",
   },
   writeReviewText: {
-    color: "#FF6B6B",
+    color: "black",
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 4,
@@ -628,18 +628,20 @@ const styles = StyleSheet.create({
   bottomActions: {
     flexDirection: "row",
     justifyContent: "space-around",
-    padding: 20,
+    padding: 5,
+    paddingVertical: 15,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
   },
   actionButton: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
+    marginRight: 1,
     minWidth: 100,
     justifyContent: "center",
   },

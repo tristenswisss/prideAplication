@@ -191,7 +191,7 @@ export default function MentalHealthScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#9C27B0", "#673AB7"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 3,
-    borderBottomColor: "#9C27B0",
+    borderBottomColor: "black",
   },
   tabText: {
     fontSize: 14,
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   activeTabText: {
-    color: "#9C27B0",
+    color: "black",
     fontWeight: "bold",
   },
   content: {

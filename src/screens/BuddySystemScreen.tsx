@@ -188,7 +188,7 @@ export default function BuddySystemScreen({ navigation }: any) {
       )}
       {item.status !== "pending" && (
         <View style={styles.statusBadge}>
-          <Text style={[styles.statusText, { color: item.status === "accepted" ? "#4CAF50" : "#F44336" }]}>
+          <Text style={[styles.statusText, { color: item.status === "accepted" ? "#020303ff" : "black" }]}>
             {item.status.toUpperCase()}
           </Text>
         </View>
@@ -199,7 +199,7 @@ export default function BuddySystemScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 3,
-    borderBottomColor: "#FF6B6B",
+    borderBottomColor: "black",
   },
   tabText: {
     fontSize: 14,
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   activeTabText: {
-    color: "#FF6B6B",
+    color: "black",
     fontWeight: "bold",
   },
   content: {
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   },
   matchCompatibility: {
     fontSize: 14,
-    color: "#4CAF50",
+    color: "gold",
     fontWeight: "600",
     marginBottom: 2,
   },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   connectButton: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -514,16 +514,16 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   acceptButton: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "black",
   },
   rejectButton: {
-    backgroundColor: "#F44336",
+    backgroundColor: "black",
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "",
   },
   statusText: {
     fontSize: 12,
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 30,
     right: 20,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "black",
   },
   modalHeader: {
     flexDirection: "row",
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   },
   modalSend: {
     fontSize: 16,
-    color: "#FF6B6B",
+    color: "black",
     fontWeight: "bold",
   },
   modalContent: {
@@ -659,6 +659,6 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: "#FF9800",
+    borderLeftColor: "gold",
   },
 })

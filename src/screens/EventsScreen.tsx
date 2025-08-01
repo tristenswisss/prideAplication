@@ -136,7 +136,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Events</Text>
           <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
@@ -208,7 +208,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "grey",
   },
   header: {
     paddingTop: 40,
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   activeFilterTab: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
   },
   filterTabText: {
     fontSize: 13,
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   createEventButton: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 10,
     right: 10,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "gold",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 15,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   categoryTag: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -437,12 +437,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#FF6B6B",
+    borderColor: "black",
   },
   interestedButtonText: {
     marginLeft: 4,
     fontSize: 14,
-    color: "#FF6B6B",
+    color: "black",
     fontWeight: "600",
   },
   goingButton: {
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
   },
   goingButtonText: {
     marginLeft: 4,

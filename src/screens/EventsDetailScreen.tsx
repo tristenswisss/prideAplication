@@ -152,7 +152,7 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
           {/* Date and Time */}
           <View style={styles.infoSection}>
             <View style={styles.infoItem}>
-              <MaterialIcons name="event" size={24} color="#FF6B6B" />
+              <MaterialIcons name="event" size={24} color="gold" />
               <View style={styles.infoText}>
                 <Text style={styles.infoTitle}>Date</Text>
                 <Text style={styles.infoValue}>{formatDate(event.date)}</Text>
@@ -160,7 +160,7 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
             </View>
 
             <View style={styles.infoItem}>
-              <MaterialIcons name="access-time" size={24} color="#FF6B6B" />
+              <MaterialIcons name="access-time" size={24} color="gold" />
               <View style={styles.infoText}>
                 <Text style={styles.infoTitle}>Time</Text>
                 <Text style={styles.infoValue}>
@@ -171,7 +171,7 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
             </View>
 
             <View style={styles.infoItem}>
-              <MaterialIcons name="location-on" size={24} color="#FF6B6B" />
+              <MaterialIcons name="location-on" size={24} color="gold" />
               <View style={styles.infoText}>
                 <Text style={styles.infoTitle}>Location</Text>
                 <Text style={styles.infoValue}>{event.location}</Text>
@@ -179,7 +179,7 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
             </View>
 
             <View style={styles.infoItem}>
-              <MaterialIcons name="people" size={24} color="#FF6B6B" />
+              <MaterialIcons name="people" size={24} color="gold" />
               <View style={styles.infoText}>
                 <Text style={styles.infoTitle}>Attendees</Text>
                 <Text style={styles.infoValue}>
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   organizerNameText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
+    color: "black",
     marginRight: 5,
   },
   organizerEmail: {

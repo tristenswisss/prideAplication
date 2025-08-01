@@ -119,7 +119,7 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
       disabled={disabled}
     >
       <View style={styles.optionIcon}>
-        <MaterialIcons name={icon as any} size={24} color={disabled ? "#ccc" : "#FF6B6B"} />
+        <MaterialIcons name={icon as any} size={24} color={disabled ? "#ccc" : "black"} />
       </View>
       <View style={styles.optionContent}>
         <Text style={[styles.optionTitle, disabled && styles.disabledText]}>{title}</Text>
@@ -133,7 +133,7 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -292,7 +292,7 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
             disabled={!settings.pushNotifications}
           >
             <View style={styles.optionIcon}>
-              <MaterialIcons name="do-not-disturb" size={24} color={!settings.pushNotifications ? "#ccc" : "#FF6B6B"} />
+              <MaterialIcons name="do-not-disturb" size={24} color={!settings.pushNotifications ? "#ccc" : "black"} />
             </View>
             <View style={styles.optionContent}>
               <Text style={[styles.optionTitle, !settings.pushNotifications && styles.disabledText]}>
@@ -322,7 +322,7 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
         {/* Test Notification */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.testButton}>
-            <MaterialIcons name="notifications" size={20} color="#FF6B6B" />
+            <MaterialIcons name="notifications" size={20} color="black" />
             <Text style={styles.testButtonText}>Send Test Notification</Text>
           </TouchableOpacity>
         </View>
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   },
   quietHoursTime: {
     fontSize: 12,
-    color: "#FF6B6B",
+    color: "black",
     fontWeight: "600",
     marginTop: 4,
   },
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   toggleActive: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
   },
   disabledToggle: {
     backgroundColor: "#f0f0f0",
@@ -458,12 +458,12 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#FF6B6B",
+    borderColor: "black",
   },
   testButtonText: {
     marginLeft: 8,
     fontSize: 16,
-    color: "#FF6B6B",
+    color: "black",
     fontWeight: "600",
   },
 })

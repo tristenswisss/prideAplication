@@ -220,7 +220,7 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   activeFilterTab: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
   },
   filterTabText: {
     fontSize: 12,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   exploreButton: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,

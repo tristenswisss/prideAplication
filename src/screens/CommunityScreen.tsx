@@ -366,7 +366,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <Text style={styles.headerTitle}>Community</Text>
         <Text style={styles.headerSubtitle}>Connect with your Pride family</Text>
       </LinearGradient>
@@ -389,7 +389,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
               style={styles.promptAvatar}
             />
             <Text style={styles.promptText}>Share something with the community...</Text>
-            <MaterialIcons name="add" size={24} color="#FF6B6B" />
+            <MaterialIcons name="add" size={24} color="black" />
           </TouchableOpacity>
         }
       />
@@ -442,19 +442,19 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           <View style={styles.createPostActions}>
             <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
-              <MaterialIcons name="photo-library" size={24} color="#4ECDC4" />
+              <MaterialIcons name="photo-library" size={24} color="black" />
               <Text style={styles.createPostActionText}>Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
-              <MaterialIcons name="camera-alt" size={24} color="#4ECDC4" />
+              <MaterialIcons name="camera-alt" size={24} color="black" />
               <Text style={styles.createPostActionText}>Camera</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.createPostAction}>
-              <MaterialIcons name="location-on" size={24} color="#4ECDC4" />
+              <MaterialIcons name="location-on" size={24} color="black" />
               <Text style={styles.createPostActionText}>Location</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.createPostAction}>
-              <MaterialIcons name="event" size={24} color="#4ECDC4" />
+              <MaterialIcons name="event" size={24} color="black" />
               <Text style={styles.createPostActionText}>Event</Text>
             </TouchableOpacity>
           </View>
@@ -502,7 +502,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
               disabled={!newComment.trim()}
               style={[styles.sendCommentButton, !newComment.trim() && styles.sendCommentButtonDisabled]}
             >
-              <MaterialIcons name="send" size={20} color={newComment.trim() ? "#4ECDC4" : "#ccc"} />
+              <MaterialIcons name="send" size={20} color={newComment.trim() ? "gold" : "#ccc"} />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -5,
     right: -5,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
     borderRadius: 15,
     width: 20,
     height: 20,

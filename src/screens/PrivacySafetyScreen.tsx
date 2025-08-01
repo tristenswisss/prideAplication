@@ -113,7 +113,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
   const renderToggleOption = (key: keyof PrivacySettings, title: string, description: string, icon: string) => (
     <TouchableOpacity style={styles.option} onPress={() => toggleSetting(key)}>
       <View style={styles.optionIcon}>
-        <MaterialIcons name={icon as any} size={24} color="#FF6B6B" />
+        <MaterialIcons name={icon as any} size={24} color="black" />
       </View>
       <View style={styles.optionContent}>
         <Text style={styles.optionTitle}>{title}</Text>
@@ -136,7 +136,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     <View style={styles.selectOption}>
       <View style={styles.optionHeader}>
         <View style={styles.optionIcon}>
-          <MaterialIcons name={icon as any} size={24} color="#FF6B6B" />
+          <MaterialIcons name={icon as any} size={24} color="black" />
         </View>
         <View style={styles.optionContent}>
           <Text style={styles.optionTitle}>{title}</Text>
@@ -161,7 +161,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -222,7 +222,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
           <TouchableOpacity style={styles.actionOption} onPress={handleBlockedUsers}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="block" size={24} color="#FF6B6B" />
+              <MaterialIcons name="block" size={24} color="black" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Blocked Users</Text>
@@ -259,7 +259,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
           <TouchableOpacity style={styles.actionOption} onPress={handleDataDownload}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="download" size={24} color="#FF6B6B" />
+              <MaterialIcons name="download" size={24} color="black" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Download My Data</Text>
@@ -294,7 +294,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
           <TouchableOpacity style={styles.actionOption} onPress={() => navigation.navigate("Safety")}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="shield" size={24} color="#FF6B6B" />
+              <MaterialIcons name="shield" size={24} color="black" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Safety Center</Text>
@@ -305,7 +305,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
           <TouchableOpacity style={styles.actionOption} onPress={() => navigation.navigate("BuddySystem")}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="people" size={24} color="#FF6B6B" />
+              <MaterialIcons name="people" size={24} color="black" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Buddy System</Text>
@@ -321,7 +321,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
           <TouchableOpacity style={styles.dangerOption} onPress={handleAccountDeletion}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="delete-forever" size={24} color="#F44336" />
+              <MaterialIcons name="delete-forever" size={24} color="black" />
             </View>
             <View style={styles.optionContent}>
               <Text style={[styles.optionTitle, styles.dangerText]}>Delete Account</Text>
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   toggleActive: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "black",
   },
   toggleThumb: {
     width: 26,
@@ -480,8 +480,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   selectedButton: {
-    backgroundColor: "#FF6B6B",
-    borderColor: "#FF6B6B",
+    backgroundColor: "black",
+    borderColor: "black",
   },
   selectButtonText: {
     fontSize: 14,

@@ -95,7 +95,7 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -168,7 +168,7 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
           onPress={handleSubmit}
           disabled={loading}
         >
-          <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.submitButtonGradient}>
+          <LinearGradient colors={["black", "black"]} style={styles.submitButtonGradient}>
             <Text style={styles.submitButtonText}>{loading ? "Submitting..." : "Submit Review"}</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   ratingSection: {
-    backgroundColor: "white",
+    backgroundColor: "black",
     padding: 20,
     borderRadius: 12,
     marginBottom: 15,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   ratingTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
+    color: "gold",
     marginBottom: 15,
   },
   stars: {
@@ -247,22 +247,14 @@ const styles = StyleSheet.create({
   commentTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
+    color: "black",
     marginBottom: 15,
   },
   commentInput: {
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: "black",
     borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: "#333",
-    minHeight: 120,
-  },
-  recommendSection: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 12,
+    padding: 13,
     marginBottom: 15,
   },
   recommendTitle: {

@@ -142,7 +142,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
   const renderSupportOption = (option: (typeof supportOptions)[0]) => (
     <TouchableOpacity key={option.title} style={styles.supportOption} onPress={option.action}>
       <View style={styles.supportIcon}>
-        <MaterialIcons name={option.icon as any} size={24} color="#FF6B6B" />
+        <MaterialIcons name={option.icon as any} size={24} color="black" />
       </View>
       <View style={styles.supportContent}>
         <Text style={styles.supportTitle}>{option.title}</Text>
@@ -154,7 +154,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
@@ -174,7 +174,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
         {/* Contact Form Toggle */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.contactFormToggle} onPress={() => setShowContactForm(!showContactForm)}>
-            <MaterialIcons name="contact-support" size={24} color="#FF6B6B" />
+            <MaterialIcons name="contact-support" size={24} color="black" />
             <Text style={styles.contactFormToggleText}>Send us a message</Text>
             <MaterialIcons name={showContactForm ? "expand-less" : "expand-more"} size={24} color="#666" />
           </TouchableOpacity>
@@ -251,7 +251,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
             onPress={() => Linking.openURL("https://pridesafeplaces.com/terms")}
           >
             <Text style={styles.infoLabel}>Terms of Service</Text>
-            <MaterialIcons name="open-in-new" size={16} color="#FF6B6B" />
+            <MaterialIcons name="open-in-new" size={16} color="black" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -259,7 +259,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
             onPress={() => Linking.openURL("https://pridesafeplaces.com/privacy")}
           >
             <Text style={styles.infoLabel}>Privacy Policy</Text>
-            <MaterialIcons name="open-in-new" size={16} color="#FF6B6B" />
+            <MaterialIcons name="open-in-new" size={16} color="black" />
           </TouchableOpacity>
         </View>
 
@@ -268,7 +268,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
           <Text style={styles.sectionTitle}>Emergency Resources</Text>
 
           <TouchableOpacity style={styles.emergencyOption} onPress={() => Linking.openURL("tel:988")}>
-            <MaterialIcons name="phone" size={24} color="#F44336" />
+            <MaterialIcons name="phone" size={24} color="black" />
             <View style={styles.emergencyContent}>
               <Text style={styles.emergencyTitle}>Crisis Hotline</Text>
               <Text style={styles.emergencyDescription}>988 - 24/7 Mental Health Crisis Support</Text>
@@ -276,7 +276,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.emergencyOption} onPress={() => Linking.openURL("tel:911")}>
-            <MaterialIcons name="local-hospital" size={24} color="#F44336" />
+            <MaterialIcons name="local-hospital" size={24} color="black" />
             <View style={styles.emergencyContent}>
               <Text style={styles.emergencyTitle}>Emergency Services</Text>
               <Text style={styles.emergencyDescription}>911 - Police, Fire, Medical Emergency</Text>
@@ -287,7 +287,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
             style={styles.emergencyOption}
             onPress={() => Linking.openURL("https://www.thetrevorproject.org/")}
           >
-            <MaterialIcons name="favorite" size={24} color="#F44336" />
+            <MaterialIcons name="favorite" size={24} color="black" />
             <View style={styles.emergencyContent}>
               <Text style={styles.emergencyTitle}>Trevor Project</Text>
               <Text style={styles.emergencyDescription}>LGBTQ+ Crisis Support & Suicide Prevention</Text>

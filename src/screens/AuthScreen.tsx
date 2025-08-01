@@ -58,15 +58,15 @@ export default function AuthScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <LinearGradient colors={["#FF6B6B", "#4ECDC4", "#45B7D1"]} style={styles.header}>
+          <View style={styles.header}>
             <View style={styles.logoContainer}>
               <View style={styles.logo}>
                 <Text style={styles.logoText}>🏳️‍🌈</Text>
               </View>
-              <Text style={styles.appTitle}>Pride App</Text>
+              <Text style={styles.appTitle}>Mirae App</Text>
               <Text style={styles.appSubtitle}>SafePlaces</Text>
             </View>
-          </LinearGradient>
+          </View>
 
           <View style={styles.formContainer}>
             <View style={styles.tabContainer}>
@@ -123,7 +123,7 @@ export default function AuthScreen() {
                 onPress={handleAuth}
                 disabled={loading}
               >
-                <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.authButtonGradient}>
+                <LinearGradient colors={["black", "gold"]} style={styles.authButtonGradient}>
                   <Text style={styles.authButtonText}>{loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -151,6 +151,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
+    backgroundColor: "black",
     paddingTop: 60,
     paddingBottom: 40,
     alignItems: "center",
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "black",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
