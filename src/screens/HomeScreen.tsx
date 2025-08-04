@@ -32,13 +32,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const categories: Category[] = [
     { id: "all", name: "All", icon: "apps", color: "black" },
+    { id: "transport", name: "Transport", icon: "directions-car", color: "#F7DC6F" },
+      { id: "education", name: "Education", icon: "school", color: "red" },
     { id: "restaurant", name: "Food", icon: "restaurant", color: "#4ECDC4" },
-    { id: "bar", name: "Bars", icon: "local-bar", color: "#45B7D1" },
-    { id: "healthcare", name: "Health", icon: "local-hospital", color: "#96CEB4" },
+    { id: "finance", name: "Finance", icon: "business", color: "gold" },
+    { id: "healthcare", name: "Health", icon: "local-hospital", color: "green" },
     { id: "shopping", name: "Shopping", icon: "shopping-bag", color: "#FFEAA7" },
     { id: "service", name: "Services", icon: "build", color: "#DDA0DD" },
-    { id: "hotel", name: "Hotels", icon: "hotel", color: "#98D8C8" },
-    { id: "entertainment", name: "Fun", icon: "local-play", color: "#F7DC6F" },
+    { id: "hotel", name: "Accomodation", icon: "hotel", color: "#98D8C8" },
+
   ]
 
   useEffect(() => {

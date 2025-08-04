@@ -16,6 +16,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
+import { Image } from 'react-native';
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true)
@@ -61,7 +62,10 @@ export default function AuthScreen() {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <View style={styles.logo}>
-                <Text style={styles.logoText}>🏳️‍🌈</Text>
+                      <Image 
+                            source={require('../../assets/mirae.png')} 
+                             style={styles.logo}
+                />
               </View>
               <Text style={styles.appTitle}>Mirae App</Text>
               <Text style={styles.appSubtitle}>SafePlaces</Text>
@@ -159,14 +163,14 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: "center",
   },
-  logo: {
+   logo: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+
   },
   logoText: {
     fontSize: 50,

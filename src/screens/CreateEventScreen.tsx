@@ -142,7 +142,7 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />

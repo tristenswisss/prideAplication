@@ -6,6 +6,8 @@ import { storage, STORAGE_KEYS } from "../../lib/storage"
 import { mockBusinesses } from "../../data/mockBusinesses"
 import { mockEvents } from "../../data/mockEvents"
 import type { AuthStackScreenProps } from "../../types/navigation"
+import { Image } from 'react-native';
+
 
 export default function LoadingScreen({ navigation }: AuthStackScreenProps) {
   const { user, loading } = useAuth()
@@ -72,7 +74,11 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps) {
     <LinearGradient colors={["black", "black"]} style={styles.container}>
       <View style={styles.content}>
         <Animated.View style={[styles.logo, { transform: [{ translateY: bounce }] }]}>
-          <Text style={styles.logoText}>🏳️‍🌈</Text>
+          <Image 
+            source={require('../../assets/mirae.png')} 
+             style={styles.logo}
+/>
+
         </Animated.View>
         <Text style={styles.title}>Mirae App</Text>
       </View>
@@ -90,13 +96,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+  
+    backgroundColor: "grey",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+
   },
   logoText: {
     fontSize: 50,
