@@ -36,9 +36,9 @@ export const auth = {
 
       return { data, error: null }
     } catch (error) {
-      return { 
-        data: null, 
-        error: { message: "An unexpected error occurred during sign up" } 
+      return {
+        data: null,
+        error: { message: "An unexpected error occurred during sign up" }
       }
     }
   },
@@ -56,9 +56,9 @@ export const auth = {
 
       return { data, error: null }
     } catch (error) {
-      return { 
-        data: null, 
-        error: { message: "An unexpected error occurred during sign in" } 
+      return {
+        data: null,
+        error: { message: "An unexpected error occurred during sign in" }
       }
     }
   },
@@ -77,9 +77,9 @@ export const auth = {
       const { data: { user }, error } = await supabase.auth.getUser()
       return { data: { user }, error }
     } catch (error) {
-      return { 
-        data: { user: null }, 
-        error: { message: "Failed to get current user" } 
+      return {
+        data: { user: null },
+        error: { message: "Failed to get current user" }
       }
     }
   },

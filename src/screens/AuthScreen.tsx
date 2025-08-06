@@ -65,30 +65,42 @@ export default function AuthScreen() {
           errorMessage = 'Please check your email and click the confirmation link before signing in.'
         } else if (errorMessage.includes('User already registered')) {
           errorMessage = 'An account with this email already exists. Try signing in instead.'
+        } else if (errorMessage.includes('Signup requires a valid password')) {
+          errorMessage = 'Please enter a valid password (at least 6 characters).'
+        } else if (errorMessage.includes('To signup, please provide your email')) {
+          errorMessage = 'Please provide a valid email address.'
         }
         
         Alert.alert("Authentication Error", errorMessage)
-      } else if (!isLogin) {
+      } else if (!isLogin && result.data) {
         // Handle successful signup
-        if (result.data?.user?.email_confirmed_at) {
-          Alert.alert("Success", "Account created successfully! You can now sign in.")
-          setIsLogin(true) // Switch to login tab
-        } else {
+        if (result.data.user && !result.data.user.email_confirmed_at) {
           Alert.alert(
             "Check Your Email", 
             "We've sent you a confirmation link. Please check your email and click the link to verify your account before signing in.",
             [
               {
                 text: "OK",
-                onPress: () => setIsLogin(true) // Switch to login tab
+                onPress: () => {
+                  setIsLogin(true) // Switch to login tab
+                  setEmail("")
+                  setPassword("")
+                  setName("")
+                }
               }
             ]
           )
+        } else {
+          // Email was confirmed immediately (shouldn't happen in most setups)
+          Alert.alert("Success", "Account created successfully!")
+          setIsLogin(true)
+          setEmail("")
+          setPassword("")
+          setName("")
         }
-        // Clear form after successful signup
-        setEmail("")
-        setPassword("")
-        setName("")
+      } else if (isLogin && result.data) {
+        // Successful login - the context will handle the user state update
+        console.log('Login successful')
       }
     } catch (error) {
       console.error('Auth error:', error)

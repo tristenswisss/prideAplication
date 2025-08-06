@@ -38,8 +38,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const getInitialSession = async () => {
       setLoading(true)
       try {
-        const { data: { user } } = await auth.getCurrentUser()
-        setUser(user)
+        const { data: { user }, error } = await auth.getCurrentUser()
+        if (!error && user) {
+          setUser(user)
+        }
       } catch (error) {
         console.error('Error getting initial session:', error)
       } finally {
@@ -52,7 +54,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email)
-      setUser(session?.user ?? null)
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+      } else if (event === 'SIGNED_OUT' || !session?.user) {
+        setUser(null)
+      } else if (session?.user) {
+        setUser(session.user)
+      }
+      
       setLoading(false)
     })
 
@@ -62,45 +72,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const signUp = async (email: string, password: string, name: string) => {
-    setLoading(true)
     try {
       const result = await auth.signUp(email, password, name)
       return result
     } catch (error) {
-      return { 
-        data: null, 
-        error: { message: 'An unexpected error occurred during sign up' } 
+      return {
+        data: null,
+        error: { message: 'An unexpected error occurred during sign up' }
       }
-    } finally {
-      setLoading(false)
     }
   }
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true)
     try {
       const result = await auth.signIn(email, password)
       return result
     } catch (error) {
-      return { 
-        data: null, 
-        error: { message: 'An unexpected error occurred during sign in' } 
+      return {
+        data: null,
+        error: { message: 'An unexpected error occurred during sign in' }
       }
-    } finally {
-      setLoading(false)
     }
   }
 
   const signOut = async () => {
-    setLoading(true)
     try {
       const result = await auth.signOut()
       setUser(null)
       return result
     } catch (error) {
       return { error: { message: 'An unexpected error occurred during sign out' } }
-    } finally {
-      setLoading(false)
     }
   }
 
