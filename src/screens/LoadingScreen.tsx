@@ -75,7 +75,7 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps) {
       <View style={styles.content}>
         <Animated.View style={[styles.logo, { transform: [{ translateY: bounce }] }]}>
           <Image 
-            source={require('../../assets/mirae.png')} 
+            source={require('../../assets/logoM.png')} 
              style={styles.logo}
 />
 

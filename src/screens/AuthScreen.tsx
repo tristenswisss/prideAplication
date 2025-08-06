@@ -1,6 +1,7 @@
+// AuthScreen.tsx
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import {
   View,
   Text,
@@ -12,11 +13,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
-import { Image } from 'react-native';
+import { Image } from 'react-native'
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true)
@@ -29,8 +31,18 @@ export default function AuthScreen() {
   const { signIn, signUp } = useAuth()
 
   const handleAuth = async () => {
-    if (!email || !password || (!isLogin && !name)) {
+    if (!email.trim() || !password.trim() || (!isLogin && !name.trim())) {
       Alert.alert("Error", "Please fill in all fields")
+      return
+    }
+
+    if (!email.includes('@')) {
+      Alert.alert("Error", "Please enter a valid email address")
+      return
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long")
       return
     }
 
@@ -38,33 +50,83 @@ export default function AuthScreen() {
     try {
       let result
       if (isLogin) {
-        result = await signIn(email, password)
+        result = await signIn(email.trim(), password)
       } else {
-        result = await signUp(email, password, name)
+        result = await signUp(email.trim(), password, name.trim())
       }
 
       if (result.error) {
-        Alert.alert("Error", result.error.message)
+        // Handle specific Supabase error messages
+        let errorMessage = result.error.message
+        
+        if (errorMessage.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials.'
+        } else if (errorMessage.includes('Email not confirmed')) {
+          errorMessage = 'Please check your email and click the confirmation link before signing in.'
+        } else if (errorMessage.includes('User already registered')) {
+          errorMessage = 'An account with this email already exists. Try signing in instead.'
+        }
+        
+        Alert.alert("Authentication Error", errorMessage)
       } else if (!isLogin) {
-        Alert.alert("Success", "Account created successfully!")
+        // Handle successful signup
+        if (result.data?.user?.email_confirmed_at) {
+          Alert.alert("Success", "Account created successfully! You can now sign in.")
+          setIsLogin(true) // Switch to login tab
+        } else {
+          Alert.alert(
+            "Check Your Email", 
+            "We've sent you a confirmation link. Please check your email and click the link to verify your account before signing in.",
+            [
+              {
+                text: "OK",
+                onPress: () => setIsLogin(true) // Switch to login tab
+              }
+            ]
+          )
+        }
+        // Clear form after successful signup
+        setEmail("")
+        setPassword("")
+        setName("")
       }
     } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred")
+      console.error('Auth error:', error)
+      Alert.alert("Error", "An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
+  const resetForm = () => {
+    setEmail("")
+    setPassword("")
+    setName("")
+    setShowPassword(false)
+  }
+
+  const switchAuthMode = (loginMode: boolean) => {
+    setIsLogin(loginMode)
+    resetForm()
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+        style={styles.keyboardView}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <View style={styles.logo}>
-                      <Image 
-                            source={require('../../assets/mirae.png')} 
-                             style={styles.logo}
+              <View style={styles.logoWrapper}>
+                <Image 
+                  source={require('../../assets/logoM.png')} 
+                  style={styles.logo}
+                  resizeMode="contain"
                 />
               </View>
               <Text style={styles.appTitle}>Mirae App</Text>
@@ -74,11 +136,23 @@ export default function AuthScreen() {
 
           <View style={styles.formContainer}>
             <View style={styles.tabContainer}>
-              <TouchableOpacity style={[styles.tab, isLogin && styles.activeTab]} onPress={() => setIsLogin(true)}>
-                <Text style={[styles.tabText, isLogin && styles.activeTabText]}>Sign In</Text>
+              <TouchableOpacity 
+                style={[styles.tab, isLogin && styles.activeTab]} 
+                onPress={() => switchAuthMode(true)}
+                disabled={loading}
+              >
+                <Text style={[styles.tabText, isLogin && styles.activeTabText]}>
+                  Sign In
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.tab, !isLogin && styles.activeTab]} onPress={() => setIsLogin(false)}>
-                <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>Sign Up</Text>
+              <TouchableOpacity 
+                style={[styles.tab, !isLogin && styles.activeTab]} 
+                onPress={() => switchAuthMode(false)}
+                disabled={loading}
+              >
+                <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>
+                  Sign Up
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -92,6 +166,7 @@ export default function AuthScreen() {
                     value={name}
                     onChangeText={setName}
                     autoCapitalize="words"
+                    editable={!loading}
                   />
                 </View>
               )}
@@ -105,6 +180,8 @@ export default function AuthScreen() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!loading}
                 />
               </View>
 
@@ -116,9 +193,19 @@ export default function AuthScreen() {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  editable={!loading}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                  <MaterialIcons name={showPassword ? "visibility" : "visibility-off"} size={20} color="#666" />
+                <TouchableOpacity 
+                  onPress={() => setShowPassword(!showPassword)} 
+                  style={styles.eyeIcon}
+                  disabled={loading}
+                >
+                  <MaterialIcons 
+                    name={showPassword ? "visibility" : "visibility-off"} 
+                    size={20} 
+                    color="#666" 
+                  />
                 </TouchableOpacity>
               </View>
 
@@ -127,8 +214,19 @@ export default function AuthScreen() {
                 onPress={handleAuth}
                 disabled={loading}
               >
-                <LinearGradient colors={["black", "gold"]} style={styles.authButtonGradient}>
-                  <Text style={styles.authButtonText}>{loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}</Text>
+                <LinearGradient colors={["#000000", "#DAA520"]} style={styles.authButtonGradient}>
+                  {loading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="white" />
+                      <Text style={styles.loadingText}>
+                        {isLogin ? "Signing In..." : "Creating Account..."}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.authButtonText}>
+                      {isLogin ? "Sign In" : "Sign Up"}
+                    </Text>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -153,9 +251,10 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
+    minHeight: '100%',
   },
   header: {
-    backgroundColor: "black",
+    backgroundColor: "#000000",
     paddingTop: 60,
     paddingBottom: 40,
     alignItems: "center",
@@ -163,38 +262,45 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: "center",
   },
-   logo: {
+  logoWrapper: {
     width: 100,
     height: 100,
     borderRadius: 50,
     backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
-
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  logoText: {
-    fontSize: 50,
+  logo: {
+    width: 80,
+    height: 80,
   },
   appTitle: {
     fontSize: 32,
     fontWeight: "bold",
     color: "white",
     textAlign: "center",
+    marginBottom: 5,
   },
   appSubtitle: {
-    fontSize: 20,
+    fontSize: 18,
     color: "white",
     textAlign: "center",
-    marginTop: 5,
     opacity: 0.9,
   },
   formContainer: {
     flex: 1,
-    backgroundColor: "black",
+    backgroundColor: "#000000",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
     paddingTop: 30,
+    minHeight: 500,
   },
   tabContainer: {
     flexDirection: "row",
@@ -221,6 +327,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 16,
     color: "#666",
+    fontWeight: "500",
   },
   activeTabText: {
     color: "#333",
@@ -228,6 +335,7 @@ const styles = StyleSheet.create({
   },
   form: {
     paddingHorizontal: 30,
+    paddingBottom: 30,
   },
   inputContainer: {
     flexDirection: "row",
@@ -237,6 +345,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingHorizontal: 15,
     height: 55,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   inputIcon: {
     marginRight: 10,
@@ -245,6 +355,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#333",
+    fontWeight: "400",
   },
   eyeIcon: {
     padding: 5,
@@ -254,6 +365,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginTop: 10,
     marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   disabledButton: {
     opacity: 0.7,
@@ -261,16 +377,30 @@ const styles = StyleSheet.create({
   authButtonGradient: {
     paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 55,
   },
   authButtonText: {
     fontSize: 18,
     fontWeight: "bold",
     color: "white",
   },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginLeft: 10,
+  },
   termsText: {
     fontSize: 12,
-    color: "#666",
+    color: "#888",
     textAlign: "center",
     lineHeight: 18,
+    paddingHorizontal: 10,
   },
 })

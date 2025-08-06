@@ -1,10 +1,10 @@
+// supabaseConfig.ts
 import "react-native-url-polyfill/auto"
 import { createClient } from "@supabase/supabase-js"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
-// For now, we'll use placeholder values - you can replace these with real Supabase credentials later
-const supabaseUrl = "https://oznfudvuwgnlwtrqnjsa.supabase.co"
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bmZ1ZHZ1d2dubHd0cnFuanNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0MzQ3ODIsImV4cCI6MjA2OTAxMDc4Mn0.p1vElTKfycST1H7PRIBCcxSl3SFnWZKxHlUaZhNLrE0"
+const supabaseUrl = "https://pvvkdtlkjulvutzyzaxb.supabase.co"
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dmtkdGxranVsdnV0enl6YXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzI2NzIsImV4cCI6MjA3MDA0ODY3Mn0.xDn8Wyq_hVwC6gUwaRn94Nt6VKAYWowEju6AQWBvhKI"
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -15,55 +15,76 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// Mock authentication functions for development
-export const mockAuth = {
+// Proper Supabase authentication functions
+export const auth = {
   signUp: async (email: string, password: string, name: string) => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Sign up with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name, // Store the name in user metadata
+          }
+        }
+      })
 
-    // Mock successful signup
-    const mockUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name,
-      created_at: new Date().toISOString(),
+      if (error) {
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { message: "An unexpected error occurred during sign up" } 
+      }
     }
-
-    // Store in AsyncStorage for persistence
-    await AsyncStorage.setItem("user", JSON.stringify(mockUser))
-
-    return { data: { user: mockUser }, error: null }
   },
 
   signIn: async (email: string, password: string) => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    // Mock successful signin
-    const mockUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name: email.split("@")[0],
-      created_at: new Date().toISOString(),
+      if (error) {
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { message: "An unexpected error occurred during sign in" } 
+      }
     }
-
-    // Store in AsyncStorage for persistence
-    await AsyncStorage.setItem("user", JSON.stringify(mockUser))
-
-    return { data: { user: mockUser, session: { user: mockUser } }, error: null }
   },
 
   signOut: async () => {
-    await AsyncStorage.removeItem("user")
-    return { error: null }
+    try {
+      const { error } = await supabase.auth.signOut()
+      return { error }
+    } catch (error) {
+      return { error: { message: "An unexpected error occurred during sign out" } }
+    }
   },
 
-  getUser: async () => {
-    const userStr = await AsyncStorage.getItem("user")
-    if (userStr) {
-      const user = JSON.parse(userStr)
-      return { data: { user }, error: null }
+  getCurrentUser: async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      return { data: { user }, error }
+    } catch (error) {
+      return { 
+        data: { user: null }, 
+        error: { message: "Failed to get current user" } 
+      }
     }
-    return { data: { user: null }, error: null }
   },
+
+  onAuthStateChange: (callback: (event: string, session: any) => void) => {
+    return supabase.auth.onAuthStateChange(callback)
+  }
 }
