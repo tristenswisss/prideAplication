@@ -6,22 +6,23 @@ import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { imageUploadService } from "../../services/imageUploadService"
+import { profileService } from "../../services/profileService"
 import type { EditProfileScreenProps } from "../../types/navigation"
 
 export default function EditProfileScreen({ navigation }: EditProfileScreenProps) {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
-    bio: user?.bio || "",
+    bio: "",
     phone: "",
     location: "",
     website: "",
     pronouns: "",
-    interests: user?.interests || [],
+    interests: [] as string[],
   })
-  const [profileImage, setProfileImage] = useState<string | null>(user?.avatar_url || null)
+  const [profileImage, setProfileImage] = useState<string | null>(null)
 
   const [privacySettings, setPrivacySettings] = useState({
     profileVisible: true,
@@ -68,6 +69,31 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
     }
   }
 
+  // Helper function to save profile data
+  const saveProfileData = async (avatarUrl: string) => {
+    if (user?.id) {
+      const profileData = {
+        name: formData.name,
+        bio: formData.bio,
+        avatar_url: avatarUrl || undefined,
+        pronouns: formData.pronouns,
+        location: formData.location,
+      }
+
+      console.log("Saving profile data:", profileData)
+      const { data, error } = await profileService.updateProfile(user.id, profileData)
+
+      if (error) {
+        throw new Error(error)
+      }
+
+      Alert.alert("Success", "Profile updated successfully!")
+      // Refresh the user data in the AuthContext
+      await refreshUser()
+      navigation.goBack()
+    }
+  }
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       Alert.alert("Error", "Name is required")
@@ -76,18 +102,45 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
 
     setLoading(true)
     try {
-      // Upload image if selected
       let avatarUrl = ""
-      if (profileImage && profileImage !== user?.avatar_url) {
-        avatarUrl = await imageUploadService.uploadImage(profileImage)
+      
+      // Upload image if selected
+      if (profileImage) {
+        try {
+          console.log("Uploading profile image...")
+          avatarUrl = await imageUploadService.uploadImage(profileImage)
+          console.log("Image uploaded successfully:", avatarUrl)
+        } catch (imageError: any) {
+          console.error("Image upload failed:", imageError)
+          // Ask user if they want to continue without the image
+          Alert.alert(
+            "Image Upload Failed", 
+            `${imageError.message}\n\nWould you like to save your profile without the new photo?`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => {
+                  setLoading(false)
+                  return
+                }
+              },
+              {
+                text: "Save Without Photo",
+                onPress: async () => {
+                  await saveProfileData("")
+                }
+              }
+            ]
+          )
+          return
+        }
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      Alert.alert("Success", "Profile updated successfully!")
-      navigation.goBack()
-    } catch (error) {
-      Alert.alert("Error", "Failed to update profile")
+      await saveProfileData(avatarUrl)
+    } catch (error: any) {
+      console.error("Error updating profile:", error)
+      Alert.alert("Error", `Failed to update profile: ${error.message || error}`)
     } finally {
       setLoading(false)
     }
@@ -97,7 +150,7 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
     setFormData((prev) => ({
       ...prev,
       interests: prev.interests.includes(interest)
-        ? prev.interests.filter((i) => i !== interest)
+        ? prev.interests.filter((i: string) => i !== interest)
         : [...prev.interests, interest],
     }))
   }

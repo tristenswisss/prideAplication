@@ -10,6 +10,7 @@ interface User {
     full_name?: string
   }
   email_confirmed_at?: string
+  [key: string]: any // Allow additional properties
 }
 
 interface AuthContextType {
@@ -18,6 +19,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<{ data: any; error: any }>
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -41,7 +43,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const { data: { user }, error } = await auth.getCurrentUser()
         if (!error && user) {
-          setUser(user)
+          setUser({
+            ...user,
+            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+          })
         }
       } catch (error) {
         console.error('Error getting initial session:', error)
@@ -57,11 +62,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Auth state changed:', event, session?.user?.email)
       
       if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user)
+        setUser({
+          ...session.user,
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User'
+        })
       } else if (event === 'SIGNED_OUT' || !session?.user) {
         setUser(null)
       } else if (session?.user) {
-        setUser(session.user)
+        setUser({
+          ...session.user,
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User'
+        })
       }
       
       setLoading(false)
@@ -106,12 +117,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  const refreshUser = async () => {
+    try {
+      const { data: { user }, error } = await auth.getCurrentUser()
+      if (!error && user) {
+        setUser({
+          ...user,
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+        })
+      } else if (error) {
+        console.error('Error refreshing user:', error)
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error)
+    }
+  }
+
   const value = {
     user,
     loading,
     signUp,
     signIn,
     signOut,
+    refreshUser,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

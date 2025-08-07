@@ -63,9 +63,11 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   }
 
   const searchUsers = async () => {
+    if (!user) return;
+    
     try {
       setSearchLoading(true)
-      const results = await messagingService.searchUsers(searchQuery)
+      const results = await messagingService.searchUsers(searchQuery, user.id)
       setSearchResults(results)
     } catch (error) {
       console.error("Error searching users:", error)

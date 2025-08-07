@@ -1,4 +1,5 @@
 import type { Message, Conversation, UserProfile } from "../types/messaging"
+import { supabase } from "../lib/supabase"
 
 // Helper function to remove phone numbers from text
 const removePhoneNumbers = (text: string): string => {
@@ -8,254 +9,76 @@ const removePhoneNumbers = (text: string): string => {
   return text.replace(phoneRegex, "[PHONE NUMBER REDACTED]");
 };
 
-// Mock data for messaging
-const mockUsers: UserProfile[] = [
-  {
-    id: "user1",
-    email: "alex@example.com",
-    name: "Alex Rainbow",
-    username: "alexrainbow",
-    avatar_url: "/placeholder.svg?height=50&width=50&text=AR",
-    bio: "Living my truth 🏳️‍🌈",
-    pronouns: "they/them",
-    location: "San Francisco, CA",
-    interests: ["coffee", "pride", "community"],
-    verified: true,
-    follower_count: 234,
-    following_count: 156,
-    post_count: 42,
-    is_online: true,
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "user2",
-    email: "jordan@example.com",
-    name: "Jordan Pride",
-    username: "jordanpride",
-    avatar_url: "/placeholder.svg?height=50&width=50&text=JP",
-    bio: "Trans rights are human rights 🏳️‍⚧️",
-    pronouns: "he/him",
-    location: "Oakland, CA",
-    interests: ["activism", "photography"],
-    verified: false,
-    follower_count: 189,
-    following_count: 203,
-    post_count: 67,
-    is_online: false,
-    last_seen: "2024-01-25T10:30:00Z",
-    created_at: "2024-01-05T00:00:00Z",
-    updated_at: "2024-01-05T00:00:00Z",
-  },
-  {
-    id: "user3",
-    email: "sam@example.com",
-    name: "Sam Fabulous",
-    username: "samfab",
-    avatar_url: "/placeholder.svg?height=50&width=50&text=SF",
-    bio: "Drag queen 💄",
-    pronouns: "she/her",
-    location: "San Francisco, CA",
-    interests: ["drag", "performance"],
-    verified: true,
-    follower_count: 567,
-    following_count: 89,
-    post_count: 134,
-    is_online: true,
-    created_at: "2024-01-10T00:00:00Z",
-    updated_at: "2024-01-10T00:00:00Z",
-  },
-]
-
-const mockConversations: Conversation[] = [
-  {
-    id: "conv1",
-    participants: ["current_user", "user1"],
-    participant_profiles: [mockUsers[0]],
-    last_message: {
-      id: "msg1",
-      conversation_id: "conv1",
-      sender_id: "user1",
-      sender: mockUsers[0],
-      content: "Hey! Thanks for the coffee recommendation. Rainbow Café was amazing! ☕🏳️‍🌈",
-      message_type: "text",
-      read: false,
-      sent_at: "2024-01-25T16:45:00Z",
-    },
-    unread_count: 1,
-    is_group: false,
-    created_at: "2024-01-25T14:00:00Z",
-    updated_at: "2024-01-25T16:45:00Z",
-  },
-  {
-    id: "conv2",
-    participants: ["current_user", "user2"],
-    participant_profiles: [mockUsers[1]],
-    last_message: {
-      id: "msg2",
-      conversation_id: "conv2",
-      sender_id: "current_user",
-      content: "See you at the Pride planning meeting tonight! 🌈",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T15:20:00Z",
-    },
-    unread_count: 0,
-    is_group: false,
-    created_at: "2024-01-24T18:00:00Z",
-    updated_at: "2024-01-25T15:20:00Z",
-  },
-  {
-    id: "conv3",
-    participants: ["current_user", "user1", "user2", "user3"],
-    participant_profiles: [mockUsers[0], mockUsers[1], mockUsers[2]],
-    last_message: {
-      id: "msg3",
-      conversation_id: "conv3",
-      sender_id: "user3",
-      sender: mockUsers[2],
-      content: "Can't wait for the drag show this weekend! 💄✨",
-      message_type: "text",
-      read: false,
-      sent_at: "2024-01-25T17:10:00Z",
-    },
-    unread_count: 2,
-    is_group: true,
-    group_name: "Pride Squad 🏳️‍🌈",
-    group_avatar: "/placeholder.svg?height=50&width=50&text=PS",
-    created_at: "2024-01-20T12:00:00Z",
-    updated_at: "2024-01-25T17:10:00Z",
-  },
-]
-
-const mockMessages: { [conversationId: string]: Message[] } = {
-  conv1: [
-    {
-      id: "msg1-1",
-      conversation_id: "conv1",
-      sender_id: "current_user",
-      content: "Hi Alex! I saw your post about Rainbow Café. Is it really as LGBTQ+ friendly as it looks?",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T14:30:00Z",
-      delivered_at: "2024-01-25T14:30:05Z",
-      read_at: "2024-01-25T14:32:00Z",
-    },
-    {
-      id: "msg1-2",
-      conversation_id: "conv1",
-      sender_id: "user1",
-      sender: mockUsers[0],
-      content:
-        "Oh absolutely! The staff is incredible and they have Pride flags everywhere. Plus the owner is part of our community! 🏳️‍🌈",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T14:35:00Z",
-      delivered_at: "2024-01-25T14:35:02Z",
-      read_at: "2024-01-25T14:36:00Z",
-    },
-    {
-      id: "msg1-3",
-      conversation_id: "conv1",
-      sender_id: "current_user",
-      content: "That sounds perfect! I'll definitely check it out this weekend. Thanks for the rec! ☕",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T14:40:00Z",
-      delivered_at: "2024-01-25T14:40:03Z",
-      read_at: "2024-01-25T14:42:00Z",
-    },
-    {
-      id: "msg1-4",
-      conversation_id: "conv1",
-      sender_id: "user1",
-      sender: mockUsers[0],
-      content: "Hey! Thanks for the coffee recommendation. Rainbow Café was amazing! ☕🏳️‍🌈",
-      message_type: "text",
-      read: false,
-      sent_at: "2024-01-25T16:45:00Z",
-      delivered_at: "2024-01-25T16:45:01Z",
-    },
-  ],
-  conv2: [
-    {
-      id: "msg2-1",
-      conversation_id: "conv2",
-      sender_id: "user2",
-      sender: mockUsers[1],
-      content: "Hey! Are you coming to the Pride planning meeting tonight?",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T15:00:00Z",
-      delivered_at: "2024-01-25T15:00:02Z",
-      read_at: "2024-01-25T15:05:00Z",
-    },
-    {
-      id: "msg2-2",
-      conversation_id: "conv2",
-      sender_id: "current_user",
-      content: "Yes! Wouldn't miss it. What time does it start again?",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T15:10:00Z",
-      delivered_at: "2024-01-25T15:10:01Z",
-      read_at: "2024-01-25T15:12:00Z",
-    },
-    {
-      id: "msg2-3",
-      conversation_id: "conv2",
-      sender_id: "user2",
-      sender: mockUsers[1],
-      content: "7 PM at Rainbow Café! Perfect timing after your visit there 😊",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T15:15:00Z",
-      delivered_at: "2024-01-25T15:15:02Z",
-      read_at: "2024-01-25T15:18:00Z",
-    },
-    {
-      id: "msg2-4",
-      conversation_id: "conv2",
-      sender_id: "current_user",
-      content: "See you at the Pride planning meeting tonight! 🌈",
-      message_type: "text",
-      read: true,
-      sent_at: "2024-01-25T15:20:00Z",
-      delivered_at: "2024-01-25T15:20:01Z",
-      read_at: "2024-01-25T15:22:00Z",
-    },
-  ],
-}
-
 export const messagingService = {
   // Conversations
   getConversations: async (userId: string): Promise<Conversation[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockConversations.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .contains('participants', [userId])
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching conversations:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   createConversation: async (participantIds: string[], isGroup = false, groupName?: string): Promise<Conversation> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    const newConversation: Conversation = {
-      id: Math.random().toString(36).substr(2, 9),
-      participants: ["current_user", ...participantIds],
-      participant_profiles: mockUsers.filter((user) => participantIds.includes(user.id)),
-      unread_count: 0,
-      is_group: isGroup,
-      group_name: groupName,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    // Get current user ID from auth
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
     }
 
-    mockConversations.unshift(newConversation)
-    return newConversation
+    const allParticipants = [user.id, ...participantIds];
+
+    // Create the conversation in the database
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert({
+        participants: allParticipants,
+        is_group: isGroup,
+        group_name: groupName,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating conversation:', error);
+      throw error;
+    }
+
+    // Fetch participant profiles
+    const { data: participantProfiles } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', participantIds);
+
+    return {
+      ...data,
+      participant_profiles: participantProfiles || [],
+      unread_count: 0,
+      last_message: null,
+    };
   },
 
   // Messages
   getMessages: async (conversationId: string): Promise<Message[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    return mockMessages[conversationId] || []
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('sent_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching messages:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   // Helper function to remove phone numbers from text
@@ -273,92 +96,237 @@ export const messagingService = {
         messageType: Message["message_type"] = "text",
         metadata?: Message["metadata"],
       ): Promise<Message> => {
-        await new Promise((resolve) => setTimeout(resolve, 300))
-    
         // Filter phone numbers from text messages
         let filteredContent = content;
         if (messageType === "text") {
           filteredContent = removePhoneNumbers(content);
         }
     
-        const newMessage: Message = {
-          id: Math.random().toString(36).substr(2, 9),
-          conversation_id: conversationId,
-          sender_id: senderId,
-          content: filteredContent,
-          message_type: messageType,
-          metadata,
-          read: false,
-          sent_at: new Date().toISOString(),
-          delivered_at: new Date().toISOString(),
+        // Insert the message into the database
+        const { data, error } = await supabase
+          .from('messages')
+          .insert({
+            conversation_id: conversationId,
+            sender_id: senderId,
+            content: filteredContent,
+            message_type: messageType,
+            metadata,
+          })
+          .select()
+          .single();
+    
+        if (error) {
+          console.error('Error sending message:', error);
+          throw error;
         }
     
-        if (!mockMessages[conversationId]) {
-          mockMessages[conversationId] = []
-        }
-        mockMessages[conversationId].push(newMessage)
+        // Update conversation updated_at timestamp (this will be handled by the trigger in the database)
+        // But we still need to update the last_message field
+        const { error: updateError } = await supabase
+          .from('conversations')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', conversationId);
     
-        // Update conversation
-        const conversation = mockConversations.find((c) => c.id === conversationId)
-        if (conversation) {
-          conversation.last_message = newMessage
-          conversation.updated_at = new Date().toISOString()
-          if (senderId !== "current_user") {
-            conversation.unread_count += 1
-          }
+        if (updateError) {
+          console.error('Error updating conversation:', updateError);
         }
     
-        return newMessage
+        return data;
       },
 
   markAsRead: async (conversationId: string, messageIds: string[]): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    const messages = mockMessages[conversationId]
-    if (messages) {
-      messages.forEach((message) => {
-        if (messageIds.includes(message.id)) {
-          message.read = true
-          message.read_at = new Date().toISOString()
-        }
+    // Update messages as read in the database
+    const { error } = await supabase
+      .from('messages')
+      .update({
+        read: true,
+        read_at: new Date().toISOString()
       })
-    }
+      .in('id', messageIds);
 
-    // Update conversation unread count
-    const conversation = mockConversations.find((c) => c.id === conversationId)
-    if (conversation) {
-      conversation.unread_count = Math.max(0, conversation.unread_count - messageIds.length)
+    if (error) {
+      console.error('Error marking messages as read:', error);
+      throw error;
     }
   },
 
   // User search for new conversations
-  searchUsers: async (query: string): Promise<UserProfile[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockUsers.filter(
-      (user) =>
-        user.name.toLowerCase().includes(query.toLowerCase()) ||
-        user.username?.toLowerCase().includes(query.toLowerCase()),
-    )
+  searchUsers: async (query: string, currentUserId: string): Promise<UserProfile[]> => {
+    // First, get the list of users that the current user has blocked
+    const { data: blockedUsersData, error: blockedUsersError } = await supabase
+      .from('blocked_users')
+      .select('blocked_user_id')
+      .eq('user_id', currentUserId);
+
+    if (blockedUsersError) {
+      console.error('Error fetching blocked users:', blockedUsersError);
+      // Continue with search even if we can't get blocked users
+    }
+
+    const blockedUserIds = blockedUsersData
+      ? blockedUsersData.map(blocked => blocked.blocked_user_id)
+      : [];
+
+    // Search for users with privacy settings respected
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        profiles (
+          show_profile,
+          appear_in_search,
+          allow_direct_messages
+        )
+      `)
+      .or(`name.ilike.%${query}%,username.ilike.%${query}%`)
+      .neq('id', currentUserId) // Don't include the current user
+      .not('id', 'in', `(${blockedUserIds.join(',')})`); // Exclude blocked users
+
+    if (error) {
+      console.error('Error searching users:', error);
+      return [];
+    }
+
+    // Filter results based on privacy settings
+    const filteredUsers = data.filter(user => {
+      // Check if user has a profile with privacy settings
+      if (user.profiles) {
+        // User must have show_profile, appear_in_search, and allow_direct_messages all set to true
+        return user.profiles.show_profile &&
+               user.profiles.appear_in_search &&
+               user.profiles.allow_direct_messages;
+      }
+      // If no profile data, exclude the user
+      return false;
+    });
+
+    return filteredUsers || [];
   },
 
   // Online status
   updateOnlineStatus: async (userId: string, isOnline: boolean): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    const user = mockUsers.find((u) => u.id === userId)
-    if (user) {
-      user.is_online = isOnline
-      if (!isOnline) {
-        user.last_seen = new Date().toISOString()
-      }
-    }
+    // In a real app, you might want to store this in a separate "user_status" table
+    // For now, we'll just log the status change
+    console.log(`User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
+    
+    // If you want to store this in the database, you could do something like:
+    // const { error } = await supabase
+    //   .from('users')
+    //   .update({
+    //     is_online: isOnline,
+    //     last_seen: isOnline ? null : new Date().toISOString()
+    //   })
+    //   .eq('id', userId);
+    
+    // if (error) {
+    //   console.error('Error updating user status:', error);
+    // }
   },
 
   getUserOnlineStatus: async (userId: string): Promise<{ isOnline: boolean; lastSeen?: string }> => {
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    const user = mockUsers.find((u) => u.id === userId)
-    return {
-      isOnline: user?.is_online || false,
-      lastSeen: user?.last_seen,
+    // In a real app, you would fetch this from a separate "user_status" table or similar
+    // For now, we'll return a default status
+    console.log(`Fetching online status for user ${userId}`);
+    
+    // If you want to fetch this from the database, you could do something like:
+    // const { data, error } = await supabase
+    //   .from('users')
+    //   .select('is_online, last_seen')
+    //   .eq('id', userId)
+    //   .single();
+    
+    // if (error) {
+    //   console.error('Error fetching user status:', error);
+    //   return { isOnline: false };
+    // }
+    
+    // return {
+    //   isOnline: data?.is_online || false,
+    //   lastSeen: data?.last_seen,
+    // };
+    
+    // For now, returning a default response
+    return { isOnline: false };
+  },
+
+  // Block a user
+  blockUser: async (userId: string, blockedUserId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('blocked_users')
+        .insert({
+          user_id: userId,
+          blocked_user_id: blockedUserId
+        });
+
+      if (error) {
+        console.error('Error blocking user:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      return false;
+    }
+  },
+
+  // Unblock a user
+  unblockUser: async (userId: string, blockedUserId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('blocked_users')
+        .delete()
+        .match({ user_id: userId, blocked_user_id: blockedUserId });
+
+      if (error) {
+        console.error('Error unblocking user:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      return false;
+    }
+  },
+
+  // Get blocked users
+  getBlockedUsers: async (userId: string): Promise<UserProfile[]> => {
+    try {
+      // First get the IDs of blocked users
+      const { data: blockedUserData, error: blockedUserError } = await supabase
+        .from('blocked_users')
+        .select('blocked_user_id')
+        .eq('user_id', userId);
+
+      if (blockedUserError) {
+        console.error('Error fetching blocked user IDs:', blockedUserError);
+        return [];
+      }
+
+      if (!blockedUserData || blockedUserData.length === 0) {
+        return [];
+      }
+
+      // Extract the blocked user IDs
+      const blockedUserIds = blockedUserData.map(item => item.blocked_user_id);
+
+      // Get the user profiles for the blocked users
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .in('id', blockedUserIds);
+
+      if (usersError) {
+        console.error('Error fetching blocked user profiles:', usersError);
+        return [];
+      }
+
+      return usersData as UserProfile[] || [];
+    } catch (error) {
+      console.error('Error fetching blocked users:', error);
+      return [];
     }
   },
 }

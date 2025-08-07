@@ -1,4 +1,4 @@
-import { storage } from "../lib/storage"
+import { supabase } from "../lib/supabase"
 import type { UserProfile } from "../types/social"
 
 export interface BuddyProfile extends Omit<UserProfile, "location"> {
@@ -77,74 +77,65 @@ export interface Meetup {
 export const buddySystemService = {
   // Get potential buddy matches
   getBuddyMatches: async (userId: string): Promise<BuddyMatch[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    const { data, error } = await supabase
+      .from('buddy_matches')
+      .select('*')
+      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
 
-    // Mock buddy matches
-    const mockMatches: BuddyMatch[] = [
-      {
-        id: "match1",
-        user1_id: userId,
-        user2_id: "user2",
-        compatibility_score: 85,
-        matched_interests: ["hiking", "coffee", "lgbtq+ events"],
-        distance: 2.5,
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: "match2",
-        user1_id: userId,
-        user2_id: "user3",
-        compatibility_score: 78,
-        matched_interests: ["art", "museums", "pride events"],
-        distance: 4.2,
-        created_at: new Date().toISOString(),
-      },
-    ]
+    if (error) {
+      console.error('Error fetching buddy matches:', error);
+      return [];
+    }
 
-    return mockMatches
+    return data || [];
   },
 
   // Send buddy request
   sendBuddyRequest: async (fromUserId: string, toUserId: string, message: string): Promise<BuddyRequest> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    const { data, error } = await supabase
+      .from('buddy_requests')
+      .insert({
+        from_user_id: fromUserId,
+        to_user_id: toUserId,
+        message,
+        status: "pending",
+      })
+      .select()
+      .single();
 
-    const request: BuddyRequest = {
-      id: Math.random().toString(36).substr(2, 9),
-      from_user_id: fromUserId,
-      to_user_id: toUserId,
-      message,
-      status: "pending",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    if (error) {
+      console.error('Error sending buddy request:', error);
+      throw error;
     }
 
-    // Store request locally
-    const requests = (await storage.getItem<BuddyRequest[]>("buddy_requests")) || []
-    requests.push(request)
-    await storage.setItem("buddy_requests", requests)
-
-    return request
+    return data;
   },
 
   // Get buddy requests
   getBuddyRequests: async (userId: string): Promise<BuddyRequest[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
+    const { data, error } = await supabase
+      .from('buddy_requests')
+      .select('*')
+      .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`);
 
-    const requests = (await storage.getItem<BuddyRequest[]>("buddy_requests")) || []
-    return requests.filter((req) => req.to_user_id === userId || req.from_user_id === userId)
+    if (error) {
+      console.error('Error fetching buddy requests:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   // Respond to buddy request
   respondToBuddyRequest: async (requestId: string, response: "accepted" | "rejected"): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    const { error } = await supabase
+      .from('buddy_requests')
+      .update({ status: response, updated_at: new Date().toISOString() })
+      .eq('id', requestId);
 
-    const requests = (await storage.getItem<BuddyRequest[]>("buddy_requests")) || []
-    const requestIndex = requests.findIndex((req) => req.id === requestId)
-
-    if (requestIndex !== -1) {
-      requests[requestIndex].status = response
-      requests[requestIndex].updated_at = new Date().toISOString()
-      await storage.setItem("buddy_requests", requests)
+    if (error) {
+      console.error('Error responding to buddy request:', error);
+      throw error;
     }
   },
 
@@ -156,22 +147,22 @@ export const buddySystemService = {
     status: "safe" | "need_help" | "emergency",
     message?: string,
   ): Promise<SafetyCheckIn> => {
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    const { data, error } = await supabase
+      .from('safety_check_ins')
+      .insert({
+        user_id: userId,
+        buddy_id: buddyId,
+        location,
+        status,
+        message,
+      })
+      .select()
+      .single();
 
-    const checkIn: SafetyCheckIn = {
-      id: Math.random().toString(36).substr(2, 9),
-      user_id: userId,
-      buddy_id: buddyId,
-      location,
-      status,
-      message,
-      created_at: new Date().toISOString(),
+    if (error) {
+      console.error('Error performing safety check-in:', error);
+      throw error;
     }
-
-    // Store check-in locally
-    const checkIns = (await storage.getItem<SafetyCheckIn[]>("safety_checkins")) || []
-    checkIns.push(checkIn)
-    await storage.setItem("safety_checkins", checkIns)
 
     // If emergency, trigger alert
     if (status === "emergency") {
@@ -179,82 +170,110 @@ export const buddySystemService = {
       // In real app, this would notify emergency contacts and buddy
     }
 
-    return checkIn
+    return data;
   },
 
   // Schedule meetup
   scheduleMeetup: async (meetupData: Omit<Meetup, "id" | "created_at">): Promise<Meetup> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    const { data, error } = await supabase
+      .from('meetups')
+      .insert(meetupData)
+      .select()
+      .single();
 
-    const meetup: Meetup = {
-      ...meetupData,
-      id: Math.random().toString(36).substr(2, 9),
-      created_at: new Date().toISOString(),
+    if (error) {
+      console.error('Error scheduling meetup:', error);
+      throw error;
     }
 
-    // Store meetup locally
-    const meetups = (await storage.getItem<Meetup[]>("buddy_meetups")) || []
-    meetups.push(meetup)
-    await storage.setItem("buddy_meetups", meetups)
-
-    return meetup
+    return data;
   },
 
   // Get user's meetups
   getUserMeetups: async (userId: string): Promise<Meetup[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    const { data, error } = await supabase
+      .from('meetups')
+      .select('*')
+      .or(`organizer_id.eq.${userId},buddy_id.eq.${userId}`);
 
-    const meetups = (await storage.getItem<Meetup[]>("buddy_meetups")) || []
-    return meetups.filter((meetup) => meetup.organizer_id === userId || meetup.buddy_id === userId)
+    if (error) {
+      console.error('Error fetching user meetups:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   // Get buddy profile
   getBuddyProfile: async (userId: string): Promise<BuddyProfile | null> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
+    // For now, we'll return the user profile as the buddy profile
+    // In a real app, you might have additional buddy-specific fields
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        profiles (
+          *
+        )
+      `)
+      .eq('id', userId)
+      .single();
 
-    // Mock buddy profile
-    const mockProfile: BuddyProfile = {
-      id: userId,
-      email: "buddy@example.com",
-      name: "Alex Johnson",
-      username: "alex_buddy",
-      avatar_url: "/placeholder.svg?height=100&width=100&text=AJ",
-      bio: "Love exploring new places and meeting new people! Always up for coffee or a good hike.",
-      pronouns: "they/them",
-      interests: ["hiking", "coffee", "art", "lgbtq+ events", "photography"],
-      verified: true,
-      follower_count: 150,
-      following_count: 200,
-      post_count: 45,
-      location: {
-        latitude: 37.7749,
-        longitude: -122.4194,
-        city: "San Francisco, CA",
-      },
-      safetyRating: 4.8,
-      buddyPreferences: {
-        ageRange: [25, 35],
-        interests: ["outdoor activities", "cultural events", "food"],
-        meetupTypes: ["coffee", "hiking", "events", "museums"],
-        maxDistance: 10,
-      },
-      verificationStatus: "verified",
-      lastActive: new Date().toISOString(),
-      responseRate: 95,
-      meetupCount: 23,
-      created_at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-      updated_at: new Date().toISOString(),
+    if (error) {
+      console.error('Error fetching buddy profile:', error);
+      return null;
     }
 
-    return mockProfile
+    if (!data) {
+      return null;
+    }
+
+    // Transform the user data into a BuddyProfile
+    const buddyProfile: BuddyProfile = {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      username: data.profiles?.username,
+      avatar_url: data.avatar_url,
+      bio: data.bio,
+      pronouns: data.pronouns,
+      interests: data.interests,
+      verified: data.verified,
+      follower_count: data.follower_count,
+      following_count: data.following_count,
+      post_count: data.post_count,
+      location: data.location ? {
+        latitude: 0, // These would need to be extracted from the location string
+        longitude: 0,
+        city: data.location
+      } : undefined,
+      safetyRating: 5, // Default safety rating
+      buddyPreferences: {
+        ageRange: [18, 100], // Default age range
+        interests: data.interests || [],
+        meetupTypes: [], // Default meetup types
+        maxDistance: 50, // Default max distance in km
+      },
+      verificationStatus: "verified", // Default verification status
+      lastActive: data.updated_at,
+      responseRate: 100, // Default response rate
+      meetupCount: 0, // Default meetup count
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+
+    return buddyProfile;
   },
 
   // Update buddy preferences
   updateBuddyPreferences: async (userId: string, preferences: BuddyProfile["buddyPreferences"]): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    // In real app, this would update the user's preferences in the database
-    console.log("Updated buddy preferences for user:", userId, preferences)
+    // For now, we'll just log the preferences as updating them would require
+    // additional database fields that aren't in the current schema
+    console.log("Updated buddy preferences for user:", userId, preferences);
+    
+    // In a real app, you would update the user's preferences in the database
+    // This might involve updating a separate buddy_preferences table or
+    // adding fields to the profiles table
   },
 
   // Rate buddy after meetup
@@ -265,21 +284,19 @@ export const buddySystemService = {
     rating: number,
     review?: string,
   ): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    const { error } = await supabase
+      .from('buddy_ratings')
+      .insert({
+        rater_id: raterId,
+        buddy_id: buddyId,
+        meetup_id: meetupId,
+        rating,
+        review,
+      });
 
-    const buddyRating = {
-      id: Math.random().toString(36).substr(2, 9),
-      rater_id: raterId,
-      buddy_id: buddyId,
-      meetup_id: meetupId,
-      rating,
-      review,
-      created_at: new Date().toISOString(),
+    if (error) {
+      console.error('Error rating buddy:', error);
+      throw error;
     }
-
-    // Store rating locally
-    const ratings = (await storage.getItem<any[]>("buddy_ratings")) || []
-    ratings.push(buddyRating)
-    await storage.setItem("buddy_ratings", ratings)
   },
 }
