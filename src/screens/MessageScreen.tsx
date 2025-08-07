@@ -184,7 +184,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.header}>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Messages</Text>
           <TouchableOpacity onPress={() => setShowNewMessage(true)} style={styles.newMessageButton}>

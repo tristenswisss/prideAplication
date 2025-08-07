@@ -12,7 +12,6 @@ import {
   Alert,
   TextInput,
   Modal,
-  ScrollView,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -22,6 +21,7 @@ import { pushNotificationService } from "../../services/pushNotificationService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, Comment } from "../../types/social"
 import type { CommunityScreenProps } from "../../types/navigation"
+import { ScrollView } from 'react-native';
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -80,7 +80,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         user_id: user.id,
         user: {
           id: user.id,
-          email: user.email,
+          email: user.email || "",
           name: user.name,
           avatar_url: "/placeholder.svg?height=50&width=50&text=" + user.name.charAt(0),
           verified: false,
@@ -88,8 +88,8 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           following_count: 0,
           post_count: 0,
           interests: [],
-          created_at: user.created_at,
-          updated_at: user.created_at,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
         content: newPostContent,
         images: uploadedImages,
@@ -207,7 +207,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         user_id: user.id,
         user: {
           id: user.id,
-          email: user.email,
+          email: user.email || "",
           name: user.name,
           avatar_url: "/placeholder.svg?height=40&width=40&text=" + user.name.charAt(0),
           verified: false,
@@ -215,8 +215,8 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           following_count: 0,
           post_count: 0,
           interests: [],
-          created_at: user.created_at,
-          updated_at: user.created_at,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
         content: newComment,
       })
@@ -366,10 +366,16 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
-        <Text style={styles.headerTitle}>Community</Text>
-        <Text style={styles.headerSubtitle}>Connect with your Pride family</Text>
-      </LinearGradient>
+            <LinearGradient colors={["black", "black"]} style={styles.header}>
+              <Text style={styles.headerTitle}>Community</Text>
+              <Text style={styles.headerSubtitle}>Connect with your Pride family</Text>
+              <TouchableOpacity
+                style={styles.messagesButton}
+                onPress={() => navigation.navigate("Messages")}
+              >
+                <MaterialIcons name="message" size={24} color="white" />
+              </TouchableOpacity>
+            </LinearGradient>
 
       {/* Posts Feed */}
       <FlatList
@@ -383,14 +389,36 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           loadPosts()
         }}
         ListHeaderComponent={
-          <TouchableOpacity style={styles.createPostPrompt} onPress={() => setShowCreatePost(true)}>
-            <Image
-              source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
-              style={styles.promptAvatar}
-            />
-            <Text style={styles.promptText}>Share something with the community...</Text>
-            <MaterialIcons name="add" size={24} color="black" />
-          </TouchableOpacity>
+          <>
+            {/* Quick Actions */}
+            <View style={styles.quickActions}>
+              
+              <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => navigation.navigate("Events", { screen: "EventsMain" })}
+              >
+                <MaterialIcons name="event" size={24} color="#4ECDC4" />
+                <Text style={styles.quickActionText}>Events</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => setShowCreatePost(true)}
+              >
+                <MaterialIcons name="add-circle" size={24} color="#FFD166" />
+                <Text style={styles.quickActionText}>Post</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity style={styles.createPostPrompt} onPress={() => setShowCreatePost(true)}>
+              <Image
+                source={{ uri: "/placeholder.svg?height=40&width=40&text=U" }}
+                style={styles.promptAvatar}
+              />
+              <Text style={styles.promptText}>Share something with the community...</Text>
+              <MaterialIcons name="add" size={24} color="black" />
+            </TouchableOpacity>
+          </>
         }
       />
 
@@ -409,7 +437,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           <View style={styles.createPostContent}>
             <Image
-              source={{ uri: user?.avatar_url || "/placeholder.svg?height=50&width=50&text=U" }}
+              source={{ uri: "/placeholder.svg?height=50&width=50&text=U" }}
               style={styles.createPostAvatar}
             />
             <TextInput
@@ -487,7 +515,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           <View style={styles.addCommentContainer}>
             <Image
-              source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
+              source={{ uri: "/placeholder.svg?height=40&width=40&text=U" }}
               style={styles.commentInputAvatar}
             />
             <TextInput
@@ -743,7 +771,8 @@ const styles = StyleSheet.create({
   createPostAction: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 30,
+    marginRight: 20,
+
   },
   createPostActionText: {
     marginLeft: 8,
@@ -839,5 +868,37 @@ const styles = StyleSheet.create({
   },
   sendCommentButtonDisabled: {
     opacity: 0.5,
+  },
+  messagesButton: {
+    position: "absolute",
+    right: 20,
+    top: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "white",
+    margin: 15,
+    paddingVertical: 15,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  quickActionButton: {
+    alignItems: "center",
+  },
+  quickActionText: {
+    marginTop: 5,
+    fontSize: 12,
+    color: "#666",
   },
 })

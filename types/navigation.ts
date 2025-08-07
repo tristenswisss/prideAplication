@@ -53,6 +53,7 @@ export type CommunityStackParamList = {
   UserProfile: { userId: string }
   Chat: { conversation: import("./messaging").Conversation }
   Messages: undefined
+  Events: { screen: "EventsMain" } | { screen: "EventDetails"; params: { event: any } }
 }
 
 // Define the ProfileStackParamList with the new screen types

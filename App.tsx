@@ -120,9 +120,9 @@ function CommunityNavigator() {
   return (
     <CommunityStack.Navigator>
       <CommunityStack.Screen name="CommunityMain" component={CommunityScreen} options={{ headerShown: false }} />
-      <CommunityStack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: "Profile" }} />
-      <CommunityStack.Screen name="Chat" component={ChatScreen} options={{ title: "Chat" }} />
-      <CommunityStack.Screen name="Messages" component={MessageScreen} options={{ title: "Messages" }} />
+            <CommunityStack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: "Profile" }} />
+            <CommunityStack.Screen name="Chat" component={ChatScreen} options={{ title: "Chat" }} />
+            <CommunityStack.Screen name="Messages" component={MessageScreen} options={{ title: "Messages" }} />
     </CommunityStack.Navigator>
   )
 }
@@ -165,24 +165,24 @@ function TabNavigator() {
           let iconName: keyof typeof MaterialIcons.glyphMap
 
           switch (route.name) {
-            case "Home":
-              iconName = "home"
-              break
-            case "Search":
-              iconName = "search"
-              break
-            case "Events":
-              iconName = "event"
-              break
-            case "Community":
-              iconName = "people"
-              break
-            case "Profile":
-              iconName = "person"
-              break
-            default:
-              iconName = "home"
-          }
+                      case "Home":
+                        iconName = "home"
+                        break
+                      case "Search":
+                        iconName = "search"
+                        break
+                      case "Events":
+                        iconName = "event"
+                        break
+                      case "Community":
+                        iconName = "people"
+                        break
+                      case "Profile":
+                        iconName = "person"
+                        break
+                      default:
+                        iconName = "home"
+                      }
 
           return <MaterialIcons name={iconName} size={size} color={color} />
         },
@@ -192,10 +192,10 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
-      <Tab.Screen name="Search" component={SearchNavigator} />
-      <Tab.Screen name="Events" component={EventsNavigator} />
-      <Tab.Screen name="Community" component={CommunityNavigator} />
-      <Tab.Screen name="Profile" component={ProfileNavigator} />
+            <Tab.Screen name="Search" component={SearchNavigator} />
+            <Tab.Screen name="Events" component={EventsNavigator} />
+            <Tab.Screen name="Community" component={CommunityNavigator} />
+            <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   )
 }

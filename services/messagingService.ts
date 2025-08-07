@@ -1,5 +1,13 @@
 import type { Message, Conversation, UserProfile } from "../types/messaging"
 
+// Helper function to remove phone numbers from text
+const removePhoneNumbers = (text: string): string => {
+  // This regex pattern matches common phone number formats
+  // It may need to be adjusted based on specific requirements
+  const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
+  return text.replace(phoneRegex, "[PHONE NUMBER REDACTED]");
+};
+
 // Mock data for messaging
 const mockUsers: UserProfile[] = [
   {
@@ -250,44 +258,58 @@ export const messagingService = {
     return mockMessages[conversationId] || []
   },
 
-  sendMessage: async (
-    conversationId: string,
-    senderId: string,
-    content: string,
-    messageType: Message["message_type"] = "text",
-    metadata?: Message["metadata"],
-  ): Promise<Message> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    const newMessage: Message = {
-      id: Math.random().toString(36).substr(2, 9),
-      conversation_id: conversationId,
-      sender_id: senderId,
-      content,
-      message_type: messageType,
-      metadata,
-      read: false,
-      sent_at: new Date().toISOString(),
-      delivered_at: new Date().toISOString(),
-    }
-
-    if (!mockMessages[conversationId]) {
-      mockMessages[conversationId] = []
-    }
-    mockMessages[conversationId].push(newMessage)
-
-    // Update conversation
-    const conversation = mockConversations.find((c) => c.id === conversationId)
-    if (conversation) {
-      conversation.last_message = newMessage
-      conversation.updated_at = new Date().toISOString()
-      if (senderId !== "current_user") {
-        conversation.unread_count += 1
-      }
-    }
-
-    return newMessage
-  },
+  // Helper function to remove phone numbers from text
+    removePhoneNumbers: (text: string): string => {
+      // This regex pattern matches common phone number formats
+      // It may need to be adjusted based on specific requirements
+      const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
+      return text.replace(phoneRegex, "[PHONE NUMBER REDACTED]");
+    },
+  
+    sendMessage: async (
+        conversationId: string,
+        senderId: string,
+        content: string,
+        messageType: Message["message_type"] = "text",
+        metadata?: Message["metadata"],
+      ): Promise<Message> => {
+        await new Promise((resolve) => setTimeout(resolve, 300))
+    
+        // Filter phone numbers from text messages
+        let filteredContent = content;
+        if (messageType === "text") {
+          filteredContent = removePhoneNumbers(content);
+        }
+    
+        const newMessage: Message = {
+          id: Math.random().toString(36).substr(2, 9),
+          conversation_id: conversationId,
+          sender_id: senderId,
+          content: filteredContent,
+          message_type: messageType,
+          metadata,
+          read: false,
+          sent_at: new Date().toISOString(),
+          delivered_at: new Date().toISOString(),
+        }
+    
+        if (!mockMessages[conversationId]) {
+          mockMessages[conversationId] = []
+        }
+        mockMessages[conversationId].push(newMessage)
+    
+        // Update conversation
+        const conversation = mockConversations.find((c) => c.id === conversationId)
+        if (conversation) {
+          conversation.last_message = newMessage
+          conversation.updated_at = new Date().toISOString()
+          if (senderId !== "current_user") {
+            conversation.unread_count += 1
+          }
+        }
+    
+        return newMessage
+      },
 
   markAsRead: async (conversationId: string, messageIds: string[]): Promise<void> => {
     await new Promise((resolve) => setTimeout(resolve, 100))

@@ -43,6 +43,12 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       onPress: () => navigation.navigate("MyEvents"),
     },
     {
+      title: "Live Events",
+      description: "Join ongoing live streams",
+      icon: "videocam",
+      onPress: () => navigation.navigate("Events", { screen: "EventsMain" }),
+    },
+    {
       title: "Safety Center",
       description: "Emergency contacts and safety features",
       icon: "shield",

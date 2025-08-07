@@ -237,6 +237,33 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
               </View>
             </View>
           )}
+          
+          {/* Join Live Event Button */}
+          {/* @ts-ignore */}
+          {event.is_live_event && (
+            <View style={styles.joinLiveSection}>
+              <TouchableOpacity
+                style={styles.joinLiveButton}
+                onPress={() => navigation.navigate("LiveEvent", {
+                  liveEvent: {
+                    id: event.id,
+                    title: event.title,
+                    event_id: event.id,
+                    description: event.description,
+                    host_id: event.organizer_id,
+                    is_live: true,
+                    viewer_count: 0,
+                    max_viewers: 0,
+                    chat_enabled: true,
+                    created_at: new Date().toISOString()
+                  }
+                })}
+              >
+                <MaterialIcons name="videocam" size={20} color="white" />
+                <Text style={styles.joinLiveButtonText}>Join Live Event</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -517,5 +544,22 @@ const styles = StyleSheet.create({
   },
   activeRSVPText: {
     color: "white",
+  },
+  joinLiveSection: {
+    marginTop: 20,
+  },
+  joinLiveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FF6B6B",
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  joinLiveButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginLeft: 8,
   },
 })

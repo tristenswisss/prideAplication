@@ -5,13 +5,39 @@ import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { eventService } from "../../services/eventService"
+import { liveEventService } from "../../services/liveEventService"
 import type { Event } from "../../types"
 import type { EventsScreenProps } from "../../types/navigation"
+import { useAuth } from "../../Contexts/AuthContexts"
 
 export default function EventsScreen({ navigation }: EventsScreenProps) {
+  const { user } = useAuth()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "upcoming" | "today" | "this_week">("all")
+
+  const handleStartLiveEvent = async () => {
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to start a live event")
+      return
+    }
+
+    try {
+      // Create a new live event
+      const newLiveEvent = await liveEventService.createLiveEvent(
+        "temp-event-id", // This would typically be a real event ID
+        user.id,
+        "Live Event",
+        "Join me for a live stream!"
+      )
+
+      // Navigate to the live event screen
+      navigation.navigate("LiveEvent", { liveEvent: newLiveEvent })
+    } catch (error) {
+      console.error("Error starting live event:", error)
+      Alert.alert("Error", "Failed to start live event")
+    }
+  }
 
   useEffect(() => {
     loadEvents()
@@ -137,16 +163,23 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={["black", "black"]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Events</Text>
-          <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
-        </View>
-
-        <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent")}>
-          <MaterialIcons name="add" size={24} color="white" />
-          <Text style={styles.createButtonText}>Create Event</Text>
-        </TouchableOpacity>
-      </LinearGradient>
+              <View style={styles.headerContent}>
+                <Text style={styles.headerTitle}>Events</Text>
+                <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
+              </View>
+      
+              <View style={styles.headerButtons}>
+                <TouchableOpacity style={styles.liveEventButton} onPress={handleStartLiveEvent}>
+                          <MaterialIcons name="videocam" size={24} color="white" />
+                          <Text style={styles.liveEventButtonText}>Live Event</Text>
+                        </TouchableOpacity>
+      
+                <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent")}>
+                  <MaterialIcons name="add" size={24} color="white" />
+                  <Text style={styles.createButtonText}>Create Event</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
@@ -230,20 +263,39 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   createButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    alignSelf: "flex-start",
-  },
-  createButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "white",
-  },
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(255,255,255,0.2)",
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 25,
+      alignSelf: "flex-start",
+    },
+    createButtonText: {
+      marginLeft: 8,
+      fontSize: 16,
+      fontWeight: "600",
+      color: "white",
+    },
+    headerButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    liveEventButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(255,255,255,0.2)",
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 25,
+      marginRight: 10,
+    },
+    liveEventButtonText: {
+      marginLeft: 8,
+      fontSize: 16,
+      fontWeight: "600",
+      color: "white",
+    },
   filterContainer: {
     flexDirection: "row",
     backgroundColor: "white",
