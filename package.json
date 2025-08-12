@@ -11,7 +11,7 @@
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-community/datetimepicker": "^8.4.3",
+    "@react-native-community/datetimepicker": "8.4.1",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-community/slider": "^4.5.7",
     "@react-navigation/bottom-tabs": "^7.4.2",
@@ -19,6 +19,7 @@
     "@react-navigation/stack": "^7.4.2",
     "@supabase/supabase-js": "^2.52.1",
     "expo": "~53.0.20",
+    "expo-file-system": "~18.1.11",
     "expo-image-picker": "~16.1.4",
     "expo-linear-gradient": "~14.1.5",
     "expo-location": "~18.1.6",
@@ -27,14 +28,15 @@
     "react": "19.0.0",
     "react-native": "0.79.5",
     "react-native-chart-kit": "^6.12.0",
+    "react-native-date-picker": "^5.0.13",
     "react-native-maps": "1.20.1",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.13.1",
-    "react-native-url-polyfill": "^2.0.0",
-    "expo-file-system": "~18.1.11"
+    "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@react-native-community/cli": "^20.0.0",
     "@types/react": "~19.0.10",
     "@types/react-native": "^0.72.8",
     "typescript": "~5.8.3"

@@ -12,6 +12,7 @@ import {
   Alert,
   Switch,
   Image,
+  Platform,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
@@ -100,6 +101,87 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
       setLoading(false)
     }
   }
+
+  // Fixed date picker handlers with proper error handling
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    console.log('Date picker event:', event?.type, selectedDate);
+    
+    // Handle Android behavior - always hide picker first
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    // Handle user dismissal or cancellation
+    if (!event || event.type === 'dismissed' || event.type === 'neutralButtonPressed') {
+      if (Platform.OS === 'ios') {
+        setShowDatePicker(false);
+      }
+      return;
+    }
+
+    // Only update date if we have a valid selection
+    if (selectedDate && event.type === 'set') {
+      setFormData((prev) => ({ ...prev, date: selectedDate }));
+    }
+    
+    // Hide picker on iOS after successful selection
+    if (Platform.OS === 'ios' && event.type === 'set') {
+      setShowDatePicker(false);
+    }
+  };
+
+  const onEndDateChange = (event: any, selectedDate?: Date) => {
+    console.log('End date picker event:', event?.type, selectedDate);
+    
+    // Handle Android behavior - always hide picker first
+    if (Platform.OS === 'android') {
+      setShowEndDatePicker(false);
+    }
+    
+    // Handle user dismissal or cancellation
+    if (!event || event.type === 'dismissed' || event.type === 'neutralButtonPressed') {
+      if (Platform.OS === 'ios') {
+        setShowEndDatePicker(false);
+      }
+      return;
+    }
+
+    // Only update date if we have a valid selection
+    if (selectedDate && event.type === 'set') {
+      setFormData((prev) => ({ ...prev, endDate: selectedDate }));
+    }
+    
+    // Hide picker on iOS after successful selection
+    if (Platform.OS === 'ios' && event.type === 'set') {
+      setShowEndDatePicker(false);
+    }
+  };
+
+  const showStartDatePicker = () => {
+    try {
+      // Ensure we're not already showing another picker
+      if (showEndDatePicker) {
+        setShowEndDatePicker(false);
+      }
+      setShowDatePicker(true);
+    } catch (error) {
+      console.warn('Error showing start date picker:', error);
+      Alert.alert('Error', 'Unable to open date picker. Please try again.');
+    }
+  };
+
+  const showEndDatePickerHandler = () => {
+    try {
+      // Ensure we're not already showing another picker
+      if (showDatePicker) {
+        setShowDatePicker(false);
+      }
+      setShowEndDatePicker(true);
+    } catch (error) {
+      console.warn('Error showing end date picker:', error);
+      Alert.alert('Error', 'Unable to open date picker. Please try again.');
+    }
+  };
 
   const addTag = (tag: string) => {
     if (tag.trim() && !formData.tags.includes(tag.trim().toLowerCase())) {
@@ -220,7 +302,7 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Start Date & Time *</Text>
-            <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <TouchableOpacity style={styles.dateButton} onPress={showStartDatePicker}>
               <MaterialIcons name="event" size={20} color="#666" />
               <Text style={styles.dateButtonText}>
                 {formData.date.toLocaleDateString()} at{" "}
@@ -231,7 +313,7 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>End Date & Time</Text>
-            <TouchableOpacity style={styles.dateButton} onPress={() => setShowEndDatePicker(true)}>
+            <TouchableOpacity style={styles.dateButton} onPress={showEndDatePickerHandler}>
               <MaterialIcons name="event" size={20} color="#666" />
               <Text style={styles.dateButtonText}>
                 {formData.endDate.toLocaleDateString()} at{" "}
@@ -372,19 +454,15 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
         </View>
       </ScrollView>
 
-      {/* Date Pickers */}
+      {/* Fixed Date Pickers with better error handling */}
       {showDatePicker && (
         <DateTimePicker
           value={formData.date}
           mode="datetime"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false)
-            if (selectedDate) {
-              setFormData((prev) => ({ ...prev, date: selectedDate }))
-            }
-          }}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onDateChange}
           minimumDate={new Date()}
+          is24Hour={true}
         />
       )}
 
@@ -392,14 +470,10 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
         <DateTimePicker
           value={formData.endDate}
           mode="datetime"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowEndDatePicker(false)
-            if (selectedDate) {
-              setFormData((prev) => ({ ...prev, endDate: selectedDate }))
-            }
-          }}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onEndDateChange}
           minimumDate={formData.date}
+          is24Hour={true}
         />
       )}
     </SafeAreaView>
