@@ -28,7 +28,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         "temp-event-id", // This would typically be a real event ID
         user.id,
         "Live Event",
-        "Join me for a live stream!"
+        "Join me for a live stream!",
       )
 
       // Navigate to the live event screen
@@ -83,28 +83,27 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 
     return (
       <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("EventDetails", { event: item })}>
-      <View style={styles.eventImageContainer}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.eventImage} />
-        ) : (
-          <View style={styles.placeholderImage}>
-            <MaterialIcons name="event" size={40} color="#ccc" />
-          </View>
-        )}
-        {/* Removed isVirtual badge since it's not in the Event type */}
-        {!item.is_free && item.price && (
-          <View style={styles.priceBadge}>
-            <Text style={styles.priceText}>{item.price === 0 ? "Free" : `$${item.price}`}</Text>
-          </View>
-        )}
-      </View>
+        <View style={styles.eventImageContainer}>
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={styles.eventImage} />
+          ) : (
+            <View style={styles.placeholderImage}>
+              <MaterialIcons name="event" size={40} color="#ccc" />
+            </View>
+          )}
+          {!item.is_free && item.price && (
+            <View style={styles.priceBadge}>
+              <Text style={styles.priceText}>{item.price === 0 ? "Free" : `$${item.price}`}</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.eventInfo}>
           <View style={styles.eventHeader}>
             <Text style={styles.eventTitle}>{item.title}</Text>
             <View style={styles.attendeeCount}>
               <MaterialIcons name="people" size={16} color="#666" />
-              <Text style={styles.attendeeText}>{item.attendee_count}</Text>
+              <Text style={styles.attendeeText}>{item.attendee_count || item.current_attendees || 0}</Text>
             </View>
           </View>
 
@@ -112,8 +111,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
             <View style={styles.metaItem}>
               <MaterialIcons name="schedule" size={16} color="#666" />
               <Text style={styles.metaText}>
-                {eventDate.toLocaleDateString()} at{" "}
-                {eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {eventDate.toLocaleDateString()} at {item.time || item.start_time}
               </Text>
             </View>
             <View style={styles.metaItem}>
@@ -163,23 +161,23 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={["black", "black"]} style={styles.header}>
-              <View style={styles.headerContent}>
-                <Text style={styles.headerTitle}>Events</Text>
-                <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
-              </View>
-      
-              <View style={styles.headerButtons}>
-                <TouchableOpacity style={styles.liveEventButton} onPress={handleStartLiveEvent}>
-                          <MaterialIcons name="videocam" size={24} color="white" />
-                          <Text style={styles.liveEventButtonText}>Live Event</Text>
-                        </TouchableOpacity>
-      
-                <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent")}>
-                  <MaterialIcons name="add" size={24} color="white" />
-                  <Text style={styles.createButtonText}>Create Event</Text>
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Events</Text>
+          <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
+        </View>
+
+        <View style={styles.headerButtons}>
+          <TouchableOpacity style={styles.liveEventButton} onPress={handleStartLiveEvent}>
+            <MaterialIcons name="videocam" size={24} color="white" />
+            <Text style={styles.liveEventButtonText}>Live Event</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent")}>
+            <MaterialIcons name="add" size={24} color="white" />
+            <Text style={styles.createButtonText}>Create Event</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
@@ -263,39 +261,39 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   createButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: "rgba(255,255,255,0.2)",
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 25,
-      alignSelf: "flex-start",
-    },
-    createButtonText: {
-      marginLeft: 8,
-      fontSize: 16,
-      fontWeight: "600",
-      color: "white",
-    },
-    headerButtons: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    liveEventButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: "rgba(255,255,255,0.2)",
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 25,
-      marginRight: 10,
-    },
-    liveEventButtonText: {
-      marginLeft: 8,
-      fontSize: 16,
-      fontWeight: "600",
-      color: "white",
-    },
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignSelf: "flex-start",
+  },
+  createButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+  },
+  headerButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  liveEventButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  liveEventButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+  },
   filterContainer: {
     flexDirection: "row",
     backgroundColor: "white",

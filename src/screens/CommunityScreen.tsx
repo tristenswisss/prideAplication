@@ -22,9 +22,8 @@ import { imageUploadService } from "../../services/imageUploadService"
 import { pushNotificationService } from "../../services/pushNotificationService"
 import { profileService } from "../../services/profileService"
 import { useAuth } from "../../Contexts/AuthContexts"
-import type { Post, Comment } from "../../types/social"
+import type { Post, Comment, UserProfile } from "../../types/social"
 import type { CommunityScreenProps } from "../../types/navigation"
-import type { UserProfile } from "../../types"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -94,7 +93,27 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       // For now, we'll use a simple search to get some users
       const result = await profileService.searchUsers("", user.id)
       if (result.success && result.data) {
-        setBuddyList(result.data.slice(0, 10)) // Limit to 10 for demo
+        // Convert UserProfile from index.ts to social.ts format
+        const socialUserProfiles: UserProfile[] = result.data.map((profile) => ({
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+          cover_image_url: profile.cover_image_url,
+          bio: profile.bio,
+          pronouns: profile.pronouns,
+          location: profile.location,
+          interests: profile.interests || [], // Ensure interests is always an array
+          verified: profile.verified || false,
+          follower_count: profile.follower_count || 0, // Ensure it's always a number
+          following_count: profile.following_count || 0, // Ensure it's always a number
+          post_count: profile.post_count || 0, // Ensure it's always a number
+          is_online: profile.is_online || false, // Ensure it's always a boolean
+          created_at: profile.created_at,
+          updated_at: profile.updated_at,
+        }))
+        setBuddyList(socialUserProfiles.slice(0, 10)) // Limit to 10 for demo
       }
     } catch (error) {
       console.error("Error loading buddy list:", error)
@@ -140,6 +159,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           following_count: 0,
           post_count: 0,
           interests: [],
+          is_online: true, // Add required is_online property
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -310,8 +330,8 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           following_count: 0,
           post_count: 0,
           interests: [],
+          is_online: true, // Add required is_online property
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         },
         content: newComment,
       })
@@ -348,7 +368,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const handleAddEvent = () => {
     // Navigate to event selection or creation
-    navigation.navigate("Events", { screen: "EventsMain" })
+    navigation.navigate("Messages")
   }
 
   const extractHashtags = (text: string): string[] => {
@@ -517,10 +537,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           <>
             {/* Quick Actions */}
             <View style={styles.quickActions}>
-              <TouchableOpacity
-                style={styles.quickActionButton}
-                onPress={() => navigation.navigate("Events", { screen: "EventsMain" })}
-              >
+              <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate("Messages")}>
                 <MaterialIcons name="event" size={24} color="#4ECDC4" />
                 <Text style={styles.quickActionText}>Events</Text>
               </TouchableOpacity>

@@ -1,104 +1,109 @@
+import type { NavigatorScreenParams } from "@react-navigation/native"
 import type { StackScreenProps } from "@react-navigation/stack"
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs"
+import type { Business, Event, UserProfile } from "./index"
 import type { LiveEvent } from "./messaging"
 
-// Define the RootStackParamList for the root navigator that switches between main app and auth
+// Root Stack Navigator
 export type RootStackParamList = {
-  Main: undefined
-  Auth: undefined
-}
-
-// Define the AuthStackParamList for the authentication flow
-export type AuthStackParamList = {
   Loading: undefined
   Auth: undefined
-}
-
-// Define the TabParamList for the bottom tab navigator
-export type TabParamList = {
-  Home: undefined
+  Main: NavigatorScreenParams<MainTabParamList>
+  BusinessDetails: { business: Business }
+  EventDetails: { event: Event }
+  UserProfile: { user: UserProfile }
+  Chat: { conversation: any }
+  LiveEvent: { liveEvent: LiveEvent }
+  CreateEvent: undefined
+  EditProfile: undefined
   Search: undefined
-  Events: undefined
-  Community: undefined
-  Profile: undefined
+  WriteReview: { business: Business }
+  HelpSupport: undefined
+  PrivacySafety: undefined
+  NotificationSettings: undefined
 }
 
-// Define the HomeStackParamList for home-related screens
+// Main Tab Navigator
+export type MainTabParamList = {
+  Home: NavigatorScreenParams<HomeStackParamList>
+  Community: NavigatorScreenParams<CommunityStackParamList>
+  Events: NavigatorScreenParams<EventsStackParamList>
+  Messages: NavigatorScreenParams<MessagesStackParamList>
+  Profile: NavigatorScreenParams<ProfileStackParamList>
+}
+
+// Home Stack
 export type HomeStackParamList = {
   HomeMain: undefined
-  BusinessDetails: { business: import("./index").Business }
-  WriteReview: { business: import("./index").Business }
+  BusinessDetails: { business: Business }
   Search: undefined
+  SavedPlaces: undefined
 }
 
-// Define the SearchStackParamList for search-related screens
-export type SearchStackParamList = {
-  SearchMain: undefined
-  BusinessDetails: { business: import("./index").Business }
-  WriteReview: { business: import("./index").Business }
-}
-
-// Define the EventsStackParamList with the new screen types
-export type EventsStackParamList = {
-  EventsMain: undefined
-  EventDetails: { event: any } // Assuming Event type is defined elsewhere
-  LiveEvent: { liveEvent: LiveEvent } // Changed from { eventId: string } to match actual usage
-  Recordings: { eventId: string }
-  CreateEvent: undefined
-}
-
-// Define the CommunityStackParamList for community-related screens
+// Community Stack
 export type CommunityStackParamList = {
   CommunityMain: undefined
-  UserProfile: { userId: string }
-  Chat: { conversation: import("./messaging").Conversation }
+  UserProfile: { user: UserProfile }
   Messages: undefined
-  Events: { screen: "EventsMain" } | { screen: "EventDetails"; params: { event: any } }
 }
 
-// Define the ProfileStackParamList with the new screen types
+// Events Stack
+export type EventsStackParamList = {
+  EventsMain: undefined
+  EventDetails: { event: Event }
+  CreateEvent: undefined
+  MyEvents: undefined
+  LiveEvents: undefined
+  LiveEvent: { liveEvent: LiveEvent }
+}
+
+// Messages Stack
+export type MessagesStackParamList = {
+  MessagesMain: undefined
+  Chat: { conversation: any }
+}
+
+// Profile Stack
 export type ProfileStackParamList = {
   ProfileMain: undefined
-  UserProfile: { userId: string }
-  Safety: undefined
-  BuddySystem: undefined
-  MentalHealth: undefined
-  Notifications: undefined
   EditProfile: undefined
   SavedPlaces: undefined
   MyEvents: undefined
-  NotificationSettings: undefined
-  PrivacySafety: undefined
+  Recordings: undefined
+  Safety: undefined
+  MentalHealth: undefined
+  BuddySystem: undefined
+  Notifications: undefined
   HelpSupport: undefined
-  BusinessDetails: { business: import("./index").Business }
-  Home: { screen: "BusinessDetails"; params: { business: import("./index").Business } } | { screen: "HomeMain" }
-  Search: { screen: "SearchMain" }
-  Events: { screen: "EventsMain" } | { screen: "EventDetails"; params: { event: any } }
+  PrivacySafety: undefined
+  NotificationSettings: undefined
 }
 
-// Define the corresponding screen props types
-export type RootStackScreenProps = StackScreenProps<RootStackParamList, "Main" | "Auth">
-export type AuthStackScreenProps = StackScreenProps<AuthStackParamList, "Loading" | "Auth">
-export type TabScreenProps = BottomTabScreenProps<TabParamList, keyof TabParamList>
-export type HomeStackScreenProps = StackScreenProps<HomeStackParamList, keyof HomeStackParamList>
-export type SearchStackScreenProps = StackScreenProps<SearchStackParamList, keyof SearchStackParamList>
-export type EventsStackScreenProps = StackScreenProps<EventsStackParamList, keyof EventsStackParamList>
-export type CommunityStackScreenProps = StackScreenProps<CommunityStackParamList, keyof CommunityStackParamList>
-export type ProfileStackScreenProps = StackScreenProps<ProfileStackParamList, keyof ProfileStackParamList>
+// Screen Props Types
+export type RootStackScreenProps<T extends keyof RootStackParamList> = StackScreenProps<RootStackParamList, T>
+export type MainTabScreenProps<T extends keyof MainTabParamList> = BottomTabScreenProps<MainTabParamList, T>
 
-// Individual screen props for specific screens
-export type EditProfileScreenProps = StackScreenProps<ProfileStackParamList, "EditProfile">
-export type SavedPlacesScreenProps = StackScreenProps<ProfileStackParamList, "SavedPlaces">
-export type MyEventsScreenProps = StackScreenProps<ProfileStackParamList, "MyEvents">
-export type NotificationSettingsScreenProps = StackScreenProps<ProfileStackParamList, "NotificationSettings">
-export type PrivacySafetyScreenProps = StackScreenProps<ProfileStackParamList, "PrivacySafety">
-export type HelpSupportScreenProps = StackScreenProps<ProfileStackParamList, "HelpSupport">
-export type CreateEventScreenProps = StackScreenProps<EventsStackParamList, "CreateEvent">
-export type EventsScreenProps = StackScreenProps<EventsStackParamList, "EventsMain">
-export type ProfileScreenProps = StackScreenProps<ProfileStackParamList, "ProfileMain">
-export type ChatScreenProps = StackScreenProps<CommunityStackParamList, "Chat">
+// Individual Screen Props
 export type HomeScreenProps = StackScreenProps<HomeStackParamList, "HomeMain">
-export type BusinessDetailsScreenProps = StackScreenProps<HomeStackParamList, "BusinessDetails">
 export type CommunityScreenProps = StackScreenProps<CommunityStackParamList, "CommunityMain">
-export type EventDetailsScreenProps = StackScreenProps<EventsStackParamList, "EventDetails">
-export type WriteReviewScreenProps = StackScreenProps<HomeStackParamList, "WriteReview">
+export type EventsScreenProps = StackScreenProps<EventsStackParamList, "EventsMain">
+export type MessagesScreenProps = StackScreenProps<MessagesStackParamList, "MessagesMain">
+export type ProfileScreenProps = StackScreenProps<ProfileStackParamList, "ProfileMain">
+
+// Additional Screen Props
+export type CreateEventScreenProps = StackScreenProps<EventsStackParamList, "CreateEvent">
+export type EditProfileScreenProps = StackScreenProps<ProfileStackParamList, "EditProfile">
+export type BusinessDetailScreenProps = StackScreenProps<HomeStackParamList, "BusinessDetails">
+export type EventDetailScreenProps = StackScreenProps<EventsStackParamList, "EventDetails">
+export type UserProfileScreenProps = StackScreenProps<CommunityStackParamList, "UserProfile">
+export type ChatScreenProps = StackScreenProps<MessagesStackParamList, "Chat">
+export type WriteReviewScreenProps = StackScreenProps<RootStackParamList, "WriteReview">
+export type HelpSupportScreenProps = StackScreenProps<RootStackParamList, "HelpSupport">
+export type PrivacySafetyScreenProps = StackScreenProps<RootStackParamList, "PrivacySafety">
+export type NotificationSettingsScreenProps = StackScreenProps<RootStackParamList, "NotificationSettings">
+
+declare global {
+  namespace ReactNavigation {
+    interface RootParamList extends RootStackParamList {}
+  }
+}

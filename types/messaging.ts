@@ -4,25 +4,18 @@ export interface Message {
   sender_id: string
   sender?: UserProfile
   content: string
-  message_type: "text" | "image" | "location" | "event_share"
-  metadata?: {
-    image_url?: string
-    location?: {
-      name: string
-      latitude: number
-      longitude: number
-    }
-    event_id?: string
-  }
+  type: "text" | "image" | "location" | "system"
   read: boolean
   sent_at: string
-  delivered_at?: string
-  read_at?: string
+  created_at: string
+  updated_at: string
+   message_type: "text" | "image" | "video" | "file"
+  metadata?: Record<string, any>
 }
 
 export interface Conversation {
   id: string
-  participants: string[]
+  participants: UserProfile[]
   participant_profiles?: UserProfile[]
   last_message?: Message
   unread_count: number
@@ -39,17 +32,9 @@ export interface UserProfile {
   name: string
   username?: string
   avatar_url?: string
-  cover_image_url?: string
   bio?: string
-  pronouns?: string
-  location?: string
-  interests: string[]
   verified: boolean
-  follower_count: number
-  following_count: number
-  post_count: number
-  is_online: boolean
-  last_seen?: string
+  is_online?: boolean
   created_at: string
   updated_at: string
 }
@@ -64,10 +49,10 @@ export interface LiveEvent {
   stream_url?: string
   is_live: boolean
   viewer_count: number
-  started_at?: string
+  max_viewers?: number
+  scheduled_start?: string
+  actual_start?: string
   ended_at?: string
-  max_viewers: number
-  chat_enabled: boolean
   created_at: string
 }
 
@@ -77,9 +62,14 @@ export interface LiveMessage {
   user_id: string
   user?: UserProfile
   content: string
-  message_type: "chat" | "join" | "leave" | "reaction"
-  metadata?: {
-    reaction?: string
-  }
-  sent_at: string
+  type: "message" | "join" | "leave" | "system"
+  created_at: string
+}
+
+export interface LiveReaction {
+  id: string
+  live_event_id: string
+  user_id: string
+  reaction: "like" | "love" | "laugh" | "wow" | "sad" | "angry"
+  created_at: string
 }

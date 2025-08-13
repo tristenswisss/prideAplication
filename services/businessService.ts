@@ -1,60 +1,137 @@
 import { supabase } from "../lib/supabase"
 import type { Business } from "../types"
 
+export interface BusinessSearchParams {
+  query?: string
+  category?: string
+  location?: {
+    latitude: number
+    longitude: number
+    radius?: number
+  }
+  filters?: {
+    lgbtq_friendly?: boolean
+    trans_friendly?: boolean
+    wheelchair_accessible?: boolean
+    verified?: boolean
+    price_range?: string[]
+    rating_min?: number
+  }
+  sort?: "distance" | "rating" | "name" | "newest"
+  limit?: number
+  offset?: number
+}
+
 export interface BusinessResponse {
   success: boolean
-  data?: Business[]
+  businesses?: Business[]
   error?: string
+  total?: number
 }
 
-export interface SingleBusinessResponse {
-  success: boolean
-  data?: Business
-  error?: string
-}
-
-// Fixed interface to match Supabase's actual return structure
-interface SavedBusinessRecord {
-  business_id: string
-  created_at: string
-  businesses: Business | null  // Single business object, not array
-}
-
-// Alternative interface for the raw Supabase response
-interface SupabaseSavedBusinessRecord {
-  business_id: string
-  created_at: string
-  businesses: Business | Business[] | null  // Could be single object or array depending on query
-}
-
-class BusinessService {
-  async getAllBusinesses(): Promise<BusinessResponse> {
+export const businessService = {
+  // Get all businesses
+  getBusinesses: async (): Promise<BusinessResponse> => {
     try {
-      const { data, error } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("verified", true)
-        .order("rating", { ascending: false })
+      const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: false })
 
       if (error) {
         console.error("Error fetching businesses:", error)
         return { success: false, error: error.message }
       }
 
-      return { success: true, data: data || [] }
+      return { success: true, businesses: data || [] }
     } catch (error: any) {
-      console.error("Error in getAllBusinesses:", error)
+      console.error("Error in getBusinesses:", error)
       return { success: false, error: error.message }
     }
-  }
+  },
 
-  async getBusinessesByCategory(category: string): Promise<BusinessResponse> {
+  // Search businesses
+  searchBusinesses: async (params: BusinessSearchParams): Promise<BusinessResponse> => {
     try {
+      let query = supabase.from("businesses").select("*")
+
+      // Apply text search
+      if (params.query) {
+        query = query.or(`name.ilike.%${params.query}%,description.ilike.%${params.query}%`)
+      }
+
+      // Apply category filter
+      if (params.category && params.category !== "all") {
+        query = query.eq("category", params.category)
+      }
+
+      // Apply filters
+      if (params.filters) {
+        if (params.filters.lgbtq_friendly) {
+          query = query.eq("lgbtq_friendly", true)
+        }
+        if (params.filters.trans_friendly) {
+          query = query.eq("trans_friendly", true)
+        }
+        if (params.filters.wheelchair_accessible) {
+          query = query.eq("wheelchair_accessible", true)
+        }
+        if (params.filters.verified) {
+          query = query.eq("verified", true)
+        }
+        if (params.filters.price_range && params.filters.price_range.length > 0) {
+          query = query.in("price_range", params.filters.price_range)
+        }
+        if (params.filters.rating_min) {
+          query = query.gte("rating", params.filters.rating_min)
+        }
+      }
+
+      // Apply sorting
+      switch (params.sort) {
+        case "rating":
+          query = query.order("rating", { ascending: false })
+          break
+        case "name":
+          query = query.order("name", { ascending: true })
+          break
+        case "newest":
+          query = query.order("created_at", { ascending: false })
+          break
+        default:
+          query = query.order("created_at", { ascending: false })
+      }
+
+      // Apply pagination
+      if (params.limit) {
+        query = query.limit(params.limit)
+      }
+      if (params.offset) {
+        query = query.range(params.offset, params.offset + (params.limit || 20) - 1)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error("Error searching businesses:", error)
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, businesses: data || [] }
+    } catch (error: any) {
+      console.error("Error in searchBusinesses:", error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Get businesses by category
+  getBusinessesByCategory: async (category: string): Promise<BusinessResponse> => {
+    try {
+      if (category === "all") {
+        return businessService.getBusinesses()
+      }
+
       const { data, error } = await supabase
         .from("businesses")
         .select("*")
         .eq("category", category)
-        .eq("verified", true)
         .order("rating", { ascending: false })
 
       if (error) {
@@ -62,57 +139,40 @@ class BusinessService {
         return { success: false, error: error.message }
       }
 
-      return { success: true, data: data || [] }
+      return { success: true, businesses: data || [] }
     } catch (error: any) {
       console.error("Error in getBusinessesByCategory:", error)
       return { success: false, error: error.message }
     }
-  }
+  },
 
-  async searchBusinesses(query: string): Promise<BusinessResponse> {
-    try {
-      const { data, error } = await supabase
-        .from("businesses")
-        .select("*")
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%,address.ilike.%${query}%`)
-        .eq("verified", true)
-        .order("rating", { ascending: false })
-
-      if (error) {
-        console.error("Error searching businesses:", error)
-        return { success: false, error: error.message }
-      }
-
-      return { success: true, data: data || [] }
-    } catch (error: any) {
-      console.error("Error in searchBusinesses:", error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async getBusinessById(id: string): Promise<SingleBusinessResponse> {
+  // Get business by ID
+  getBusinessById: async (id: string): Promise<Business | null> => {
     try {
       const { data, error } = await supabase.from("businesses").select("*").eq("id", id).single()
 
       if (error) {
         console.error("Error fetching business by ID:", error)
-        return { success: false, error: error.message }
+        return null
       }
 
-      return { success: true, data }
-    } catch (error: any) {
+      return data
+    } catch (error) {
       console.error("Error in getBusinessById:", error)
-      return { success: false, error: error.message }
+      return null
     }
-  }
+  },
 
-  async getNearbyBusinesses(latitude: number, longitude: number, radius = 10): Promise<BusinessResponse> {
+  // Get nearby businesses
+  getNearbyBusinesses: async (latitude: number, longitude: number, radius = 10): Promise<BusinessResponse> => {
     try {
-      // Using a simple distance calculation (this could be improved with PostGIS)
+      // This would use PostGIS functions in a real implementation
+      // For now, we'll just return all businesses
       const { data, error } = await supabase
         .from("businesses")
         .select("*")
-        .eq("verified", true)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null)
         .order("rating", { ascending: false })
 
       if (error) {
@@ -120,81 +180,44 @@ class BusinessService {
         return { success: false, error: error.message }
       }
 
-      // Filter by distance (simple calculation)
-      const filtered = (data || []).filter((business) => {
-        if (!business.latitude || !business.longitude) return false
-
-        const distance = this.calculateDistance(latitude, longitude, business.latitude, business.longitude)
-
-        return distance <= radius
-      })
-
-      return { success: true, data: filtered }
+      return { success: true, businesses: data || [] }
     } catch (error: any) {
       console.error("Error in getNearbyBusinesses:", error)
       return { success: false, error: error.message }
     }
-  }
+  },
 
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371 // Radius of the Earth in kilometers
-    const dLat = this.deg2rad(lat2 - lat1)
-    const dLon = this.deg2rad(lon2 - lon1)
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    const d = R * c // Distance in kilometers
-    return d
-  }
-
-  private deg2rad(deg: number): number {
-    return deg * (Math.PI / 180)
-  }
-
-  async saveBusiness(userId: string, businessId: string): Promise<{ success: boolean; error?: string }> {
+  // Save business (bookmark)
+  saveBusiness: async (businessId: string, userId: string): Promise<void> => {
     try {
-      const { error } = await supabase.from("saved_businesses").insert([{ user_id: userId, business_id: businessId }])
-
-      if (error) {
-        console.error("Error saving business:", error)
-        return { success: false, error: error.message }
-      }
-
-      return { success: true }
-    } catch (error: any) {
-      console.error("Error in saveBusiness:", error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async unsaveBusiness(userId: string, businessId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
+      // Check if already saved
+      const { data: existingSave } = await supabase
         .from("saved_businesses")
-        .delete()
-        .eq("user_id", userId)
+        .select("id")
         .eq("business_id", businessId)
+        .eq("user_id", userId)
+        .single()
 
-      if (error) {
-        console.error("Error unsaving business:", error)
-        return { success: false, error: error.message }
+      if (existingSave) {
+        // Unsave
+        await supabase.from("saved_businesses").delete().eq("business_id", businessId).eq("user_id", userId)
+      } else {
+        // Save
+        await supabase.from("saved_businesses").insert({ business_id: businessId, user_id: userId })
       }
-
-      return { success: true }
-    } catch (error: any) {
-      console.error("Error in unsaveBusiness:", error)
-      return { success: false, error: error.message }
+    } catch (error) {
+      console.error("Error saving business:", error)
+      throw error
     }
-  }
+  },
 
-  async getSavedBusinesses(userId: string): Promise<BusinessResponse> {
+  // Get saved businesses
+  getSavedBusinesses: async (userId: string): Promise<BusinessResponse> => {
     try {
       const { data, error } = await supabase
         .from("saved_businesses")
         .select(`
-          business_id,
-          created_at,
+          *,
           businesses (*)
         `)
         .eq("user_id", userId)
@@ -205,157 +228,76 @@ class BusinessService {
         return { success: false, error: error.message }
       }
 
-      // Type-safe handling of the response
-      const rawData = data as unknown as SupabaseSavedBusinessRecord[]
-      
-      if (!rawData) {
-        return { success: true, data: [] }
-      }
-
-      // Transform and filter the data to match Business[] interface
-      const businesses: Business[] = rawData
-        .filter((item): item is SupabaseSavedBusinessRecord & { businesses: Business } => {
-          // Type guard to ensure businesses exists and is not null
-          return item.businesses !== null && 
-                 item.businesses !== undefined && 
-                 !Array.isArray(item.businesses) &&
-                 typeof item.businesses === 'object'
-        })
-        .map((item) => ({
-          ...item.businesses,
-          // You can add custom properties here if needed
-          // savedAt: item.created_at,
-        }))
-
-      return { success: true, data: businesses }
+      const businesses = (data || []).map((item) => item.businesses).filter(Boolean)
+      return { success: true, businesses }
     } catch (error: any) {
       console.error("Error in getSavedBusinesses:", error)
       return { success: false, error: error.message }
     }
-  }
+  },
 
-  // Helper method to check if a business is saved by a user
-  async isBusinessSaved(userId: string, businessId: string): Promise<{ success: boolean; isSaved: boolean; error?: string }> {
+  // Create business
+  createBusiness: async (businessData: Omit<Business, "id" | "created_at" | "updated_at">): Promise<Business> => {
     try {
       const { data, error } = await supabase
-        .from("saved_businesses")
-        .select("business_id")
-        .eq("user_id", userId)
-        .eq("business_id", businessId)
+        .from("businesses")
+        .insert({
+          ...businessData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
         .single()
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-        console.error("Error checking if business is saved:", error)
-        return { success: false, isSaved: false, error: error.message }
-      }
-
-      return { success: true, isSaved: !!data }
-    } catch (error: any) {
-      console.error("Error in isBusinessSaved:", error)
-      return { success: false, isSaved: false, error: error.message }
-    }
-  }
-
-  // Helper method to get saved business count for a user
-  async getSavedBusinessCount(userId: string): Promise<{ success: boolean; count: number; error?: string }> {
-    try {
-      const { count, error } = await supabase
-        .from("saved_businesses")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
-
       if (error) {
-        console.error("Error getting saved business count:", error)
-        return { success: false, count: 0, error: error.message }
+        console.error("Error creating business:", error)
+        throw error
       }
 
-      return { success: true, count: count || 0 }
-    } catch (error: any) {
-      console.error("Error in getSavedBusinessCount:", error)
-      return { success: false, count: 0, error: error.message }
+      return data
+    } catch (error) {
+      console.error("Error in createBusiness:", error)
+      throw error
     }
-  }
+  },
 
-  // Helper method to get business ratings and reviews
-  async getBusinessRatings(businessId: string): Promise<{
-    success: boolean
-    averageRating?: number
-    totalReviews?: number
-    error?: string
-  }> {
-    try {
-      const { data, error } = await supabase
-        .from("business_reviews")
-        .select("rating")
-        .eq("business_id", businessId)
-
-      if (error) {
-        console.error("Error fetching business ratings:", error)
-        return { success: false, error: error.message }
-      }
-
-      if (!data || data.length === 0) {
-        return { success: true, averageRating: 0, totalReviews: 0 }
-      }
-
-      const totalReviews = data.length
-      const averageRating = data.reduce((sum, review) => sum + review.rating, 0) / totalReviews
-
-      return {
-        success: true,
-        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
-        totalReviews
-      }
-    } catch (error: any) {
-      console.error("Error in getBusinessRatings:", error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  // Helper method to get featured businesses
-  async getFeaturedBusinesses(limit = 5): Promise<BusinessResponse> {
+  // Update business
+  updateBusiness: async (businessId: string, businessData: Partial<Business>): Promise<Business> => {
     try {
       const { data, error } = await supabase
         .from("businesses")
-        .select("*")
-        .eq("verified", true)
-        .eq("featured", true)
-        .order("rating", { ascending: false })
-        .limit(limit)
+        .update({
+          ...businessData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", businessId)
+        .select()
+        .single()
 
       if (error) {
-        console.error("Error fetching featured businesses:", error)
-        return { success: false, error: error.message }
+        console.error("Error updating business:", error)
+        throw error
       }
 
-      return { success: true, data: data || [] }
-    } catch (error: any) {
-      console.error("Error in getFeaturedBusinesses:", error)
-      return { success: false, error: error.message }
+      return data
+    } catch (error) {
+      console.error("Error in updateBusiness:", error)
+      throw error
     }
-  }
+  },
 
-  // Helper method to get recently added businesses
-  async getRecentBusinesses(limit = 10): Promise<BusinessResponse> {
+  // Delete business
+  deleteBusiness: async (businessId: string, userId: string): Promise<void> => {
     try {
-      const { data, error } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("verified", true)
-        .order("created_at", { ascending: false })
-        .limit(limit)
+      const { error } = await supabase.from("businesses").delete().eq("id", businessId).eq("owner_id", userId)
 
       if (error) {
-        console.error("Error fetching recent businesses:", error)
-        return { success: false, error: error.message }
+        console.error("Error deleting business:", error)
+        throw error
       }
-
-      return { success: true, data: data || [] }
-    } catch (error: any) {
-      console.error("Error in getRecentBusinesses:", error)
-      return { success: false, error: error.message }
+    } catch (error) {
+      console.error("Error in deleteBusiness:", error)
+      throw error
     }
-  }
+  },
 }
-
-export const businessService = new BusinessService()

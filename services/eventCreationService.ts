@@ -86,6 +86,7 @@ export class EventCreationService {
         title: data.title,
         description: data.description,
         date: data.date,
+        time: data.start_time, // Map start_time to time for compatibility
         start_time: data.start_time,
         end_time: data.end_time,
         location: data.location,
@@ -96,6 +97,7 @@ export class EventCreationService {
         price: data.price,
         max_attendees: data.max_attendees,
         attendee_count: data.attendee_count || 0,
+        current_attendees: data.attendee_count || 0, // Map attendee_count to current_attendees
         created_at: data.created_at,
         updated_at: data.updated_at,
       }
@@ -154,6 +156,7 @@ export class EventCreationService {
         title: data.title,
         description: data.description,
         date: data.date,
+        time: data.start_time, // Map start_time to time for compatibility
         start_time: data.start_time,
         end_time: data.end_time,
         location: data.location,
@@ -164,6 +167,7 @@ export class EventCreationService {
         price: data.price,
         max_attendees: data.max_attendees,
         attendee_count: data.attendee_count || 0,
+        current_attendees: data.attendee_count || 0, // Map attendee_count to current_attendees
         created_at: data.created_at,
         updated_at: data.updated_at,
       }
@@ -302,7 +306,30 @@ export class EventCreationService {
         return { success: false, error: error.message }
       }
 
-      return { success: true, data: data || [] }
+      // Transform data to match Event interface
+      const events: Event[] = (data || []).map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        date: item.date,
+        time: item.start_time,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        location: item.location,
+        organizer_id: item.organizer_id,
+        organizer: item.organizer,
+        category: item.category,
+        tags: item.tags || [],
+        is_free: item.is_free,
+        price: item.price,
+        max_attendees: item.max_attendees,
+        attendee_count: item.attendee_count || 0,
+        current_attendees: item.attendee_count || 0,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+      }))
+
+      return { success: true, data: events }
     } catch (error: any) {
       console.error("Error fetching user events:", error)
       return { success: false, error: error.message }

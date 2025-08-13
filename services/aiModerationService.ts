@@ -1,5 +1,5 @@
 import { storage } from "../lib/storage"
-import type { Post } from "../types"
+import type { Post } from "../types/social"
 
 export interface ModerationResult {
   isApproved: boolean
@@ -113,7 +113,7 @@ export const aiModerationService = {
     const textResult = await aiModerationService.moderateText(post.content)
 
     // Additional checks for posts
-    if (post.tags.some((tag) => tag.toLowerCase().includes("spam"))) {
+    if (post.tags.some((tag: string) => tag.toLowerCase().includes("spam"))) {
       textResult.flaggedReasons.push("Spam Tags")
       textResult.suggestedAction = "review"
       textResult.isApproved = false
@@ -162,9 +162,9 @@ export const aiModerationService = {
   getModerationStats: async (): Promise<ModerationStats> => {
     try {
       const stats = await storage.getItem<ModerationStats>("moderation_stats")
-      
+
       // If stats is null/undefined or doesn't have all required properties, return default
-      if (!stats || typeof stats !== 'object') {
+      if (!stats || typeof stats !== "object") {
         return defaultStats
       }
 
@@ -196,7 +196,7 @@ export const aiModerationService = {
   },
 
   // Increment specific stat counter
-  incrementStat: async (statType: keyof ModerationStats, increment: number = 1): Promise<void> => {
+  incrementStat: async (statType: keyof ModerationStats, increment = 1): Promise<void> => {
     try {
       const currentStats = await aiModerationService.getModerationStats()
       const updatedStats = {

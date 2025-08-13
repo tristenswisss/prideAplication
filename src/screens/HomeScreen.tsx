@@ -77,11 +77,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const loadBusinesses = async () => {
     try {
       setLoading(true)
-      const response = await businessService.getAllBusinesses()
-      
-      if (response.success && response.data) {
-        setBusinesses(response.data)
-        setFilteredBusinesses(response.data) // Initialize filtered businesses
+      const response = await businessService.getBusinesses()
+
+      if (response.success && response.businesses) {
+        setBusinesses(response.businesses)
+        setFilteredBusinesses(response.businesses) // Initialize filtered businesses
       } else {
         console.error("Error loading businesses:", response.error)
         Alert.alert("Error", response.error || "Failed to load businesses")
@@ -101,16 +101,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       let filtered: Business[] = []
 
       if (searchQuery.trim()) {
-        const response = await businessService.searchBusinesses(searchQuery)
-        if (response.success && response.data) {
-          filtered = response.data
+        const response = await businessService.searchBusinesses({ query: searchQuery })
+        if (response.success && response.businesses) {
+          filtered = response.businesses
         }
       } else if (selectedCategory === "all") {
         filtered = businesses
       } else {
         const response = await businessService.getBusinessesByCategory(selectedCategory)
-        if (response.success && response.data) {
-          filtered = response.data
+        if (response.success && response.businesses) {
+          filtered = response.businesses
         }
       }
 
@@ -174,7 +174,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TouchableOpacity style={styles.searchInputTouchable} onPress={() => navigation.navigate("Search")}>
+          <TouchableOpacity style={styles.searchInputTouchable} onPress={() => navigation.navigate("HomeMain")}>
             <Text style={styles.searchPlaceholder}>
               {isOfflineMode ? "Search offline..." : "Search safe places..."}
             </Text>
@@ -213,10 +213,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           {categories.map((category) => (
             <TouchableOpacity
               key={category.id}
-              style={[
-                styles.categoryTab,
-                selectedCategory === category.id && { backgroundColor: category.color },
-              ]}
+              style={[styles.categoryTab, selectedCategory === category.id && { backgroundColor: category.color }]}
               onPress={() => setSelectedCategory(category.id)}
             >
               <MaterialIcons
@@ -254,26 +251,28 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               showsUserLocation={true}
               showsMyLocationButton={false}
             >
-              {filteredBusinesses && filteredBusinesses.length > 0 && filteredBusinesses.map((business) => {
-                // Only render markers for businesses with valid coordinates
-                if (!business.latitude || !business.longitude) {
-                  return null
-                }
-                
-                return (
-                  <Marker
-                    key={business.id}
-                    coordinate={{
-                      latitude: business.latitude,
-                      longitude: business.longitude,
-                    }}
-                    pinColor={getMarkerColor(business)}
-                    title={business.name}
-                    description={business.description}
-                    onPress={() => navigation.navigate("BusinessDetails", { business })}
-                  />
-                )
-              })}
+              {filteredBusinesses &&
+                filteredBusinesses.length > 0 &&
+                filteredBusinesses.map((business) => {
+                  // Only render markers for businesses with valid coordinates
+                  if (!business.latitude || !business.longitude) {
+                    return null
+                  }
+
+                  return (
+                    <Marker
+                      key={business.id}
+                      coordinate={{
+                        latitude: business.latitude,
+                        longitude: business.longitude,
+                      }}
+                      pinColor={getMarkerColor(business)}
+                      title={business.name}
+                      description={business.description}
+                      onPress={() => navigation.navigate("BusinessDetails", { business })}
+                    />
+                  )
+                })}
             </MapView>
           )}
 
@@ -301,12 +300,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <MaterialIcons name="business" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>
-                {loading ? "Loading businesses..." : "No businesses found"}
-              </Text>
-              <Text style={styles.emptySubtext}>
-                {!loading && "Try adjusting your search or category filter"}
-              </Text>
+              <Text style={styles.emptyText}>{loading ? "Loading businesses..." : "No businesses found"}</Text>
+              <Text style={styles.emptySubtext}>{!loading && "Try adjusting your search or category filter"}</Text>
             </View>
           }
         />

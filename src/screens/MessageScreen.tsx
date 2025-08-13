@@ -86,7 +86,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     try {
       // Check if conversation already exists
       const existingConversation = conversations.find(
-        (conv) => conv.participants.includes(targetUser.id) && !conv.is_group,
+        (conv) => conv.participants.some((p) => p.id === targetUser.id) && !conv.is_group,
       )
 
       if (existingConversation) {
@@ -121,7 +121,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     if (conversation.is_group) {
       return conversation.group_name || "Group Chat"
     }
-    const otherParticipant = conversation.participant_profiles?.[0]
+    const otherParticipant = conversation.participants.find((p) => p.id !== user?.id)
     return otherParticipant?.name || "Unknown User"
   }
 
@@ -129,7 +129,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     if (conversation.is_group) {
       return conversation.group_avatar || "/placeholder.svg?height=50&width=50&text=GC"
     }
-    const otherParticipant = conversation.participant_profiles?.[0]
+    const otherParticipant = conversation.participants.find((p) => p.id !== user?.id)
     return otherParticipant?.avatar_url || "/placeholder.svg?height=50&width=50&text=U"
   }
 
@@ -140,7 +140,9 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     >
       <View style={styles.avatarContainer}>
         <Image source={{ uri: getConversationAvatar(item) }} style={styles.avatar} />
-        {!item.is_group && item.participant_profiles?.[0]?.is_online && <View style={styles.onlineIndicator} />}
+        {!item.is_group && item.participants.find((p) => p.id !== user?.id)?.is_online && (
+          <View style={styles.onlineIndicator} />
+        )}
       </View>
 
       <View style={styles.conversationContent}>

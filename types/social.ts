@@ -8,16 +8,21 @@ export interface UserProfile {
   bio?: string
   pronouns?: string
   location?: string
-  interests: string[]
+  interests: string[]        // always an array
   verified: boolean
-  follower_count: number
-  following_count: number
-  post_count: number
+  follower_count: number     // always a number
+  following_count: number    // always a number
+  post_count: number         // always a number
+  is_online: boolean       // always a boolean
   created_at: string
-  updated_at: string
+  show_profile?: boolean
+  show_activities?: boolean
+  appear_in_search?: boolean
+  allow_direct_messages?: boolean
+  is_active?: boolean        // optional, defaults to true if not provided
+  last_seen_at?: string      // optional, used for online status tracking
 }
 
-export type Business = {}
 
 export interface Post {
   id: string
@@ -31,9 +36,9 @@ export interface Post {
     longitude: number
   }
   business_id?: string
-  business?: Business
+  business?: any
   event_id?: string
-  event?: Event
+  event?: any
   likes_count: number
   comments_count: number
   shares_count: number
@@ -73,7 +78,12 @@ export interface SavedPost {
   created_at: string
 }
 
-export type Event = {}
+export interface PostShare {
+  id: string
+  post_id: string
+  user_id: string
+  created_at: string
+}
 
 export interface PushNotification {
   id: string

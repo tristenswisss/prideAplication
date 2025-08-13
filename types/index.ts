@@ -29,15 +29,25 @@ export interface Business {
   id: string
   name: string
   description: string
-  category: "restaurant" | "bar" | "healthcare" | "shopping" | "service" | "hotel" | "entertainment"
+  category:
+    | "restaurant"
+    | "bar"
+    | "healthcare"
+    | "shopping"
+    | "service"
+    | "hotel"
+    | "entertainment"
+    | "transport"
+    | "education"
+    | "finance"
   address: string
-  latitude: number
-  longitude: number
+  latitude?: number
+  longitude?: number
   phone?: string
   website?: string
   image_url?: string
-  rating: number
-  review_count: number
+  rating?: number
+  review_count?: number
   lgbtq_friendly: boolean
   trans_friendly: boolean
   wheelchair_accessible?: boolean
@@ -64,6 +74,7 @@ export interface Event {
   title: string
   description: string
   date: string
+  time: string
   start_time: string
   end_time?: string
   location: string
@@ -73,11 +84,15 @@ export interface Event {
   organizer_id: string
   organizer?: User
   attendee_count: number
+  current_attendees: number
   max_attendees?: number
   category: "celebration" | "networking" | "entertainment" | "education" | "support" | "other"
   tags: string[]
   is_free: boolean
   price?: number
+  is_virtual?: boolean
+  meeting_link?: string
+  is_attending?: boolean
   created_at: string
   updated_at: string
 }
@@ -109,6 +124,43 @@ export interface EventAttendee {
   updated_at: string
 }
 
+export interface Post {
+  id: string
+  user_id: string
+  user?: {
+    id: string
+    name: string
+    username?: string
+    avatar_url?: string
+    verified: boolean
+    email: string
+    follower_count: number
+    following_count: number
+    post_count: number
+    interests: string[]
+    created_at: string
+    updated_at: string
+  }
+  content: string
+  images: string[]
+  location?: {
+    latitude: number
+    longitude: number
+    name?: string
+  }
+  business_id?: string
+  event_id?: string
+  tags: string[]
+  visibility: "public" | "followers" | "private"
+  likes_count: number
+  comments_count: number
+  shares_count: number
+  is_liked: boolean
+  is_saved: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Notification {
   id: string
   user_id: string
@@ -134,20 +186,6 @@ export interface Review {
   would_recommend: boolean
   visit_date?: string
   helpful_count: number
-  created_at: string
-  updated_at: string
-}
-
-export interface Post {
-  id: string
-  content: string
-  image_url?: string
-  user_id: string
-  user?: User
-  likes_count: number
-  comments_count: number
-  shares_count: number
-  tags: string[]
   created_at: string
   updated_at: string
 }

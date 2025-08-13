@@ -1,16 +1,19 @@
-// AuthContext.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { auth } from '../lib/supabase'
+"use client"
+
+import type React from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+import { auth } from "../lib/supabase"
 
 interface User {
   id: string
   email?: string
   name: string
+  avatar_url?: string
   user_metadata?: {
     full_name?: string
   }
   email_confirmed_at?: string
-  [key: string]: any // Allow additional properties
+  [key: string]: any
 }
 
 interface AuthContextType {
@@ -27,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
 }
@@ -41,15 +44,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const getInitialSession = async () => {
       setLoading(true)
       try {
-        const { data: { user }, error } = await auth.getCurrentUser()
+        const {
+          data: { user },
+          error,
+        } = await auth.getCurrentUser()
         if (!error && user) {
           setUser({
             ...user,
-            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+            name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
           })
         }
       } catch (error) {
-        console.error('Error getting initial session:', error)
+        console.error("Error getting initial session:", error)
       } finally {
         setLoading(false)
       }
@@ -58,23 +64,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getInitialSession()
 
     // Listen for auth changes
-    const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email)
-      
-      if (event === 'SIGNED_IN' && session?.user) {
+    const {
+      data: { subscription },
+    } = auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.email)
+
+      if (event === "SIGNED_IN" && session?.user) {
         setUser({
           ...session.user,
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User'
+          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
         })
-      } else if (event === 'SIGNED_OUT' || !session?.user) {
+      } else if (event === "SIGNED_OUT" || !session?.user) {
         setUser(null)
       } else if (session?.user) {
         setUser({
           ...session.user,
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User'
+          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
         })
       }
-      
+
       setLoading(false)
     })
 
@@ -90,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       return {
         data: null,
-        error: { message: 'An unexpected error occurred during sign up' }
+        error: { message: "An unexpected error occurred during sign up" },
       }
     }
   }
@@ -102,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       return {
         data: null,
-        error: { message: 'An unexpected error occurred during sign in' }
+        error: { message: "An unexpected error occurred during sign in" },
       }
     }
   }
@@ -113,23 +121,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null)
       return result
     } catch (error) {
-      return { error: { message: 'An unexpected error occurred during sign out' } }
+      return { error: { message: "An unexpected error occurred during sign out" } }
     }
   }
 
   const refreshUser = async () => {
     try {
-      const { data: { user }, error } = await auth.getCurrentUser()
+      const {
+        data: { user },
+        error,
+      } = await auth.getCurrentUser()
       if (!error && user) {
         setUser({
           ...user,
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+          name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
         })
       } else if (error) {
-        console.error('Error refreshing user:', error)
+        console.error("Error refreshing user:", error)
       }
     } catch (error) {
-      console.error('Error refreshing user:', error)
+      console.error("Error refreshing user:", error)
     }
   }
 

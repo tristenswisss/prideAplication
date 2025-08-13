@@ -15,8 +15,9 @@ export interface ImageValidationResult {
 class ImageUploadService {
   private readonly MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
   private readonly ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+  private readonly BUCKET_NAME = "mirae" // Using existing bucket
 
-  // Custom base64 to ArrayBuffer converter to replace base64-arraybuffer
+  // Custom base64 to ArrayBuffer converter
   private base64ToArrayBuffer(base64: string): ArrayBuffer {
     const binaryString = atob(base64)
     const len = binaryString.length
@@ -85,7 +86,7 @@ class ImageUploadService {
     return { valid: true }
   }
 
-  async uploadImage(imageUri: string, userId?: string, folder = "images"): Promise<ImageUploadResult> {
+  async uploadImage(imageUri: string, userId?: string, folder = "posts"): Promise<ImageUploadResult> {
     try {
       console.log("Starting image upload...")
       console.log("Image URI:", imageUri)
@@ -101,7 +102,7 @@ class ImageUploadService {
       // Generate unique filename
       const timestamp = Date.now()
       const randomString = Math.random().toString(36).substring(2, 15)
-      const fileName = `${folder}/${userId || "anonymous"}_${timestamp}_${randomString}.jpg`
+      const fileName = `${folder}/${userId || "anonymous"}/${timestamp}_${randomString}.jpg`
 
       let fileData: ArrayBuffer
 
@@ -111,7 +112,6 @@ class ImageUploadService {
         if (!base64Data) {
           return { success: false, error: "Invalid base64 data" }
         }
-        // Use our custom base64 to ArrayBuffer converter
         fileData = this.base64ToArrayBuffer(base64Data)
       } else {
         // Handle file URI
@@ -134,8 +134,8 @@ class ImageUploadService {
       console.log("File name:", fileName)
       console.log("File size:", fileData.byteLength, "bytes")
 
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage.from("images").upload(fileName, fileData, {
+      // Upload to Supabase Storage using existing "mirae" bucket
+      const { data, error } = await supabase.storage.from(this.BUCKET_NAME).upload(fileName, fileData, {
         contentType: "image/jpeg",
         upsert: true,
       })
@@ -148,7 +148,7 @@ class ImageUploadService {
       console.log("Upload successful:", data)
 
       // Get public URL
-      const { data: urlData } = supabase.storage.from("images").getPublicUrl(fileName)
+      const { data: urlData } = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(fileName)
 
       if (!urlData?.publicUrl) {
         return { success: false, error: "Failed to get public URL" }
@@ -158,7 +158,7 @@ class ImageUploadService {
       return { success: true, url: urlData.publicUrl }
     } catch (error: any) {
       console.error("Error in uploadImage:", error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message || "Unknown error occurred" }
     }
   }
 
@@ -168,9 +168,11 @@ class ImageUploadService {
       const urlParts = imageUrl.split("/")
       const fileName = urlParts[urlParts.length - 1]
       const folder = urlParts[urlParts.length - 2]
-      const filePath = `${folder}/${fileName}`
+      const userId = urlParts[urlParts.length - 3]
+      const category = urlParts[urlParts.length - 4]
+      const filePath = `${category}/${userId}/${fileName}`
 
-      const { error } = await supabase.storage.from("images").remove([filePath])
+      const { error } = await supabase.storage.from(this.BUCKET_NAME).remove([filePath])
 
       if (error) {
         console.error("Error deleting image:", error)
@@ -187,7 +189,7 @@ class ImageUploadService {
   async uploadMultipleImages(
     imageUris: string[],
     userId?: string,
-    folder = "images",
+    folder = "posts",
   ): Promise<{ success: boolean; urls?: string[]; errors?: string[] }> {
     const results = await Promise.all(imageUris.map((uri) => this.uploadImage(uri, userId, folder)))
 
@@ -214,7 +216,7 @@ class ImageUploadService {
       if (!result.canceled && result.assets[0]) {
         return result.assets[0].uri
       }
-      
+
       return imageUri // Return original if compression fails
     } catch (error) {
       console.warn("Image compression failed, using original:", error)
@@ -256,13 +258,10 @@ class ImageUploadService {
         if (!this.isValidImageType(mimeType)) {
           return {
             valid: false,
-            error: `Invalid image type. Allowed types: ${this.ALLOWED_TYPES.join(", ")}`
+            error: `Invalid image type. Allowed types: ${this.ALLOWED_TYPES.join(", ")}`,
           }
         }
       }
-
-      // For file URIs, we can't easily check the mime type without reading the file
-      // This would require additional implementation
 
       return { valid: true }
     } catch (error: any) {
@@ -270,14 +269,13 @@ class ImageUploadService {
     }
   }
 
-  // Helper method to resize image if too large
+  // Helper method to resize image if needed
   async resizeImageIfNeeded(imageUri: string, maxWidth = 1080, maxHeight = 1080): Promise<string> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
-        // Note: ImagePicker doesn't have built-in resize, you might want to use expo-image-manipulator
       })
 
       if (!result.canceled && result.assets[0]) {
