@@ -4,313 +4,227 @@ import { useState, useEffect } from "react"
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
-  TouchableOpacity,
-  Alert,
   SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
   Linking,
-  TextInput,
-  Switch,
+  Alert,
+  RefreshControl,
 } from "react-native"
-import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
-import { safetyService } from "../../services/safetyService"
-import { useAuth } from "../../Contexts/AuthContexts"
-import type { EmergencyContact, SafetyAlert } from "../../services/safetyService"
+import { MaterialIcons } from "@expo/vector-icons"
+import { safeSpacesService, type CrisisContact } from "../../services/safeSpacesService"
 
-export default function SafetyScreen({ navigation }: any) {
-  const { user } = useAuth()
-  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([])
-  const [safetyAlerts, setSafetyAlerts] = useState<SafetyAlert[]>([])
-  const [locationSharing, setLocationSharing] = useState(false)
-  const [emergencyMode, setEmergencyMode] = useState(false)
-  const [reportText, setReportText] = useState("")
-  const [loading, setLoading] = useState(false)
+interface SafetyScreenProps {
+  navigation: any
+}
+
+export default function SafetyScreen({ navigation }: SafetyScreenProps) {
+  const [crisisContacts, setCrisisContacts] = useState<CrisisContact[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [adminEmail, setAdminEmail] = useState<string>("")
 
   useEffect(() => {
-    loadSafetyData()
+    loadCrisisContacts()
+    loadAdminEmail()
   }, [])
 
-  const loadSafetyData = async () => {
-    if (!user) return
-
+  const loadCrisisContacts = async () => {
     try {
-      setLoading(true)
-      const [contacts, alerts] = await Promise.all([
-        safetyService.getEmergencyContacts(user.id),
-        safetyService.getSafetyAlerts(user.id),
-      ])
-      setEmergencyContacts(contacts)
-      setSafetyAlerts(alerts)
+      const response = await safeSpacesService.getCrisisContacts("Zimbabwe")
+      if (response.success && response.data) {
+        setCrisisContacts(response.data)
+      }
     } catch (error) {
-      console.error("Error loading safety data:", error)
+      console.error("Error loading crisis contacts:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleEmergencyCall = () => {
-    Alert.alert("Emergency Call", "Call 911 for immediate emergency assistance?", [
+  const loadAdminEmail = async () => {
+    // In a real app, you'd fetch this from your app settings
+    setAdminEmail("admin@miraeapp.com")
+  }
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await loadCrisisContacts()
+    setRefreshing(false)
+  }
+
+  const handleCall = (phone: string) => {
+    Alert.alert("Make Call", `Do you want to call ${phone}?`, [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Call 911",
-        style: "destructive",
-        onPress: () => Linking.openURL("tel:911"),
+        text: "Call",
+        onPress: () => Linking.openURL(`tel:${phone}`),
       },
     ])
   }
 
-  const handleCrisisHotline = () => {
-    Alert.alert("Crisis Support", "Call LGBTQ+ Crisis Hotline for immediate support?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Call Now",
-        onPress: () => Linking.openURL("tel:1-866-488-7386"),
-      },
-    ])
+  const handleEmail = (email: string) => {
+    Linking.openURL(`mailto:${email}`)
   }
 
-  const handleSafetyCheckIn = async () => {
-    if (!user) return
+  const handleWebsite = (website: string) => {
+    Linking.openURL(website)
+  }
 
-    try {
-      await safetyService.performSafetyCheckIn(user.id, "safe", {
-        latitude: 40.7128,
-        longitude: -74.006,
-      })
-      Alert.alert("Check-in Successful", "Your safety check-in has been recorded.")
-    } catch (error) {
-      Alert.alert("Error", "Failed to perform safety check-in")
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      mental_health: "psychology",
+      health: "local-hospital",
+      youth: "child-care",
+      domestic_violence: "shield",
+      emergency: "emergency",
+      other: "help",
     }
+    return icons[category] || "help"
   }
 
-  const handleReportIncident = async () => {
-    if (!user || !reportText.trim()) {
-      Alert.alert("Error", "Please enter incident details")
-      return
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      mental_health: "#4CAF50",
+      health: "#2196F3",
+      youth: "#FF9800",
+      domestic_violence: "#F44336",
+      emergency: "#FF5722",
+      other: "#9C27B0",
     }
-
-    try {
-      await safetyService.reportIncident(user.id, {
-        type: "harassment",
-        description: reportText,
-        location: "Current Location",
-        anonymous: true,
-      })
-      setReportText("")
-      Alert.alert("Report Submitted", "Your incident report has been submitted anonymously.")
-    } catch (error) {
-      Alert.alert("Error", "Failed to submit report")
-    }
+    return colors[category] || "#9C27B0"
   }
 
-  const toggleEmergencyMode = async () => {
-    const newMode = !emergencyMode
-    setEmergencyMode(newMode)
+  const renderCrisisContact = (contact: CrisisContact) => (
+    <View key={contact.id} style={styles.contactCard}>
+      <View style={styles.contactHeader}>
+        <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(contact.category) }]}>
+          <MaterialIcons name={getCategoryIcon(contact.category) as any} size={24} color="white" />
+        </View>
+        <View style={styles.contactInfo}>
+          <Text style={styles.contactName}>{contact.name}</Text>
+          <Text style={styles.contactDescription}>{contact.description}</Text>
+          <Text style={styles.contactHours}>Available: {contact.available_hours}</Text>
+        </View>
+      </View>
 
-    if (newMode) {
-      Alert.alert(
-        "Emergency Mode Activated",
-        "Your emergency contacts will be notified of your location every 15 minutes.",
-        [{ text: "OK" }],
-      )
-    }
-  }
+      <View style={styles.contactActions}>
+        <TouchableOpacity style={[styles.actionButton, styles.callButton]} onPress={() => handleCall(contact.phone)}>
+          <MaterialIcons name="phone" size={20} color="white" />
+          <Text style={styles.actionButtonText}>Call</Text>
+        </TouchableOpacity>
 
-  const addEmergencyContact = () => {
-    Alert.prompt(
-      "Add Emergency Contact",
-      "Enter contact name and phone number",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Add",
-          onPress: async (input) => {
-            if (input && user) {
-              const [name, phone] = input.split(",").map((s) => s.trim())
-              if (name && phone) {
-                try {
-                  await safetyService.addEmergencyContact(user.id, { name, phone, relationship: "friend" })
-                  loadSafetyData()
-                } catch (error) {
-                  Alert.alert("Error", "Failed to add emergency contact")
-                }
-              }
-            }
-          },
-        },
-      ],
-      "plain-text",
-      "Name, Phone Number",
-    )
-  }
+        {contact.email && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.emailButton]}
+            onPress={() => handleEmail(contact.email!)}
+          >
+            <MaterialIcons name="email" size={20} color="white" />
+            <Text style={styles.actionButtonText}>Email</Text>
+          </TouchableOpacity>
+        )}
+
+        {contact.website && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.websiteButton]}
+            onPress={() => handleWebsite(contact.website!)}
+          >
+            <MaterialIcons name="language" size={20} color="white" />
+            <Text style={styles.actionButtonText}>Website</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.contactDetails}>
+        <Text style={styles.contactPhone}>📞 {contact.phone}</Text>
+        <Text style={styles.contactLanguages}>🗣️ Languages: {contact.languages.join(", ")}</Text>
+        <Text style={styles.contactServices}>🛠️ Services: {contact.services.join(", ")}</Text>
+      </View>
+    </View>
+  )
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+      <LinearGradient colors={["#FF6B6B", "#FF8E53"]} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Safety Center</Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.placeholder} />
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content}>
-        {/* Emergency Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Emergency Actions</Text>
-
-          <View style={styles.emergencyButtons}>
-            <TouchableOpacity style={styles.emergencyButton} onPress={handleEmergencyCall}>
-              <MaterialIcons name="local-hospital" size={32} color="white" />
-              <Text style={styles.emergencyButtonText}>Call 911</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.emergencyButton, styles.crisisButton]} onPress={handleCrisisHotline}>
-              <MaterialIcons name="support-agent" size={32} color="white" />
-              <Text style={styles.emergencyButtonText}>Crisis Hotline</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Safety Features */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Safety Features</Text>
-
-          <TouchableOpacity style={styles.featureCard} onPress={handleSafetyCheckIn}>
-            <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Safety Check-in</Text>
-              <Text style={styles.featureDescription}>Let your contacts know you're safe</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color="#666" />
-          </TouchableOpacity>
-
-          <View style={styles.featureCard}>
-            <MaterialIcons name="location-on" size={24} color="#2196F3" />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Location Sharing</Text>
-              <Text style={styles.featureDescription}>Share location with emergency contacts</Text>
-            </View>
-            <Switch
-              value={locationSharing}
-              onValueChange={setLocationSharing}
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={locationSharing ? "#2196F3" : "#f4f3f4"}
-            />
-          </View>
-
-          <View style={styles.featureCard}>
-            <MaterialIcons name="warning" size={24} color="#FF9800" />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Emergency Mode</Text>
-              <Text style={styles.featureDescription}>Automatic location updates every 15 min</Text>
-            </View>
-            <Switch
-              value={emergencyMode}
-              onValueChange={toggleEmergencyMode}
-              trackColor={{ false: "#767577", true: "#ffb74d" }}
-              thumbColor={emergencyMode ? "#FF9800" : "#f4f3f4"}
-            />
-          </View>
-        </View>
-
-        {/* Emergency Contacts */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Emergency Contacts</Text>
-            <TouchableOpacity onPress={addEmergencyContact}>
-              <MaterialIcons name="add" size={24} color="#FF6B6B" />
-            </TouchableOpacity>
-          </View>
-
-          {emergencyContacts.length > 0 ? (
-            emergencyContacts.map((contact) => (
-              <View key={contact.id} style={styles.contactCard}>
-                <MaterialIcons name="person" size={24} color="#666" />
-                <View style={styles.contactInfo}>
-                  <Text style={styles.contactName}>{contact.name}</Text>
-                  <Text style={styles.contactPhone}>{contact.phone}</Text>
-                </View>
-                <TouchableOpacity onPress={() => Linking.openURL(`tel:${contact.phone}`)}>
-                  <MaterialIcons name="phone" size={24} color="#4CAF50" />
-                </TouchableOpacity>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>No emergency contacts added yet</Text>
-          )}
-        </View>
-
-        {/* Report Incident */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Report Incident</Text>
-          <Text style={styles.sectionDescription}>
-            Report safety incidents anonymously to help keep our community safe
+      <ScrollView
+        style={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {/* Emergency Notice */}
+        <View style={styles.emergencyNotice}>
+          <MaterialIcons name="warning" size={24} color="#FF5722" />
+          <Text style={styles.emergencyText}>
+            If you are in immediate danger, please contact local emergency services or call 999 in Zimbabwe.
           </Text>
-
-          <TextInput
-            style={styles.reportInput}
-            placeholder="Describe the incident..."
-            multiline
-            numberOfLines={4}
-            value={reportText}
-            onChangeText={setReportText}
-            textAlignVertical="top"
-          />
-
-          <TouchableOpacity style={styles.reportButton} onPress={handleReportIncident}>
-            <Text style={styles.reportButtonText}>Submit Anonymous Report</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Safety Alerts */}
+        {/* Admin Contact */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Safety Alerts</Text>
+          <Text style={styles.sectionTitle}>App Support</Text>
+          <View style={styles.adminCard}>
+            <MaterialIcons name="support-agent" size={24} color="#2196F3" />
+            <View style={styles.adminInfo}>
+              <Text style={styles.adminTitle}>Mirae Support Team</Text>
+              <Text style={styles.adminDescription}>For app-related issues, feedback, or general support</Text>
+            </View>
+            <TouchableOpacity style={styles.adminButton} onPress={() => handleEmail(adminEmail)}>
+              <MaterialIcons name="email" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          {safetyAlerts.length > 0 ? (
-            safetyAlerts.slice(0, 3).map((alert) => (
-              <View key={alert.id} style={styles.alertCard}>
-                <MaterialIcons
-                  name={alert.severity === "high" ? "warning" : "info"}
-                  size={20}
-                  color={alert.severity === "high" ? "#FF5722" : "#2196F3"}
-                />
-                <View style={styles.alertContent}>
-                  <Text style={styles.alertTitle}>{alert.title}</Text>
-                  <Text style={styles.alertDescription}>{alert.description}</Text>
-                  <Text style={styles.alertTime}>{new Date(alert.created_at).toLocaleDateString()}</Text>
-                </View>
-              </View>
-            ))
+        {/* Crisis Contacts */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Crisis Support Contacts</Text>
+          <Text style={styles.sectionSubtitle}>Professional support services available in Zimbabwe</Text>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading crisis contacts...</Text>
+            </View>
+          ) : crisisContacts.length > 0 ? (
+            crisisContacts.map(renderCrisisContact)
           ) : (
-            <Text style={styles.emptyText}>No recent safety alerts</Text>
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="info" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No crisis contacts available</Text>
+            </View>
           )}
         </View>
 
-        {/* Safety Resources */}
+        {/* Safety Tips */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Safety Resources</Text>
-
-          <TouchableOpacity style={styles.resourceCard}>
-            <MaterialIcons name="book" size={24} color="#4CAF50" />
-            <View style={styles.resourceContent}>
-              <Text style={styles.resourceTitle}>Safety Guide</Text>
-              <Text style={styles.resourceDescription}>Tips for staying safe in LGBTQ+ spaces</Text>
+          <Text style={styles.sectionTitle}>Safety Tips</Text>
+          <View style={styles.tipsContainer}>
+            <View style={styles.tipItem}>
+              <MaterialIcons name="location-on" size={20} color="#4CAF50" />
+              <Text style={styles.tipText}>Share your location with trusted friends when meeting new people</Text>
             </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.resourceCard}>
-            <MaterialIcons name="group" size={24} color="#2196F3" />
-            <View style={styles.resourceContent}>
-              <Text style={styles.resourceTitle}>Support Groups</Text>
-              <Text style={styles.resourceDescription}>Find local LGBTQ+ support groups</Text>
+            <View style={styles.tipItem}>
+              <MaterialIcons name="people" size={20} color="#4CAF50" />
+              <Text style={styles.tipText}>Meet in public places for first-time meetings</Text>
             </View>
-          </TouchableOpacity>
+            <View style={styles.tipItem}>
+              <MaterialIcons name="phone" size={20} color="#4CAF50" />
+              <Text style={styles.tipText}>Keep emergency contacts easily accessible</Text>
+            </View>
+            <View style={styles.tipItem}>
+              <MaterialIcons name="security" size={20} color="#4CAF50" />
+              <Text style={styles.tipText}>Trust your instincts and leave if you feel unsafe</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -323,105 +237,113 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    paddingTop: 20,
+    paddingTop: 40,
     paddingBottom: 20,
-    paddingHorizontal: 20,
   },
   headerContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
+  backButton: {
+    padding: 8,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: "white",
+    flex: 1,
+    textAlign: "center",
+  },
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
-    padding: 20,
+  },
+  emergencyNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF3E0",
+    margin: 20,
+    padding: 15,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF5722",
+  },
+  emergencyText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: "#E65100",
+    fontWeight: "500",
   },
   section: {
-    marginBottom: 25,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
+    backgroundColor: "white",
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 10,
+    padding: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 15,
+    marginBottom: 5,
   },
-  sectionDescription: {
+  sectionSubtitle: {
     fontSize: 14,
     color: "#666",
     marginBottom: 15,
-    lineHeight: 20,
   },
-  emergencyButtons: {
+  adminCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  emergencyButton: {
-    backgroundColor: "#FF5722",
-    flex: 0.48,
-    padding: 20,
-    borderRadius: 15,
     alignItems: "center",
-    justifyContent: "center",
-  },
-  crisisButton: {
-    backgroundColor: "#9C27B0",
-  },
-  emergencyButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    marginTop: 8,
-    fontSize: 14,
-  },
-  featureCard: {
-    backgroundColor: "white",
+    backgroundColor: "#F8F9FA",
     padding: 15,
     borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
   },
-  featureContent: {
+  adminInfo: {
     flex: 1,
     marginLeft: 15,
   },
-  featureTitle: {
+  adminTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
-    marginBottom: 4,
   },
-  featureDescription: {
+  adminDescription: {
     fontSize: 14,
     color: "#666",
+    marginTop: 2,
+  },
+  adminButton: {
+    backgroundColor: "#2196F3",
+    padding: 10,
+    borderRadius: 20,
   },
   contactCard: {
-    backgroundColor: "white",
-    padding: 15,
+    backgroundColor: "#F8F9FA",
     borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+  },
+  contactHeader: {
     flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 15,
+  },
+  categoryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   contactInfo: {
     flex: 1,
@@ -429,99 +351,98 @@ const styles = StyleSheet.create({
   },
   contactName: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "bold",
     color: "#333",
     marginBottom: 4,
+  },
+  contactDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 4,
+  },
+  contactHours: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "500",
+  },
+  contactActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 15,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 80,
+    justifyContent: "center",
+  },
+  callButton: {
+    backgroundColor: "#4CAF50",
+  },
+  emailButton: {
+    backgroundColor: "#2196F3",
+  },
+  websiteButton: {
+    backgroundColor: "#FF9800",
+  },
+  actionButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 5,
+  },
+  contactDetails: {
+    borderTopWidth: 1,
+    borderTopColor: "#E9ECEF",
+    paddingTop: 15,
   },
   contactPhone: {
     fontSize: 14,
-    color: "#666",
-  },
-  reportInput: {
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    fontSize: 16,
-    marginBottom: 15,
-    minHeight: 100,
-  },
-  reportButton: {
-    backgroundColor: "#FF6B6B",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  reportButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  alertCard: {
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  alertContent: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  alertTitle: {
-    fontSize: 16,
-    fontWeight: "600",
     color: "#333",
-    marginBottom: 4,
+    marginBottom: 5,
   },
-  alertDescription: {
+  contactLanguages: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 4,
+    marginBottom: 5,
   },
-  alertTime: {
-    fontSize: 12,
-    color: "#999",
-  },
-  resourceCard: {
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  resourceContent: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  resourceTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  resourceDescription: {
+  contactServices: {
     fontSize: 14,
     color: "#666",
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#999",
-    textAlign: "center",
-    fontStyle: "italic",
-    padding: 20,
+    marginTop: 10,
+  },
+  tipsContainer: {
+    marginTop: 10,
+  },
+  tipItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 15,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+    marginLeft: 10,
+    lineHeight: 20,
   },
 })

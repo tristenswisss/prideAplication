@@ -11,257 +11,213 @@ import {
   TextInput,
   Alert,
   Switch,
-  Image,
-  Platform,
 } from "react-native"
+import DateTimePicker from "@react-native-community/datetimepicker"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
-import DateTimePicker from "@react-native-community/datetimepicker"
+import { useAuth } from "../../Contexts/AuthContexts"
 import { eventCreationService } from "../../services/eventCreationService"
-import { imageUploadService } from "../../services/imageUploadService"
 import type { CreateEventScreenProps } from "../../types/navigation"
 
 export default function CreateEventScreen({ navigation }: CreateEventScreenProps) {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+
+  // Form state
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    date: new Date(),
-    endDate: new Date(),
     location: "",
-    category: "",
-    isVirtual: false,
-    isTicketed: false,
-    ticketPrice: 0,
-    maxAttendees: 100,
+    category: "other" as const,
     tags: [] as string[],
+    is_free: true,
+    price: undefined as number | undefined,
+    max_attendees: undefined as number | undefined,
+    requires_approval: false,
+    is_virtual: false,
+    virtual_link: "",
+    isTicketed: false,
   })
-  const [eventImage, setEventImage] = useState<string | null>(null)
 
+  // Date and time state
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [startTime, setStartTime] = useState(new Date())
+  const [endTime, setEndTime] = useState(new Date(Date.now() + 2 * 60 * 60 * 1000)) // 2 hours later
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [tagInput, setTagInput] = useState("")
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false)
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false)
 
-  const categories = eventCreationService.getEventCategories()
-  const popularTags = eventCreationService.getPopularTags()
+  const categories = [
+    { id: "celebration", name: "Celebration", icon: "celebration" },
+    { id: "networking", name: "Networking", icon: "people" },
+    { id: "entertainment", name: "Entertainment", icon: "music-note" },
+    { id: "education", name: "Education", icon: "school" },
+    { id: "support", name: "Support", icon: "favorite" },
+    { id: "other", name: "Other", icon: "more-horiz" },
+  ]
 
-  const handlePickImage = async () => {
-    try {
-      const image = await imageUploadService.pickImage()
-      if (image) {
-        setEventImage(image.uri)
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to pick image")
+  const availableTags = [
+    "LGBTQ+",
+    "Trans Friendly",
+    "All Ages",
+    "18+",
+    "21+",
+    "Wheelchair Accessible",
+    "Free Food",
+    "Networking",
+    "Educational",
+    "Social",
+    "Outdoor",
+    "Indoor",
+  ]
+
+  // Date picker handlers with proper null checking
+  const onDateChange = (event: any, date?: Date) => {
+    setShowDatePicker(false)
+    if (event && event.type === "set" && date) {
+      setSelectedDate(date)
     }
   }
 
-  const handleTakePhoto = async () => {
-    try {
-      const image = await imageUploadService.takePhoto()
-      if (image) {
-        setEventImage(image.uri)
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to take photo")
+  const onStartTimeChange = (event: any, time?: Date) => {
+    setShowStartTimePicker(false)
+    if (event && event.type === "set" && time) {
+      setStartTime(time)
     }
   }
 
-  const handleCreateEvent = async () => {
-    const validation = eventCreationService.validateEventData({
-      ...formData,
-      date: formData.date.toISOString(),
-      endDate: formData.endDate.toISOString(),
-    })
+  const onEndTimeChange = (event: any, time?: Date) => {
+    setShowEndTimePicker(false)
+    if (event && event.type === "set" && time) {
+      setEndTime(time)
+    }
+  }
 
-    if (!validation.isValid) {
-      Alert.alert("Validation Error", validation.errors.join("\n"))
+  const toggleTag = (tag: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(tag) ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag],
+    }))
+  }
+
+  const validateForm = (): boolean => {
+    if (!formData.title.trim()) {
+      Alert.alert("Error", "Event title is required")
+      return false
+    }
+
+    if (!formData.description.trim()) {
+      Alert.alert("Error", "Event description is required")
+      return false
+    }
+
+    if (!formData.location.trim() && !formData.is_virtual) {
+      Alert.alert("Error", "Event location is required for in-person events")
+      return false
+    }
+
+    if (formData.is_virtual && !formData.virtual_link.trim()) {
+      Alert.alert("Error", "Virtual link is required for virtual events")
+      return false
+    }
+
+    if (!formData.is_free && (!formData.price || formData.price <= 0)) {
+      Alert.alert("Error", "Price is required for paid events")
+      return false
+    }
+
+    if (formData.max_attendees && formData.max_attendees <= 0) {
+      Alert.alert("Error", "Maximum attendees must be greater than 0")
+      return false
+    }
+
+    if (startTime >= endTime) {
+      Alert.alert("Error", "End time must be after start time")
+      return false
+    }
+
+    return true
+  }
+
+  const handleSubmit = async () => {
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to create an event")
       return
     }
 
-    setLoading(true)
+    if (!validateForm()) {
+      return
+    }
+
     try {
-      // Upload image if selected
-      let imageUrl = ""
-      if (eventImage) {
-        imageUrl = await imageUploadService.uploadImage(eventImage)
+      setLoading(true)
+
+      // Format date and time strings
+      const eventDate = selectedDate.toISOString().split("T")[0]
+      const startTimeString = startTime.toTimeString().split(" ")[0]
+      const endTimeString = endTime.toTimeString().split(" ")[0]
+
+      const eventData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        date: eventDate,
+        start_time: startTimeString,
+        end_time: endTimeString,
+        location: formData.is_virtual ? "Virtual Event" : formData.location.trim(),
+        organizer_id: user.id,
+        category: formData.category,
+        tags: formData.tags,
+        is_free: formData.is_free,
+        price: formData.is_free ? undefined : formData.price,
+        max_attendees: formData.max_attendees,
+        requires_approval: formData.requires_approval,
+        isVirtual: formData.is_virtual,
+        virtual_link: formData.is_virtual ? formData.virtual_link.trim() : undefined,
+        isTicketed: formData.isTicketed,
       }
 
-      await eventCreationService.createEvent({
-        ...formData,
-        date: formData.date.toISOString(),
-        endDate: formData.endDate.toISOString(),
-        imageUrl: imageUrl || "",
-      })
+      console.log("Creating event with data:", eventData)
 
-      Alert.alert("Success", "Event created successfully!", [{ text: "OK", onPress: () => navigation.goBack() }])
-    } catch (error) {
-      Alert.alert("Error", "Failed to create event. Please try again.")
+      const result = await eventCreationService.createEvent(eventData)
+
+      if (result.success && result.event) {
+        Alert.alert("Success", "Event created successfully!", [
+          {
+            text: "OK",
+            onPress: () => {
+              navigation.goBack()
+              // Optionally navigate to the event details
+              // navigation.navigate("EventDetails", { event: result.event })
+            },
+          },
+        ])
+      } else {
+        Alert.alert("Error", result.error || "Failed to create event")
+      }
+    } catch (error: any) {
+      console.error("Error creating event:", error)
+      Alert.alert("Error", error.message || "Failed to create event")
     } finally {
       setLoading(false)
     }
   }
 
-  // Fixed date picker handlers with proper error handling
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    console.log('Date picker event:', event?.type, selectedDate);
-    
-    // Handle Android behavior - always hide picker first
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    
-    // Handle user dismissal or cancellation
-    if (!event || event.type === 'dismissed' || event.type === 'neutralButtonPressed') {
-      if (Platform.OS === 'ios') {
-        setShowDatePicker(false);
-      }
-      return;
-    }
-
-    // Only update date if we have a valid selection
-    if (selectedDate && event.type === 'set') {
-      setFormData((prev) => ({ ...prev, date: selectedDate }));
-    }
-    
-    // Hide picker on iOS after successful selection
-    if (Platform.OS === 'ios' && event.type === 'set') {
-      setShowDatePicker(false);
-    }
-  };
-
-  const onEndDateChange = (event: any, selectedDate?: Date) => {
-    console.log('End date picker event:', event?.type, selectedDate);
-    
-    // Handle Android behavior - always hide picker first
-    if (Platform.OS === 'android') {
-      setShowEndDatePicker(false);
-    }
-    
-    // Handle user dismissal or cancellation
-    if (!event || event.type === 'dismissed' || event.type === 'neutralButtonPressed') {
-      if (Platform.OS === 'ios') {
-        setShowEndDatePicker(false);
-      }
-      return;
-    }
-
-    // Only update date if we have a valid selection
-    if (selectedDate && event.type === 'set') {
-      setFormData((prev) => ({ ...prev, endDate: selectedDate }));
-    }
-    
-    // Hide picker on iOS after successful selection
-    if (Platform.OS === 'ios' && event.type === 'set') {
-      setShowEndDatePicker(false);
-    }
-  };
-
-  const showStartDatePicker = () => {
-    try {
-      // Ensure we're not already showing another picker
-      if (showEndDatePicker) {
-        setShowEndDatePicker(false);
-      }
-      setShowDatePicker(true);
-    } catch (error) {
-      console.warn('Error showing start date picker:', error);
-      Alert.alert('Error', 'Unable to open date picker. Please try again.');
-    }
-  };
-
-  const showEndDatePickerHandler = () => {
-    try {
-      // Ensure we're not already showing another picker
-      if (showDatePicker) {
-        setShowDatePicker(false);
-      }
-      setShowEndDatePicker(true);
-    } catch (error) {
-      console.warn('Error showing end date picker:', error);
-      Alert.alert('Error', 'Unable to open date picker. Please try again.');
-    }
-  };
-
-  const addTag = (tag: string) => {
-    if (tag.trim() && !formData.tags.includes(tag.trim().toLowerCase())) {
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...prev.tags, tag.trim().toLowerCase()],
-      }))
-    }
-    setTagInput("")
-  }
-
-  const removeTag = (tagToRemove: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToRemove),
-    }))
-  }
-
-  const renderCategoryOption = (category: string) => (
-    <TouchableOpacity
-      key={category}
-      style={[styles.categoryOption, formData.category === category && styles.selectedCategoryOption]}
-      onPress={() => setFormData((prev) => ({ ...prev, category }))}
-    >
-      <Text style={[styles.categoryOptionText, formData.category === category && styles.selectedCategoryOptionText]}>
-        {category.charAt(0).toUpperCase() + category.slice(1)}
-      </Text>
-    </TouchableOpacity>
-  )
-
-  const renderPopularTag = (tag: string) => (
-    <TouchableOpacity
-      key={tag}
-      style={[styles.popularTag, formData.tags.includes(tag) && styles.selectedPopularTag]}
-      onPress={() => (formData.tags.includes(tag) ? removeTag(tag) : addTag(tag))}
-    >
-      <Text style={[styles.popularTagText, formData.tags.includes(tag) && styles.selectedPopularTagText]}>#{tag}</Text>
-    </TouchableOpacity>
-  )
-
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create Event</Text>
-          <TouchableOpacity onPress={handleCreateEvent} style={styles.createButton} disabled={loading}>
+          <TouchableOpacity onPress={handleSubmit} style={styles.createButton} disabled={loading}>
             <Text style={styles.createButtonText}>{loading ? "Creating..." : "Create"}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Event Image */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Event Image</Text>
-          <View style={styles.imageContainer}>
-            {eventImage ? (
-              <Image source={{ uri: eventImage }} style={styles.eventImage} />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <MaterialIcons name="image" size={40} color="#ccc" />
-                <Text style={styles.imagePlaceholderText}>No image selected</Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.imageActions}>
-            <TouchableOpacity style={styles.imageButton} onPress={handlePickImage}>
-              <MaterialIcons name="photo-library" size={20} color="#FF6B6B" />
-              <Text style={styles.imageButtonText}>Choose Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.imageButton} onPress={handleTakePhoto}>
-              <MaterialIcons name="camera-alt" size={20} color="#FF6B6B" />
-              <Text style={styles.imageButtonText}>Take Photo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Basic Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
@@ -291,35 +247,60 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.sectionTitle}>Category *</Text>
-            <View style={styles.categoryContainer}>{categories.map(renderCategoryOption)}</View>
+            <Text style={styles.inputLabel}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[styles.categoryButton, formData.category === category.id && styles.selectedCategory]}
+                  onPress={() => setFormData((prev) => ({ ...prev, category: category.id as any }))}
+                >
+                  <MaterialIcons
+                    name={category.icon as any}
+                    size={20}
+                    color={formData.category === category.id ? "white" : "#666"}
+                  />
+                  <Text style={[styles.categoryText, formData.category === category.id && styles.selectedCategoryText]}>
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </View>
 
-        {/* Date & Time */}
+        {/* Date and Time */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Date & Time</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Start Date & Time *</Text>
-            <TouchableOpacity style={styles.dateButton} onPress={showStartDatePicker}>
+            <Text style={styles.inputLabel}>Event Date</Text>
+            <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
               <MaterialIcons name="event" size={20} color="#666" />
-              <Text style={styles.dateButtonText}>
-                {formData.date.toLocaleDateString()} at{" "}
-                {formData.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </Text>
+              <Text style={styles.dateButtonText}>{selectedDate.toLocaleDateString()}</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>End Date & Time</Text>
-            <TouchableOpacity style={styles.dateButton} onPress={showEndDatePickerHandler}>
-              <MaterialIcons name="event" size={20} color="#666" />
-              <Text style={styles.dateButtonText}>
-                {formData.endDate.toLocaleDateString()} at{" "}
-                {formData.endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.timeRow}>
+            <View style={styles.timeInputGroup}>
+              <Text style={styles.inputLabel}>Start Time</Text>
+              <TouchableOpacity style={styles.timeButton} onPress={() => setShowStartTimePicker(true)}>
+                <MaterialIcons name="access-time" size={20} color="#666" />
+                <Text style={styles.timeButtonText}>
+                  {startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.timeInputGroup}>
+              <Text style={styles.inputLabel}>End Time</Text>
+              <TouchableOpacity style={styles.timeButton} onPress={() => setShowEndTimePicker(true)}>
+                <MaterialIcons name="access-time" size={20} color="#666" />
+                <Text style={styles.timeButtonText}>
+                  {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -327,87 +308,106 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
 
-          <View style={styles.switchContainer}>
+          <View style={styles.switchRow}>
             <Text style={styles.switchLabel}>Virtual Event</Text>
             <Switch
-              value={formData.isVirtual}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, isVirtual: value }))}
-              trackColor={{ false: "#ddd", true: "#FF6B6B" }}
-              thumbColor="white"
+              value={formData.is_virtual}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, is_virtual: value }))}
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={formData.is_virtual ? "#f5dd4b" : "#f4f3f4"}
             />
           </View>
 
-          {!formData.isVirtual && (
+          {formData.is_virtual ? (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Venue/Address *</Text>
+              <Text style={styles.inputLabel}>Virtual Link *</Text>
               <TextInput
                 style={styles.input}
-                value={formData.location}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
-                placeholder="Enter venue name or address"
+                value={formData.virtual_link}
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, virtual_link: text }))}
+                placeholder="Enter meeting link (Zoom, Teams, etc.)"
+                keyboardType="url"
               />
             </View>
-          )}
-
-          {formData.isVirtual && (
+          ) : (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Virtual Meeting Link</Text>
+              <Text style={styles.inputLabel}>Venue Address *</Text>
               <TextInput
                 style={styles.input}
                 value={formData.location}
                 onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
-                placeholder="Zoom, Google Meet, or other platform link"
-                keyboardType="url"
+                placeholder="Enter venue address"
               />
             </View>
           )}
         </View>
 
-        {/* Ticketing */}
+        {/* Pricing */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ticketing</Text>
+          <Text style={styles.sectionTitle}>Pricing</Text>
 
-          <View style={styles.switchContainer}>
-            <Text style={styles.switchLabel}>Ticketed Event</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Free Event</Text>
             <Switch
-              value={formData.isTicketed}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, isTicketed: value }))}
-              trackColor={{ false: "#ddd", true: "#FF6B6B" }}
-              thumbColor="white"
+              value={formData.is_free}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, is_free: value, price: value ? undefined : prev.price }))
+              }
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={formData.is_free ? "#f5dd4b" : "#f4f3f4"}
             />
           </View>
 
-          {formData.isTicketed && (
+          {!formData.is_free && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Ticket Price ($)</Text>
+              <Text style={styles.inputLabel}>Ticket Price *</Text>
               <TextInput
                 style={styles.input}
-                value={formData.ticketPrice.toString()}
+                value={formData.price?.toString() || ""}
                 onChangeText={(text) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    ticketPrice: Number.parseFloat(text) || 0,
-                  }))
+                  setFormData((prev) => ({ ...prev, price: text ? Number.parseFloat(text) : undefined }))
                 }
-                placeholder="0.00"
+                placeholder="Enter ticket price"
                 keyboardType="numeric"
               />
             </View>
           )}
 
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Ticketed Event</Text>
+            <Switch
+              value={formData.isTicketed}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, isTicketed: value }))}
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={formData.isTicketed ? "#f5dd4b" : "#f4f3f4"}
+            />
+          </View>
+        </View>
+
+        {/* Event Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Event Settings</Text>
+
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Maximum Attendees</Text>
+            <Text style={styles.inputLabel}>Maximum Attendees (Optional)</Text>
             <TextInput
               style={styles.input}
-              value={formData.maxAttendees.toString()}
+              value={formData.max_attendees?.toString() || ""}
               onChangeText={(text) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  maxAttendees: Number.parseInt(text) || 100,
-                }))
+                setFormData((prev) => ({ ...prev, max_attendees: text ? Number.parseInt(text) : undefined }))
               }
-              placeholder="100"
+              placeholder="Leave blank for unlimited"
               keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Require Approval to Join</Text>
+            <Switch
+              value={formData.requires_approval}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, requires_approval: value }))}
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={formData.requires_approval ? "#f5dd4b" : "#f4f3f4"}
             />
           </View>
         </View>
@@ -415,67 +415,37 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
         {/* Tags */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tags</Text>
-          <Text style={styles.sectionSubtitle}>Help people discover your event</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Add Custom Tag</Text>
-            <View style={styles.tagInputContainer}>
-              <TextInput
-                style={styles.tagInput}
-                value={tagInput}
-                onChangeText={setTagInput}
-                placeholder="Enter tag and press +"
-                onSubmitEditing={() => addTag(tagInput)}
-              />
-              <TouchableOpacity style={styles.addTagButton} onPress={() => addTag(tagInput)}>
-                <MaterialIcons name="add" size={20} color="white" />
+          <Text style={styles.sectionSubtitle}>Select tags that describe your event</Text>
+          <View style={styles.tagsContainer}>
+            {availableTags.map((tag) => (
+              <TouchableOpacity
+                key={tag}
+                style={[styles.tagButton, formData.tags.includes(tag) && styles.selectedTag]}
+                onPress={() => toggleTag(tag)}
+              >
+                <Text style={[styles.tagText, formData.tags.includes(tag) && styles.selectedTagText]}>{tag}</Text>
               </TouchableOpacity>
-            </View>
+            ))}
           </View>
-
-          <Text style={styles.inputLabel}>Popular Tags</Text>
-          <View style={styles.popularTagsContainer}>{popularTags.map(renderPopularTag)}</View>
-
-          {formData.tags.length > 0 && (
-            <View style={styles.selectedTagsContainer}>
-              <Text style={styles.inputLabel}>Selected Tags</Text>
-              <View style={styles.selectedTags}>
-                {formData.tags.map((tag) => (
-                  <View key={tag} style={styles.selectedTag}>
-                    <Text style={styles.selectedTagText}>#{tag}</Text>
-                    <TouchableOpacity onPress={() => removeTag(tag)}>
-                      <MaterialIcons name="close" size={16} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
         </View>
       </ScrollView>
 
-      {/* Fixed Date Pickers with better error handling */}
+      {/* Date Time Pickers */}
       {showDatePicker && (
         <DateTimePicker
-          value={formData.date}
-          mode="datetime"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          value={selectedDate}
+          mode="date"
+          display="default"
           onChange={onDateChange}
           minimumDate={new Date()}
-          is24Hour={true}
         />
       )}
 
-      {showEndDatePicker && (
-        <DateTimePicker
-          value={formData.endDate}
-          mode="datetime"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onEndDateChange}
-          minimumDate={formData.date}
-          is24Hour={true}
-        />
+      {showStartTimePicker && (
+        <DateTimePicker value={startTime} mode="time" display="default" onChange={onStartTimeChange} />
       )}
+
+      {showEndTimePicker && <DateTimePicker value={endTime} mode="time" display="default" onChange={onEndTimeChange} />}
     </SafeAreaView>
   )
 }
@@ -558,31 +528,30 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: "top",
   },
-  categoryContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  categoriesContainer: {
     marginTop: 10,
   },
-  categoryOption: {
+  categoryButton: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#f0f0f0",
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 10,
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: "#ddd",
   },
-  selectedCategoryOption: {
+  selectedCategory: {
     backgroundColor: "#FF6B6B",
     borderColor: "#FF6B6B",
   },
-  categoryOptionText: {
+  categoryText: {
     fontSize: 14,
     color: "#666",
-    fontWeight: "600",
+    marginLeft: 5,
   },
-  selectedCategoryOptionText: {
+  selectedCategoryText: {
     color: "white",
   },
   dateButton: {
@@ -596,14 +565,36 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
   },
   dateButtonText: {
-    marginLeft: 10,
     fontSize: 16,
     color: "#333",
+    marginLeft: 10,
   },
-  switchContainer: {
+  timeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  timeInputGroup: {
+    flex: 0.48,
+  },
+  timeButton: {
     flexDirection: "row",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    backgroundColor: "white",
+  },
+  timeButtonText: {
+    fontSize: 16,
+    color: "#333",
+    marginLeft: 10,
+  },
+  switchRow: {
+    flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
   },
   switchLabel: {
@@ -611,118 +602,30 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
   },
-  tagInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  tagInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: "white",
-    marginRight: 10,
-  },
-  addTagButton: {
-    backgroundColor: "#FF6B6B",
-    borderRadius: 10,
-    padding: 12,
-  },
-  popularTagsContainer: {
+  tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 10,
   },
-  popularTag: {
+  tagButton: {
     backgroundColor: "#f0f0f0",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "#ddd",
-  },
-  selectedPopularTag: {
-    backgroundColor: "#4ECDC4",
-    borderColor: "#4ECDC4",
-  },
-  popularTagText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
-  },
-  selectedPopularTagText: {
-    color: "white",
-  },
-  selectedTagsContainer: {
-    marginTop: 15,
-  },
-  selectedTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 10,
   },
   selectedTag: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#FF6B6B",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 15,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  selectedTagText: {
-    fontSize: 12,
-    color: "white",
-    fontWeight: "600",
-    marginRight: 6,
-  },
-  imageContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  eventImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-  },
-  imagePlaceholder: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-    backgroundColor: "#f0f0f0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  imagePlaceholderText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 10,
-  },
-  imageActions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 15,
-  },
-  imageButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
     borderColor: "#FF6B6B",
   },
-  imageButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: "#FF6B6B",
-    fontWeight: "600",
+  tagText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  selectedTagText: {
+    color: "white",
   },
 })

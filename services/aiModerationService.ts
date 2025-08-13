@@ -17,6 +17,13 @@ export interface ModerationRule {
   action: "flag" | "block" | "review"
 }
 
+export interface ModerationStats {
+  totalModerated: number
+  approved: number
+  rejected: number
+  underReview: number
+}
+
 const defaultRules: ModerationRule[] = [
   {
     id: "hate_speech",
@@ -47,6 +54,13 @@ const defaultRules: ModerationRule[] = [
     action: "flag",
   },
 ]
+
+const defaultStats: ModerationStats = {
+  totalModerated: 0,
+  approved: 0,
+  rejected: 0,
+  underReview: 0,
+}
 
 export const aiModerationService = {
   // Moderate text content
@@ -145,23 +159,53 @@ export const aiModerationService = {
   },
 
   // Get moderation statistics
-  getModerationStats: async (): Promise<{
-    totalModerated: number
-    approved: number
-    rejected: number
-    underReview: number
-  }> => {
+  getModerationStats: async (): Promise<ModerationStats> => {
     try {
-      const stats = (await storage.getItem("moderation_stats")) || {
-        totalModerated: 0,
-        approved: 0,
-        rejected: 0,
-        underReview: 0,
+      const stats = await storage.getItem<ModerationStats>("moderation_stats")
+      
+      // If stats is null/undefined or doesn't have all required properties, return default
+      if (!stats || typeof stats !== 'object') {
+        return defaultStats
       }
-      return stats
+
+      // Merge with defaults to ensure all properties exist
+      return {
+        totalModerated: stats.totalModerated ?? defaultStats.totalModerated,
+        approved: stats.approved ?? defaultStats.approved,
+        rejected: stats.rejected ?? defaultStats.rejected,
+        underReview: stats.underReview ?? defaultStats.underReview,
+      }
     } catch (error) {
       console.error("Error getting moderation stats:", error)
-      return { totalModerated: 0, approved: 0, rejected: 0, underReview: 0 }
+      return defaultStats
+    }
+  },
+
+  // Update moderation statistics
+  updateModerationStats: async (stats: Partial<ModerationStats>): Promise<void> => {
+    try {
+      const currentStats = await aiModerationService.getModerationStats()
+      const updatedStats: ModerationStats = {
+        ...currentStats,
+        ...stats,
+      }
+      await storage.setItem("moderation_stats", updatedStats)
+    } catch (error) {
+      console.error("Error updating moderation stats:", error)
+    }
+  },
+
+  // Increment specific stat counter
+  incrementStat: async (statType: keyof ModerationStats, increment: number = 1): Promise<void> => {
+    try {
+      const currentStats = await aiModerationService.getModerationStats()
+      const updatedStats = {
+        ...currentStats,
+        [statType]: currentStats[statType] + increment,
+      }
+      await storage.setItem("moderation_stats", updatedStats)
+    } catch (error) {
+      console.error(`Error incrementing ${statType} stat:`, error)
     }
   },
 }

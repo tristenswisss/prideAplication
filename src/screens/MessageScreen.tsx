@@ -16,8 +16,10 @@ import {
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { messagingService } from "../../services/messagingService"
+import { profileService } from "../../services/profileService"
 import { useAuth } from "../../Contexts/AuthContexts"
-import type { Conversation, UserProfile } from "../../types/messaging"
+import type { Conversation } from "../../types/messaging"
+import type { UserProfile } from "../../types"
 
 interface MessagesScreenProps {
   navigation: any
@@ -63,12 +65,14 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   }
 
   const searchUsers = async () => {
-    if (!user) return;
-    
+    if (!user) return
+
     try {
       setSearchLoading(true)
-      const results = await messagingService.searchUsers(searchQuery, user.id)
-      setSearchResults(results)
+      const results = await profileService.searchUsers(searchQuery, user.id)
+      if (results.success && results.data) {
+        setSearchResults(results.data)
+      }
     } catch (error) {
       console.error("Error searching users:", error)
     } finally {
@@ -166,7 +170,10 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
 
   const renderSearchResult = ({ item }: { item: UserProfile }) => (
     <TouchableOpacity style={styles.searchResultItem} onPress={() => handleStartConversation(item)}>
-      <Image source={{ uri: item.avatar_url }} style={styles.searchAvatar} />
+      <Image
+        source={{ uri: item.avatar_url || "/placeholder.svg?height=50&width=50&text=" + item.name.charAt(0) }}
+        style={styles.searchAvatar}
+      />
       <View style={styles.searchUserInfo}>
         <View style={styles.searchUserHeader}>
           <Text style={styles.searchUserName}>{item.name}</Text>

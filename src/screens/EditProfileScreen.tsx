@@ -49,9 +49,9 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
 
   const handlePickImage = async () => {
     try {
-      const image = await imageUploadService.pickImage()
-      if (image) {
-        setProfileImage(image.uri)
+      const result = await imageUploadService.pickImage()
+      if (result && !result.canceled && result.assets && result.assets.length > 0) {
+        setProfileImage(result.assets[0].uri)
       }
     } catch (error) {
       Alert.alert("Error", "Failed to pick image")
@@ -60,9 +60,9 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
 
   const handleTakePhoto = async () => {
     try {
-      const image = await imageUploadService.takePhoto()
-      if (image) {
-        setProfileImage(image.uri)
+      const result = await imageUploadService.takePhoto()
+      if (result && !result.canceled && result.assets && result.assets.length > 0) {
+        setProfileImage(result.assets[0].uri)
       }
     } catch (error) {
       Alert.alert("Error", "Failed to take photo")
@@ -70,7 +70,7 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
   }
 
   // Helper function to save profile data
-  const saveProfileData = async (avatarUrl: string) => {
+  const saveProfileData = async (avatarUrl?: string) => {
     if (user?.id) {
       const profileData = {
         name: formData.name,
@@ -102,13 +102,23 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
 
     setLoading(true)
     try {
-      let avatarUrl = ""
+      let avatarUrl: string | undefined = undefined
       
       // Upload image if selected
       if (profileImage) {
         try {
           console.log("Uploading profile image...")
-          avatarUrl = await imageUploadService.uploadImage(profileImage)
+          const uploadResult = await imageUploadService.uploadImage(profileImage)
+          
+          // Handle different possible return types from uploadImage
+          if (typeof uploadResult === 'string') {
+            avatarUrl = uploadResult
+          } else if (uploadResult && typeof uploadResult === 'object' && 'url' in uploadResult) {
+            avatarUrl = (uploadResult as any).url
+          } else if (uploadResult && typeof uploadResult === 'object' && 'uri' in uploadResult) {
+            avatarUrl = (uploadResult as any).uri
+          }
+          
           console.log("Image uploaded successfully:", avatarUrl)
         } catch (imageError: any) {
           console.error("Image upload failed:", imageError)
@@ -128,7 +138,7 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
               {
                 text: "Save Without Photo",
                 onPress: async () => {
-                  await saveProfileData("")
+                  await saveProfileData(undefined)
                 }
               }
             ]

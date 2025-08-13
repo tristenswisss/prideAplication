@@ -33,14 +33,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const categories: Category[] = [
     { id: "all", name: "All", icon: "apps", color: "black" },
     { id: "transport", name: "Transport", icon: "directions-car", color: "#F7DC6F" },
-      { id: "education", name: "Education", icon: "school", color: "red" },
+    { id: "education", name: "Education", icon: "school", color: "red" },
     { id: "restaurant", name: "Food", icon: "restaurant", color: "#4ECDC4" },
     { id: "finance", name: "Finance", icon: "business", color: "gold" },
     { id: "healthcare", name: "Health", icon: "local-hospital", color: "green" },
     { id: "shopping", name: "Shopping", icon: "shopping-bag", color: "#FFEAA7" },
     { id: "service", name: "Services", icon: "build", color: "#DDA0DD" },
-    { id: "hotel", name: "Accomodation", icon: "hotel", color: "#98D8C8" },
-
+    { id: "hotel", name: "Accommodation", icon: "hotel", color: "#98D8C8" },
   ]
 
   useEffect(() => {
@@ -78,11 +77,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const loadBusinesses = async () => {
     try {
       setLoading(true)
-      const data = await businessService.getAllBusinesses()
-      setBusinesses(data)
+      const response = await businessService.getAllBusinesses()
+      
+      if (response.success && response.data) {
+        setBusinesses(response.data)
+        setFilteredBusinesses(response.data) // Initialize filtered businesses
+      } else {
+        console.error("Error loading businesses:", response.error)
+        Alert.alert("Error", response.error || "Failed to load businesses")
+      }
     } catch (error) {
       console.error("Error loading businesses:", error)
       Alert.alert("Error", "Failed to load businesses")
+      setBusinesses([])
+      setFilteredBusinesses([])
     } finally {
       setLoading(false)
     }
@@ -93,16 +101,23 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       let filtered: Business[] = []
 
       if (searchQuery.trim()) {
-        filtered = await businessService.searchBusinesses(searchQuery)
+        const response = await businessService.searchBusinesses(searchQuery)
+        if (response.success && response.data) {
+          filtered = response.data
+        }
       } else if (selectedCategory === "all") {
         filtered = businesses
       } else {
-        filtered = await businessService.getBusinessesByCategory(selectedCategory)
+        const response = await businessService.getBusinessesByCategory(selectedCategory)
+        if (response.success && response.data) {
+          filtered = response.data
+        }
       }
 
       setFilteredBusinesses(filtered)
     } catch (error) {
       console.error("Error filtering businesses:", error)
+      setFilteredBusinesses([])
     }
   }
 
@@ -121,7 +136,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <Text style={styles.businessName}>{item.name}</Text>
         <View style={styles.businessRating}>
           <MaterialIcons name="star" size={16} color="#FFD700" />
-          <Text style={styles.ratingText}>{item.rating}</Text>
+          <Text style={styles.ratingText}>{item.rating || "N/A"}</Text>
         </View>
       </View>
       <Text style={styles.businessCategory}>{item.category.toUpperCase()}</Text>
@@ -239,19 +254,26 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               showsUserLocation={true}
               showsMyLocationButton={false}
             >
-              {filteredBusinesses.map((business) => (
-                <Marker
-                  key={business.id}
-                  coordinate={{
-                    latitude: business.latitude,
-                    longitude: business.longitude,
-                  }}
-                  pinColor={getMarkerColor(business)}
-                  title={business.name}
-                  description={business.description}
-                  onPress={() => navigation.navigate("BusinessDetails", { business })}
-                />
-              ))}
+              {filteredBusinesses && filteredBusinesses.length > 0 && filteredBusinesses.map((business) => {
+                // Only render markers for businesses with valid coordinates
+                if (!business.latitude || !business.longitude) {
+                  return null
+                }
+                
+                return (
+                  <Marker
+                    key={business.id}
+                    coordinate={{
+                      latitude: business.latitude,
+                      longitude: business.longitude,
+                    }}
+                    pinColor={getMarkerColor(business)}
+                    title={business.name}
+                    description={business.description}
+                    onPress={() => navigation.navigate("BusinessDetails", { business })}
+                  />
+                )
+              })}
             </MapView>
           )}
 
@@ -270,12 +292,23 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
       ) : (
         <FlatList
-          data={filteredBusinesses}
+          data={filteredBusinesses || []}
           renderItem={renderBusinessCard}
           keyExtractor={(item) => item.id}
           style={styles.businessList}
           contentContainerStyle={styles.businessListContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="business" size={64} color="#ccc" />
+              <Text style={styles.emptyText}>
+                {loading ? "Loading businesses..." : "No businesses found"}
+              </Text>
+              <Text style={styles.emptySubtext}>
+                {!loading && "Try adjusting your search or category filter"}
+              </Text>
+            </View>
+          }
         />
       )}
 
@@ -363,12 +396,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     height: "98%",
     position: "relative",
-    
   },
   map: {
     flex: 1,
     height: "100%",
-    
   },
   legend: {
     position: "absolute",
@@ -536,6 +567,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#666",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#999",
+    marginTop: 8,
+    textAlign: "center",
+    paddingHorizontal: 40,
+  },
 })
-
-

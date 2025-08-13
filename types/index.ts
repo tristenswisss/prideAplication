@@ -9,6 +9,20 @@ export interface User {
   verified: boolean
   created_at: string
   updated_at: string
+  username?: string
+  follower_count?: number
+  following_count?: number
+  post_count?: number
+  interests?: string[]
+  cover_image_url?: string
+}
+
+export interface UserProfile extends User {
+  is_online?: boolean
+  show_profile?: boolean
+  show_activities?: boolean
+  appear_in_search?: boolean
+  allow_direct_messages?: boolean
 }
 
 export interface Business {
@@ -68,6 +82,23 @@ export interface Event {
   updated_at: string
 }
 
+export interface CreateEventData {
+  title: string
+  description: string
+  date: string
+  start_time: string
+  end_time?: string
+  location: string
+  latitude?: number
+  longitude?: number
+  image_url?: string
+  max_attendees?: number
+  category: "celebration" | "networking" | "entertainment" | "education" | "support" | "other"
+  tags: string[]
+  is_free: boolean
+  price?: number
+}
+
 export interface EventAttendee {
   id: string
   event_id: string
@@ -117,6 +148,33 @@ export interface Post {
   comments_count: number
   shares_count: number
   tags: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface SafeSpace {
+  id: string
+  name: string
+  description: string
+  category: "organization" | "healthcare" | "restaurant" | "drop_in_center" | "community_center" | "other"
+  address: string
+  city: string
+  country: string
+  location?: string
+  latitude?: number
+  longitude?: number
+  phone?: string
+  email?: string
+  website?: string
+  hours?: Record<string, string>
+  services: string[]
+  accessibility_features: string[]
+  lgbtq_friendly: boolean
+  trans_friendly: boolean
+  wheelchair_accessible: boolean
+  verified: boolean
+  rating?: number
+  review_count?: number
   created_at: string
   updated_at: string
 }

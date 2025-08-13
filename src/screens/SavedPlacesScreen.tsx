@@ -4,11 +4,13 @@ import { useState, useEffect } from "react"
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
+import { businessService } from "../../services/businessService"
+import { useAuth } from "../../Contexts/AuthContexts"
 import type { Business } from "../../types"
 import type { SavedPlacesScreenProps } from "../../types/navigation"
 
 interface SavedPlace extends Business {
-  savedAt: string
+  savedAt?: string
   notes?: string
 }
 
@@ -17,82 +19,27 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "visited" | "wishlist">("all")
 
+  const { user } = useAuth()
+
   useEffect(() => {
     loadSavedPlaces()
   }, [])
 
   const loadSavedPlaces = async () => {
+    if (!user) return
+
     try {
       setLoading(true)
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const result = await businessService.getSavedBusinesses(user.id)
 
-      const mockSavedPlaces: SavedPlace[] = [
-        {
-          id: "1",
-          name: "Rainbow Café",
-          category: "restaurant",
-          description: "LGBTQ+ owned coffee shop with amazing pastries",
-          address: "123 Castro St, San Francisco, CA",
-          latitude: 37.7749,
-          longitude: -122.4194,
-          rating: 4.8,
-          review_count: 120,
-          lgbtq_friendly: true,
-          trans_friendly: true,
-          verified: true,
-          hours: {
-            monday: "7:00 AM - 9:00 PM",
-            tuesday: "7:00 AM - 9:00 PM",
-            wednesday: "7:00 AM - 9:00 PM",
-            thursday: "7:00 AM - 9:00 PM",
-            friday: "7:00 AM - 10:00 PM",
-            saturday: "8:00 AM - 10:00 PM",
-            sunday: "8:00 AM - 8:00 PM",
-          },
-          phone: "(555) 123-4567",
-          website: "https://rainbowcafe.com",
-          image_url: "",
-          wheelchair_accessible: true,
-          created_at: "2024-01-15T10:30:00Z",
-          updated_at: "2024-01-15T10:30:00Z",
-          savedAt: "2024-01-15T10:30:00Z",
-          notes: "Great place for meetings!",
-        },
-        {
-          id: "2",
-          name: "Pride Health Center",
-          category: "healthcare",
-          description: "Comprehensive healthcare for LGBTQ+ community",
-          address: "456 Market St, San Francisco, CA",
-          latitude: 37.7849,
-          longitude: -122.4094,
-          rating: 4.9,
-          review_count: 85,
-          lgbtq_friendly: true,
-          trans_friendly: true,
-          verified: true,
-          hours: {
-            monday: "8:00 AM - 6:00 PM",
-            tuesday: "8:00 AM - 6:00 PM",
-            wednesday: "8:00 AM - 6:00 PM",
-            thursday: "8:00 AM - 6:00 PM",
-            friday: "8:00 AM - 5:00 PM",
-            saturday: "9:00 AM - 2:00 PM",
-            sunday: "Closed",
-          },
-          phone: "(555) 987-6543",
-          website: "https://pridehealthcenter.com",
-          image_url: "",
-          wheelchair_accessible: true,
-          created_at: "2024-01-10T14:20:00Z",
-          updated_at: "2024-01-10T14:20:00Z",
-          savedAt: "2024-01-10T14:20:00Z",
-        },
-      ]
-
-      setSavedPlaces(mockSavedPlaces)
+      if (result.success && result.data) {
+        setSavedPlaces(result.data)
+      } else {
+        console.error("Error loading saved places:", result.error)
+        Alert.alert("Error", "Failed to load saved places")
+      }
     } catch (error) {
+      console.error("Error loading saved places:", error)
       Alert.alert("Error", "Failed to load saved places")
     } finally {
       setLoading(false)
@@ -105,8 +52,17 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
       {
         text: "Remove",
         style: "destructive",
-        onPress: () => {
-          setSavedPlaces((prev) => prev.filter((place) => place.id !== placeId))
+        onPress: async () => {
+          if (!user) return
+
+          try {
+            await businessService.unsaveBusiness(user.id, placeId)
+            setSavedPlaces((prev) => prev.filter((place) => place.id !== placeId))
+            Alert.alert("Success", "Place removed from saved list")
+          } catch (error) {
+            console.error("Error removing saved place:", error)
+            Alert.alert("Error", "Failed to remove place")
+          }
         },
       },
     ])
@@ -176,7 +132,7 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
           </View>
         )}
 
-        <Text style={styles.savedDate}>Saved on {new Date(item.savedAt).toLocaleDateString()}</Text>
+        {item.savedAt && <Text style={styles.savedDate}>Saved on {new Date(item.savedAt).toLocaleDateString()}</Text>}
       </View>
     </TouchableOpacity>
   )

@@ -1,317 +1,280 @@
-import type { Post, Comment, UserProfile } from "../types/social"
+import { supabase } from "../lib/supabase"
+import type { Post, Comment } from "../types/social"
 
-// Mock data for social features
-const mockPosts: Post[] = [
-  {
-    id: "1",
-    user_id: "user1",
-    user: {
-      id: "user1",
-      email: "alex@example.com",
-      name: "Alex Rainbow",
-      username: "alexrainbow",
-      avatar_url: "/placeholder.svg?height=50&width=50&text=AR",
-      bio: "Living my truth 🏳️‍🌈 | Coffee lover ☕ | Safe space advocate",
-      pronouns: "they/them",
-      location: "San Francisco, CA",
-      interests: ["coffee", "pride", "community", "art"],
-      verified: true,
-      follower_count: 234,
-      following_count: 156,
-      post_count: 42,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
-    },
-    content:
-      "Just had the most amazing experience at Rainbow Café! ☕🏳️‍🌈 The barista used my correct pronouns without me having to ask, and they have the cutest Pride flag cookies. This is what inclusive business looks like! #SafeSpaces #PrideCommunity",
-    images: ["/placeholder.svg?height=300&width=400&text=Rainbow+Café+Interior"],
-    location: {
-      name: "Rainbow Café",
-      latitude: 37.7749,
-      longitude: -122.4194,
-    },
-    business_id: "1",
-    likes_count: 47,
-    comments_count: 12,
-    shares_count: 8,
-    tags: ["SafeSpaces", "PrideCommunity", "Coffee"],
-    is_liked: false,
-    is_saved: false,
-    visibility: "public",
-    created_at: "2024-01-25T14:30:00Z",
-    updated_at: "2024-01-25T14:30:00Z",
-  },
-  {
-    id: "2",
-    user_id: "user2",
-    user: {
-      id: "user2",
-      email: "jordan@example.com",
-      name: "Jordan Pride",
-      username: "jordanpride",
-      avatar_url: "/placeholder.svg?height=50&width=50&text=JP",
-      bio: "Trans rights are human rights 🏳️‍⚧️ | Activist | Photographer",
-      pronouns: "he/him",
-      location: "Oakland, CA",
-      interests: ["activism", "photography", "trans rights", "community"],
-      verified: false,
-      follower_count: 189,
-      following_count: 203,
-      post_count: 67,
-      created_at: "2024-01-05T00:00:00Z",
-      updated_at: "2024-01-05T00:00:00Z",
-    },
-    content:
-      "Reminder: Pride Month Kickoff Party is THIS WEEKEND! 🎉 Can't wait to see everyone there. It's going to be such a beautiful celebration of our community. Who else is going? Let me know in the comments! #Pride2024 #Community",
-    images: ["/placeholder.svg?height=300&width=400&text=Pride+Event+Flyer"],
-    event_id: "1",
-    likes_count: 89,
-    comments_count: 23,
-    shares_count: 15,
-    tags: ["Pride2024", "Community"],
-    is_liked: true,
-    is_saved: true,
-    visibility: "public",
-    created_at: "2024-01-24T18:45:00Z",
-    updated_at: "2024-01-24T18:45:00Z",
-  },
-  {
-    id: "3",
-    user_id: "user3",
-    user: {
-      id: "user3",
-      email: "sam@example.com",
-      name: "Sam Fabulous",
-      username: "samfab",
-      avatar_url: "/placeholder.svg?height=50&width=50&text=SF",
-      bio: "Drag queen 💄 | Performer | Spreading love and glitter ✨",
-      pronouns: "she/her",
-      location: "San Francisco, CA",
-      interests: ["drag", "performance", "makeup", "nightlife"],
-      verified: true,
-      follower_count: 567,
-      following_count: 89,
-      post_count: 134,
-      created_at: "2024-01-10T00:00:00Z",
-      updated_at: "2024-01-10T00:00:00Z",
-    },
-    content:
-      "Behind the scenes getting ready for tonight's show at The Fabulous Lounge! 💄✨ This look is inspired by the colors of our beautiful Pride flag. Come through and show some love! Doors open at 8pm 🏳️‍🌈 #DragQueen #PrideNight #FabulousLounge",
-    images: [
-      "/placeholder.svg?height=300&width=400&text=Drag+Makeup+Look",
-      "/placeholder.svg?height=300&width=400&text=Pride+Outfit",
-    ],
-    location: {
-      name: "The Fabulous Lounge",
-      latitude: 37.7849,
-      longitude: -122.4094,
-    },
-    business_id: "2",
-    likes_count: 156,
-    comments_count: 34,
-    shares_count: 22,
-    tags: ["DragQueen", "PrideNight", "FabulousLounge"],
-    is_liked: false,
-    is_saved: false,
-    visibility: "public",
-    created_at: "2024-01-23T16:20:00Z",
-    updated_at: "2024-01-23T16:20:00Z",
-  },
-]
-
-const mockComments: Comment[] = [
-  {
-    id: "1",
-    post_id: "1",
-    user_id: "user2",
-    user: {
-      id: "user2",
-      email: "jordan@example.com",
-      name: "Jordan Pride",
-      username: "jordanpride",
-      avatar_url: "/placeholder.svg?height=40&width=40&text=JP",
-      bio: "Trans rights are human rights 🏳️‍⚧️",
-      pronouns: "he/him",
-      location: "Oakland, CA",
-      interests: ["activism"],
-      verified: false,
-      follower_count: 189,
-      following_count: 203,
-      post_count: 67,
-      created_at: "2024-01-05T00:00:00Z",
-      updated_at: "2024-01-05T00:00:00Z",
-    },
-    content: "Yes! This is exactly why I love Rainbow Café. They really get it. 💙",
-    likes_count: 8,
-    is_liked: false,
-    created_at: "2024-01-25T15:10:00Z",
-    updated_at: "2024-01-25T15:10:00Z",
-  },
-  {
-    id: "2",
-    post_id: "1",
-    user_id: "user3",
-    user: {
-      id: "user3",
-      email: "sam@example.com",
-      name: "Sam Fabulous",
-      username: "samfab",
-      avatar_url: "/placeholder.svg?height=40&width=40&text=SF",
-      bio: "Drag queen 💄",
-      pronouns: "she/her",
-      location: "San Francisco, CA",
-      interests: ["drag"],
-      verified: true,
-      follower_count: 567,
-      following_count: 89,
-      post_count: 134,
-      created_at: "2024-01-10T00:00:00Z",
-      updated_at: "2024-01-10T00:00:00Z",
-    },
-    content: "Those Pride cookies are to die for! 🍪🏳️‍🌈",
-    likes_count: 12,
-    is_liked: true,
-    created_at: "2024-01-25T15:45:00Z",
-    updated_at: "2024-01-25T15:45:00Z",
-  },
-]
-
-export const socialService = {
-  // Posts
-  getFeedPosts: async (userId?: string): Promise<Post[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    return mockPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  },
-
-  getUserPosts: async (userId: string): Promise<Post[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockPosts.filter((post) => post.user_id === userId)
-  },
-
-  createPost: async (
-    postData: Omit<
-      Post,
-      "id" | "created_at" | "updated_at" | "likes_count" | "comments_count" | "shares_count" | "is_liked" | "is_saved"
-    >,
-  ): Promise<Post> => {
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    const newPost: Post = {
-      ...postData,
-      id: Math.random().toString(36).substr(2, 9),
-      likes_count: 0,
-      comments_count: 0,
-      shares_count: 0,
-      is_liked: false,
-      is_saved: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-
-    mockPosts.unshift(newPost)
-    return newPost
-  },
-
-  likePost: async (postId: string, userId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    const post = mockPosts.find((p) => p.id === postId)
-    if (post) {
-      post.is_liked = !post.is_liked
-      post.likes_count += post.is_liked ? 1 : -1
-    }
-  },
-
-  savePost: async (postId: string, userId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    const post = mockPosts.find((p) => p.id === postId)
-    if (post) {
-      post.is_saved = !post.is_saved
-    }
-  },
-
-  sharePost: async (postId: string, userId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    const post = mockPosts.find((p) => p.id === postId)
-    if (post) {
-      post.shares_count += 1
-    }
-  },
-
-  // Comments
-  getPostComments: async (postId: string): Promise<Comment[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockComments.filter((comment) => comment.post_id === postId)
-  },
-
-  addComment: async (
-    commentData: Omit<Comment, "id" | "created_at" | "updated_at" | "likes_count" | "is_liked">,
-  ): Promise<Comment> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    const newComment: Comment = {
-      ...commentData,
-      id: Math.random().toString(36).substr(2, 9),
-      likes_count: 0,
-      is_liked: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-
-    mockComments.push(newComment)
-
-    // Update post comment count
-    const post = mockPosts.find((p) => p.id === commentData.post_id)
-    if (post) {
-      post.comments_count += 1
-    }
-
-    return newComment
-  },
-
-  // User profiles
-  getUserProfile: async (userId: string): Promise<UserProfile | null> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    const post = mockPosts.find((p) => p.user_id === userId)
-    return post?.user || null
-  },
-
-  updateUserProfile: async (userId: string, updates: Partial<UserProfile>): Promise<UserProfile> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    // In a real app, this would update the user profile
-    const mockProfile: UserProfile = {
-      id: userId,
-      email: "user@example.com",
-      name: "Updated User",
-      ...updates,
-      verified: false,
-      follower_count: 0,
-      following_count: 0,
-      post_count: 0,
-      interests: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-    return mockProfile
-  },
-
-  // Follow system
-  followUser: async (followerId: string, followingId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    // In a real app, this would create a follow relationship
-  },
-
-  unfollowUser: async (followerId: string, followingId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    // In a real app, this would remove the follow relationship
-  },
-
-  getFollowers: async (userId: string): Promise<UserProfile[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return [] // Mock empty for now
-  },
-
-  getFollowing: async (userId: string): Promise<UserProfile[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return [] // Mock empty for now
-  },
+export interface CreatePostData {
+  user_id: string
+  user: any
+  content: string
+  images?: string[]
+  location?: {
+    latitude: number
+    longitude: number
+    name?: string
+  }
+  business_id?: string
+  event_id?: string
+  tags: string[]
+  visibility: "public" | "followers" | "private"
 }
+
+export interface CreateCommentData {
+  post_id: string
+  user_id: string
+  user: any
+  content: string
+  parent_id?: string
+}
+
+class SocialService {
+  async getFeedPosts(userId?: string): Promise<Post[]> {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(`
+          *,
+          users!posts_user_id_fkey (
+            id,
+            name,
+            avatar_url,
+            verified
+          )
+        `)
+        .eq("visibility", "public")
+        .order("created_at", { ascending: false })
+        .limit(50)
+
+      if (error) {
+        console.error("Error fetching feed posts:", error)
+        throw error
+      }
+
+      return (data || []).map((post) => ({
+        ...post,
+        user: post.users,
+        is_liked: false, // This would come from a likes table join
+        is_saved: false, // This would come from a saved posts table join
+      }))
+    } catch (error: any) {
+      console.error("Error in getFeedPosts:", error)
+      throw error
+    }
+  }
+
+  async createPost(postData: CreatePostData): Promise<Post> {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .insert([
+          {
+            user_id: postData.user_id,
+            content: postData.content,
+            images: postData.images || [],
+            location: postData.location,
+            business_id: postData.business_id,
+            event_id: postData.event_id,
+            tags: postData.tags,
+            visibility: postData.visibility,
+            likes_count: 0,
+            comments_count: 0,
+            shares_count: 0,
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error creating post:", error)
+        throw error
+      }
+
+      return {
+        ...data,
+        user: postData.user,
+        is_liked: false,
+        is_saved: false,
+      }
+    } catch (error: any) {
+      console.error("Error in createPost:", error)
+      throw error
+    }
+  }
+
+  async deletePost(postId: string, userId: string): Promise<void> {
+    try {
+      const { error } = await supabase.from("posts").delete().eq("id", postId).eq("user_id", userId)
+
+      if (error) {
+        console.error("Error deleting post:", error)
+        throw error
+      }
+    } catch (error: any) {
+      console.error("Error in deletePost:", error)
+      throw error
+    }
+  }
+
+  async likePost(postId: string, userId: string): Promise<void> {
+    try {
+      // Check if already liked
+      const { data: existingLike } = await supabase
+        .from("post_likes")
+        .select("id")
+        .eq("post_id", postId)
+        .eq("user_id", userId)
+        .single()
+
+      if (existingLike) {
+        // Unlike
+        await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", userId)
+      } else {
+        // Like
+        await supabase.from("post_likes").insert([{ post_id: postId, user_id: userId }])
+      }
+    } catch (error: any) {
+      console.error("Error in likePost:", error)
+      throw error
+    }
+  }
+
+  async savePost(postId: string, userId: string): Promise<void> {
+    try {
+      // Check if already saved
+      const { data: existingSave } = await supabase
+        .from("saved_posts")
+        .select("id")
+        .eq("post_id", postId)
+        .eq("user_id", userId)
+        .single()
+
+      if (existingSave) {
+        // Unsave
+        await supabase.from("saved_posts").delete().eq("post_id", postId).eq("user_id", userId)
+      } else {
+        // Save
+        await supabase.from("saved_posts").insert([{ post_id: postId, user_id: userId }])
+      }
+    } catch (error: any) {
+      console.error("Error in savePost:", error)
+      throw error
+    }
+  }
+
+  async sharePost(postId: string, userId: string): Promise<void> {
+    try {
+      // Increment share count
+      const { error } = await supabase.rpc("increment_post_shares", {
+        post_id: postId,
+      })
+
+      if (error) {
+        console.error("Error sharing post:", error)
+        throw error
+      }
+
+      // Log the share action
+      await supabase.from("post_shares").insert([{ post_id: postId, user_id: userId }])
+    } catch (error: any) {
+      console.error("Error in sharePost:", error)
+      throw error
+    }
+  }
+
+  async getPostComments(postId: string): Promise<Comment[]> {
+    try {
+      const { data, error } = await supabase
+        .from("comments")
+        .select(`
+          *,
+          users!comments_user_id_fkey (
+            id,
+            name,
+            avatar_url,
+            verified
+          )
+        `)
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true })
+
+      if (error) {
+        console.error("Error fetching comments:", error)
+        throw error
+      }
+
+      return (data || []).map((comment) => ({
+        ...comment,
+        user: comment.users,
+        is_liked: false, // This would come from a comment likes table join
+      }))
+    } catch (error: any) {
+      console.error("Error in getPostComments:", error)
+      throw error
+    }
+  }
+
+  async addComment(commentData: CreateCommentData): Promise<Comment> {
+    try {
+      const { data, error } = await supabase
+        .from("comments")
+        .insert([
+          {
+            post_id: commentData.post_id,
+            user_id: commentData.user_id,
+            content: commentData.content,
+            parent_id: commentData.parent_id,
+            likes_count: 0,
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error adding comment:", error)
+        throw error
+      }
+
+      return {
+        ...data,
+        user: commentData.user,
+        is_liked: false,
+      }
+    } catch (error: any) {
+      console.error("Error in addComment:", error)
+      throw error
+    }
+  }
+
+  async getUserPosts(userId: string): Promise<Post[]> {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(`
+          *,
+          users!posts_user_id_fkey (
+            id,
+            name,
+            avatar_url,
+            verified
+          )
+        `)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching user posts:", error)
+        throw error
+      }
+
+      return (data || []).map((post) => ({
+        ...post,
+        user: post.users,
+        is_liked: false,
+        is_saved: false,
+      }))
+    } catch (error: any) {
+      console.error("Error in getUserPosts:", error)
+      throw error
+    }
+  }
+}
+
+export const socialService = new SocialService()

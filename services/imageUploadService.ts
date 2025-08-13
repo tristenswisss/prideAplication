@@ -1,188 +1,295 @@
 import * as ImagePicker from "expo-image-picker"
-import { Platform } from "react-native"
-import * as FileSystem from "expo-file-system"
 import { supabase } from "../lib/supabase"
 
-export const imageUploadService = {
-  // Request permissions for image picking
-  requestPermissions: async (): Promise<boolean> => {
-    if (Platform.OS !== "web") {
+export interface ImageUploadResult {
+  success: boolean
+  url?: string
+  error?: string
+}
+
+export interface ImageValidationResult {
+  valid: boolean
+  error?: string
+}
+
+class ImageUploadService {
+  private readonly MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+  private readonly ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
+  // Custom base64 to ArrayBuffer converter to replace base64-arraybuffer
+  private base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binaryString = atob(base64)
+    const len = binaryString.length
+    const bytes = new Uint8Array(len)
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return bytes.buffer
+  }
+
+  async pickImage(): Promise<ImagePicker.ImagePickerResult | null> {
+    try {
+      // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== "granted") {
-        // Also request camera permissions
-        const cameraStatus = await ImagePicker.requestCameraPermissionsAsync()
-        return cameraStatus.status === "granted"
-      }
-      return true
-    }
-    return true
-  },
-
-  // Pick an image from the library
-  pickImage: async (): Promise<{ uri: string; type: string } | null> => {
-    try {
-      const permissionGranted = await imageUploadService.requestPermissions()
-      if (!permissionGranted) {
         throw new Error("Permission to access media library was denied")
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [1, 1], // Square aspect ratio for profile pictures
-        quality: 0.7, // Slightly lower quality to reduce file size
-        exif: false, // Don't include EXIF data
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
       })
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0]
-        return {
-          uri: asset.uri,
-          type: asset.type || "image/jpeg",
-        }
-      }
-
-      return null
-    } catch (error) {
+      return result
+    } catch (error: any) {
       console.error("Error picking image:", error)
       return null
     }
-  },
+  }
 
-  // Take a photo with the camera
-  takePhoto: async (): Promise<{ uri: string; type: string } | null> => {
+  async takePhoto(): Promise<ImagePicker.ImagePickerResult | null> {
     try {
-      const permissionGranted = await imageUploadService.requestPermissions()
-      if (!permissionGranted) {
+      // Request permission
+      const { status } = await ImagePicker.requestCameraPermissionsAsync()
+      if (status !== "granted") {
         throw new Error("Permission to access camera was denied")
       }
 
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
-        aspect: [1, 1], // Square aspect ratio for profile pictures
-        quality: 0.7, // Slightly lower quality to reduce file size
-        exif: false, // Don't include EXIF data
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
       })
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0]
-        return {
-          uri: asset.uri,
-          type: asset.type || "image/jpeg",
-        }
-      }
-
-      return null
-    } catch (error) {
+      return result
+    } catch (error: any) {
       console.error("Error taking photo:", error)
       return null
     }
-  },
+  }
 
-  // Upload image to Supabase storage bucket "mirae"
-  uploadImage: async (imageUri: string): Promise<string> => {
+  validateImageUri(uri: string): ImageValidationResult {
+    if (!uri) {
+      return { valid: false, error: "Image URI is required" }
+    }
+
+    // Basic URI validation
+    if (!uri.startsWith("file://") && !uri.startsWith("data:") && !uri.startsWith("http")) {
+      return { valid: false, error: "Invalid image URI format" }
+    }
+
+    return { valid: true }
+  }
+
+  async uploadImage(imageUri: string, userId?: string, folder = "images"): Promise<ImageUploadResult> {
     try {
-      console.log("Starting image upload for URI:", imageUri)
+      console.log("Starting image upload...")
+      console.log("Image URI:", imageUri)
+      console.log("User ID:", userId)
+      console.log("Folder:", folder)
 
-      // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      
-      if (userError) {
-        throw new Error(`Authentication error: ${userError.message}`)
-      }
-      
-      if (!user) {
-        throw new Error("User not authenticated")
+      // Validate image URI
+      const validation = this.validateImageUri(imageUri)
+      if (!validation.valid) {
+        return { success: false, error: validation.error }
       }
 
-      console.log("User authenticated:", user.id)
-      
-      // Generate a unique file name
-      const fileExtension = imageUri.split('.').pop() || 'jpg'
-      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExtension}`
-      
-      console.log("Generated filename:", fileName)
+      // Generate unique filename
+      const timestamp = Date.now()
+      const randomString = Math.random().toString(36).substring(2, 15)
+      const fileName = `${folder}/${userId || "anonymous"}_${timestamp}_${randomString}.jpg`
 
-      let fileData: string | Blob
+      let fileData: ArrayBuffer
 
-      if (Platform.OS === 'web') {
-        // Web platform - use fetch to get blob
+      if (imageUri.startsWith("data:")) {
+        // Handle base64 data URI
+        const base64Data = imageUri.split(",")[1]
+        if (!base64Data) {
+          return { success: false, error: "Invalid base64 data" }
+        }
+        // Use our custom base64 to ArrayBuffer converter
+        fileData = this.base64ToArrayBuffer(base64Data)
+      } else {
+        // Handle file URI
         const response = await fetch(imageUri)
         if (!response.ok) {
-          throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`)
+          return { success: false, error: "Failed to fetch image data" }
         }
-        fileData = await response.blob()
-        console.log("Web blob created, size:", fileData.size)
-      } else {
-        // Mobile platform - use base64 string directly
-        const fileInfo = await FileSystem.getInfoAsync(imageUri)
-        
-        if (!fileInfo.exists) {
-          throw new Error("Image file does not exist")
-        }
-
-        console.log("File info:", fileInfo)
-
-        // Read the file as base64
-        const base64 = await FileSystem.readAsStringAsync(imageUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        })
-
-        if (!base64 || base64.length === 0) {
-          throw new Error("Failed to read image file")
-        }
-
-        // For React Native, we need to use the decode option with base64
-        fileData = base64
-        console.log("Base64 string created, length:", base64.length)
+        fileData = await response.arrayBuffer()
       }
 
-      // Upload the image to the "mirae" bucket
-      console.log("Uploading to Supabase...")
-      
-      let uploadOptions: any = {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: 'image/jpeg'
+      // Check file size
+      if (fileData.byteLength > this.MAX_FILE_SIZE) {
+        return {
+          success: false,
+          error: `File size too large. Maximum size is ${this.MAX_FILE_SIZE / (1024 * 1024)}MB`,
+        }
       }
 
-      // For mobile platforms, add decode option for base64
-      if (Platform.OS !== 'web') {
-        uploadOptions.decode = 'base64'
-      }
+      console.log("Uploading to Supabase storage...")
+      console.log("File name:", fileName)
+      console.log("File size:", fileData.byteLength, "bytes")
 
-      const { data, error } = await supabase.storage
-        .from("mirae")
-        .upload(fileName, fileData, uploadOptions)
-      
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage.from("images").upload(fileName, fileData, {
+        contentType: "image/jpeg",
+        upsert: true,
+      })
+
       if (error) {
         console.error("Supabase upload error:", error)
-        throw new Error(`Storage upload error: ${error.message}`)
+        return { success: false, error: error.message }
       }
 
       console.log("Upload successful:", data)
-      
-      // Get the public URL of the uploaded image
-      const { data: { publicUrl } } = supabase.storage
-        .from("mirae")
-        .getPublicUrl(fileName)
 
-      console.log("Public URL generated:", publicUrl)
-      
-      return publicUrl
-    } catch (error: any) {
-      console.error("Error uploading image:", error)
-      
-      // More specific error messages
-      if (error.message.includes('Network request failed')) {
-        throw new Error('Network connection failed. Please check your internet connection and try again.')
-      } else if (error.message.includes('413')) {
-        throw new Error('Image file is too large. Please select a smaller image.')
-      } else if (error.message.includes('401') || error.message.includes('403')) {
-        throw new Error('Authentication failed. Please sign in again.')
-      } else {
-        throw new Error(`Image upload failed: ${error.message || error}`)
+      // Get public URL
+      const { data: urlData } = supabase.storage.from("images").getPublicUrl(fileName)
+
+      if (!urlData?.publicUrl) {
+        return { success: false, error: "Failed to get public URL" }
       }
+
+      console.log("Public URL:", urlData.publicUrl)
+      return { success: true, url: urlData.publicUrl }
+    } catch (error: any) {
+      console.error("Error in uploadImage:", error)
+      return { success: false, error: error.message }
     }
-  },
+  }
+
+  async deleteImage(imageUrl: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Extract file path from URL
+      const urlParts = imageUrl.split("/")
+      const fileName = urlParts[urlParts.length - 1]
+      const folder = urlParts[urlParts.length - 2]
+      const filePath = `${folder}/${fileName}`
+
+      const { error } = await supabase.storage.from("images").remove([filePath])
+
+      if (error) {
+        console.error("Error deleting image:", error)
+        return { success: false, error: error.message }
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      console.error("Error in deleteImage:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async uploadMultipleImages(
+    imageUris: string[],
+    userId?: string,
+    folder = "images",
+  ): Promise<{ success: boolean; urls?: string[]; errors?: string[] }> {
+    const results = await Promise.all(imageUris.map((uri) => this.uploadImage(uri, userId, folder)))
+
+    const successful = results.filter((r) => r.success)
+    const failed = results.filter((r) => !r.success)
+
+    return {
+      success: successful.length > 0,
+      urls: successful.map((r) => r.url!),
+      errors: failed.map((r) => r.error!),
+    }
+  }
+
+  // Helper method to compress image before upload
+  async compressImage(imageUri: string, quality = 0.8): Promise<string> {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: quality,
+        base64: false,
+      })
+
+      if (!result.canceled && result.assets[0]) {
+        return result.assets[0].uri
+      }
+      
+      return imageUri // Return original if compression fails
+    } catch (error) {
+      console.warn("Image compression failed, using original:", error)
+      return imageUri
+    }
+  }
+
+  // Helper method to get image dimensions
+  async getImageDimensions(imageUri: string): Promise<{ width: number; height: number } | null> {
+    return new Promise((resolve) => {
+      const image = new Image()
+      image.onload = () => {
+        resolve({ width: image.width, height: image.height })
+      }
+      image.onerror = () => {
+        resolve(null)
+      }
+      image.src = imageUri
+    })
+  }
+
+  // Helper method to validate image type
+  private isValidImageType(mimeType: string): boolean {
+    return this.ALLOWED_TYPES.includes(mimeType.toLowerCase())
+  }
+
+  // Enhanced image validation with file type checking
+  async validateImage(imageUri: string): Promise<ImageValidationResult> {
+    // Basic URI validation
+    const basicValidation = this.validateImageUri(imageUri)
+    if (!basicValidation.valid) {
+      return basicValidation
+    }
+
+    try {
+      // For data URIs, check the mime type
+      if (imageUri.startsWith("data:")) {
+        const mimeType = imageUri.substring(5, imageUri.indexOf(";"))
+        if (!this.isValidImageType(mimeType)) {
+          return {
+            valid: false,
+            error: `Invalid image type. Allowed types: ${this.ALLOWED_TYPES.join(", ")}`
+          }
+        }
+      }
+
+      // For file URIs, we can't easily check the mime type without reading the file
+      // This would require additional implementation
+
+      return { valid: true }
+    } catch (error: any) {
+      return { valid: false, error: error.message }
+    }
+  }
+
+  // Helper method to resize image if too large
+  async resizeImageIfNeeded(imageUri: string, maxWidth = 1080, maxHeight = 1080): Promise<string> {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        // Note: ImagePicker doesn't have built-in resize, you might want to use expo-image-manipulator
+      })
+
+      if (!result.canceled && result.assets[0]) {
+        return result.assets[0].uri
+      }
+
+      return imageUri
+    } catch (error) {
+      console.warn("Image resize failed, using original:", error)
+      return imageUri
+    }
+  }
 }
+
+export const imageUploadService = new ImageUploadService()

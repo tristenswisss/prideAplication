@@ -15,13 +15,16 @@ import {
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
+import { ScrollView } from "react-native"
+import * as Location from "expo-location"
 import { socialService } from "../../services/socialService"
 import { imageUploadService } from "../../services/imageUploadService"
 import { pushNotificationService } from "../../services/pushNotificationService"
+import { profileService } from "../../services/profileService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, Comment } from "../../types/social"
 import type { CommunityScreenProps } from "../../types/navigation"
-import { ScrollView } from 'react-native';
+import type { UserProfile } from "../../types"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -34,12 +37,20 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
   const [showComments, setShowComments] = useState(false)
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number; name?: string } | null>(
+    null,
+  )
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [sharePost, setSharePost] = useState<Post | null>(null)
+  const [buddyList, setBuddyList] = useState<UserProfile[]>([])
 
   const { user } = useAuth()
 
   useEffect(() => {
     loadPosts()
     initializePushNotifications()
+    getCurrentLocation()
+    loadBuddyList()
   }, [])
 
   const initializePushNotifications = async () => {
@@ -48,6 +59,45 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       await pushNotificationService.startLocationNotifications()
     } catch (error) {
       console.error("Error initializing push notifications:", error)
+    }
+  }
+
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== "granted") {
+        console.log("Location permission denied")
+        return
+      }
+
+      const location = await Location.getCurrentPositionAsync({})
+      const address = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      })
+
+      setCurrentLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        name: address[0]?.city || "Current Location",
+      })
+    } catch (error) {
+      console.error("Error getting location:", error)
+    }
+  }
+
+  const loadBuddyList = async () => {
+    if (!user) return
+
+    try {
+      // This would typically come from a buddy service
+      // For now, we'll use a simple search to get some users
+      const result = await profileService.searchUsers("", user.id)
+      if (result.success && result.data) {
+        setBuddyList(result.data.slice(0, 10)) // Limit to 10 for demo
+      }
+    } catch (error) {
+      console.error("Error loading buddy list:", error)
     }
   }
 
@@ -72,17 +122,19 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       // Upload images if selected
       const uploadedImages = []
       for (const imageUri of newPostImages) {
-        const imageUrl = await imageUploadService.uploadImage(imageUri)
-        uploadedImages.push(imageUrl)
+        const result = await imageUploadService.uploadImage(imageUri, user.id, "posts")
+        if (result.success && result.url) {
+          uploadedImages.push(result.url)
+        }
       }
 
-      const newPost = await socialService.createPost({
+      const postData = {
         user_id: user.id,
         user: {
           id: user.id,
           email: user.email || "",
           name: user.name,
-          avatar_url: "/placeholder.svg?height=50&width=50&text=" + user.name.charAt(0),
+          avatar_url: user.avatar_url || "/placeholder.svg?height=50&width=50&text=" + user.name.charAt(0),
           verified: false,
           follower_count: 0,
           following_count: 0,
@@ -94,9 +146,17 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         content: newPostContent,
         images: uploadedImages,
         tags: extractHashtags(newPostContent),
-        visibility: "public",
-      })
+        visibility: "public" as const,
+        location: currentLocation
+          ? {
+              latitude: currentLocation.latitude,
+              longitude: currentLocation.longitude,
+              name: currentLocation.name,
+            }
+          : undefined,
+      }
 
+      const newPost = await socialService.createPost(postData)
       setPosts([newPost, ...posts])
       setNewPostContent("")
       setNewPostImages([])
@@ -110,9 +170,9 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const handlePickImage = async () => {
     try {
-      const image = await imageUploadService.pickImage()
-      if (image && newPostImages.length < 5) {
-        setNewPostImages([...newPostImages, image.uri])
+      const result = await imageUploadService.pickImage()
+      if (result && !result.canceled && result.assets && result.assets[0] && newPostImages.length < 5) {
+        setNewPostImages([...newPostImages, result.assets[0].uri])
       }
     } catch (error) {
       Alert.alert("Error", "Failed to pick image")
@@ -121,9 +181,9 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const handleTakePhoto = async () => {
     try {
-      const image = await imageUploadService.takePhoto()
-      if (image && newPostImages.length < 5) {
-        setNewPostImages([...newPostImages, image.uri])
+      const result = await imageUploadService.takePhoto()
+      if (result && !result.canceled && result.assets && result.assets[0] && newPostImages.length < 5) {
+        setNewPostImages([...newPostImages, result.assets[0].uri])
       }
     } catch (error) {
       Alert.alert("Error", "Failed to take photo")
@@ -175,15 +235,50 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     }
   }
 
-  const handleSharePost = async (postId: string) => {
+  const handleDeletePost = async (postId: string) => {
     if (!user) return
 
+    Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await socialService.deletePost(postId, user.id)
+            setPosts(posts.filter((post) => post.id !== postId))
+            Alert.alert("Success", "Post deleted successfully")
+          } catch (error) {
+            console.error("Error deleting post:", error)
+            Alert.alert("Error", "Failed to delete post")
+          }
+        },
+      },
+    ])
+  }
+
+  const handleSharePost = async (post: Post) => {
+    setSharePost(post)
+    setShowShareModal(true)
+  }
+
+  const shareToUser = async (targetUser: UserProfile) => {
+    if (!user || !sharePost) return
+
     try {
-      await socialService.sharePost(postId, user.id)
-      setPosts(posts.map((post) => (post.id === postId ? { ...post, shares_count: post.shares_count + 1 } : post)))
-      Alert.alert("Shared", "Post shared successfully!")
+      // This would typically send a message or notification
+      // For now, we'll just increment the share count
+      await socialService.sharePost(sharePost.id, user.id)
+      setPosts(
+        posts.map((post) => (post.id === sharePost.id ? { ...post, shares_count: post.shares_count + 1 } : post)),
+      )
+
+      setShowShareModal(false)
+      setSharePost(null)
+      Alert.alert("Shared", `Post shared with ${targetUser.name}!`)
     } catch (error) {
       console.error("Error sharing post:", error)
+      Alert.alert("Error", "Failed to share post")
     }
   }
 
@@ -209,7 +304,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           id: user.id,
           email: user.email || "",
           name: user.name,
-          avatar_url: "/placeholder.svg?height=40&width=40&text=" + user.name.charAt(0),
+          avatar_url: user.avatar_url || "/placeholder.svg?height=40&width=40&text=" + user.name.charAt(0),
           verified: false,
           follower_count: 0,
           following_count: 0,
@@ -243,6 +338,19 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     }
   }
 
+  const handleAddLocation = () => {
+    if (currentLocation) {
+      setNewPostContent((prev) => prev + ` 📍 ${currentLocation.name}`)
+    } else {
+      Alert.alert("Location", "Getting your location...", [{ text: "OK", onPress: getCurrentLocation }])
+    }
+  }
+
+  const handleAddEvent = () => {
+    // Navigate to event selection or creation
+    navigation.navigate("Events", { screen: "EventsMain" })
+  }
+
   const extractHashtags = (text: string): string[] => {
     const hashtags = text.match(/#\w+/g)
     return hashtags ? hashtags.map((tag) => tag.substring(1)) : []
@@ -274,7 +382,17 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           </Text>
           <Text style={styles.postTime}>{formatTimeAgo(item.created_at)}</Text>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity
+          style={styles.moreButton}
+          onPress={() => {
+            if (item.user_id === user?.id) {
+              Alert.alert("Post Options", "What would you like to do?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Delete Post", style: "destructive", onPress: () => handleDeletePost(item.id) },
+              ])
+            }
+          }}
+        >
           <MaterialIcons name="more-vert" size={20} color="#666" />
         </TouchableOpacity>
       </View>
@@ -326,7 +444,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           <Text style={styles.actionText}>{item.comments_count}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleSharePost(item.id)}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleSharePost(item)}>
           <MaterialIcons name="share" size={20} color="#666" />
           <Text style={styles.actionText}>{item.shares_count}</Text>
         </TouchableOpacity>
@@ -363,19 +481,26 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     </View>
   )
 
+  const renderBuddyItem = ({ item }: { item: UserProfile }) => (
+    <TouchableOpacity style={styles.buddyItem} onPress={() => shareToUser(item)}>
+      <Image
+        source={{ uri: item.avatar_url || "/placeholder.svg?height=40&width=40&text=" + item.name.charAt(0) }}
+        style={styles.buddyAvatar}
+      />
+      <Text style={styles.buddyName}>{item.name}</Text>
+    </TouchableOpacity>
+  )
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-            <LinearGradient colors={["black", "black"]} style={styles.header}>
-              <Text style={styles.headerTitle}>Community</Text>
-              <Text style={styles.headerSubtitle}>Connect with your Pride family</Text>
-              <TouchableOpacity
-                style={styles.messagesButton}
-                onPress={() => navigation.navigate("Messages")}
-              >
-                <MaterialIcons name="message" size={24} color="white" />
-              </TouchableOpacity>
-            </LinearGradient>
+      <LinearGradient colors={["black", "black"]} style={styles.header}>
+        <Text style={styles.headerTitle}>Community</Text>
+        <Text style={styles.headerSubtitle}>Connect with your Pride family</Text>
+        <TouchableOpacity style={styles.messagesButton} onPress={() => navigation.navigate("Messages")}>
+          <MaterialIcons name="message" size={24} color="white" />
+        </TouchableOpacity>
+      </LinearGradient>
 
       {/* Posts Feed */}
       <FlatList
@@ -392,7 +517,6 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           <>
             {/* Quick Actions */}
             <View style={styles.quickActions}>
-              
               <TouchableOpacity
                 style={styles.quickActionButton}
                 onPress={() => navigation.navigate("Events", { screen: "EventsMain" })}
@@ -400,19 +524,16 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
                 <MaterialIcons name="event" size={24} color="#4ECDC4" />
                 <Text style={styles.quickActionText}>Events</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.quickActionButton}
-                onPress={() => setShowCreatePost(true)}
-              >
+
+              <TouchableOpacity style={styles.quickActionButton} onPress={() => setShowCreatePost(true)}>
                 <MaterialIcons name="add-circle" size={24} color="#FFD166" />
                 <Text style={styles.quickActionText}>Post</Text>
               </TouchableOpacity>
             </View>
-            
+
             <TouchableOpacity style={styles.createPostPrompt} onPress={() => setShowCreatePost(true)}>
               <Image
-                source={{ uri: "/placeholder.svg?height=40&width=40&text=U" }}
+                source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
                 style={styles.promptAvatar}
               />
               <Text style={styles.promptText}>Share something with the community...</Text>
@@ -437,7 +558,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           <View style={styles.createPostContent}>
             <Image
-              source={{ uri: "/placeholder.svg?height=50&width=50&text=U" }}
+              source={{ uri: user?.avatar_url || "/placeholder.svg?height=50&width=50&text=U" }}
               style={styles.createPostAvatar}
             />
             <TextInput
@@ -457,10 +578,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
               {newPostImages.map((imageUri, index) => (
                 <View key={index} style={styles.imagePreviewItem}>
                   <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => handleRemoveImage(index)}
-                  >
+                  <TouchableOpacity style={styles.removeImageButton} onPress={() => handleRemoveImage(index)}>
                     <MaterialIcons name="close" size={16} color="white" />
                   </TouchableOpacity>
                 </View>
@@ -477,11 +595,11 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
               <MaterialIcons name="camera-alt" size={24} color="black" />
               <Text style={styles.createPostActionText}>Camera</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction}>
+            <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
               <MaterialIcons name="location-on" size={24} color="black" />
               <Text style={styles.createPostActionText}>Location</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction}>
+            <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
               <MaterialIcons name="event" size={24} color="black" />
               <Text style={styles.createPostActionText}>Event</Text>
             </TouchableOpacity>
@@ -515,7 +633,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           <View style={styles.addCommentContainer}>
             <Image
-              source={{ uri: "/placeholder.svg?height=40&width=40&text=U" }}
+              source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
               style={styles.commentInputAvatar}
             />
             <TextInput
@@ -533,6 +651,33 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
               <MaterialIcons name="send" size={20} color={newComment.trim() ? "gold" : "#ccc"} />
             </TouchableOpacity>
           </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Share Modal */}
+      <Modal visible={showShareModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowShareModal(false)}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Share Post</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          <FlatList
+            data={buddyList}
+            renderItem={renderBuddyItem}
+            keyExtractor={(item) => item.id}
+            style={styles.buddyList}
+            ListEmptyComponent={
+              <View style={styles.noBuddies}>
+                <MaterialIcons name="people" size={64} color="#ccc" />
+                <Text style={styles.noBuddiesText}>No contacts found</Text>
+                <Text style={styles.noBuddiesSubtext}>Connect with people to share posts</Text>
+              </View>
+            }
+          />
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -772,7 +917,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginRight: 20,
-
   },
   createPostActionText: {
     marginLeft: 8,
@@ -900,5 +1044,43 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontSize: 12,
     color: "#666",
+  },
+  buddyList: {
+    flex: 1,
+    padding: 20,
+  },
+  buddyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  buddyAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 15,
+  },
+  buddyName: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
+  },
+  noBuddies: {
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  noBuddiesText: {
+    fontSize: 18,
+    color: "#666",
+    marginTop: 15,
+    marginBottom: 5,
+  },
+  noBuddiesSubtext: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
   },
 })

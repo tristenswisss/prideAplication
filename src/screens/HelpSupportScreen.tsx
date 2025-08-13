@@ -1,301 +1,237 @@
 "use client"
 
-import { useState } from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Linking,
-} from "react-native"
-import { LinearGradient } from "expo-linear-gradient"
-import { MaterialIcons } from "@expo/vector-icons"
-import type { HelpSupportScreenProps } from "../../types/navigation"
+import { useState, useEffect } from "react"
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, Alert, ActivityIndicator } from "react-native"
+import { SafeSpacesService } from "../../services/safeSpacesService"
+import type { SafeSpace, CrisisContact } from "../../services/safeSpacesService"
 
-interface FAQ {
-  id: string
-  question: string
-  answer: string
-  category: string
+interface HelpSupportScreenProps {
+  navigation: any
 }
 
 export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps) {
-  const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null)
-  const [contactForm, setContactForm] = useState({
-    subject: "",
-    message: "",
-    email: "",
-  })
-  const [showContactForm, setShowContactForm] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [safeSpaces, setSafeSpaces] = useState<SafeSpace[]>([])
+  const [crisisContacts, setCrisisContacts] = useState<CrisisContact[]>([])
+  const [adminEmail, setAdminEmail] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const faqs: FAQ[] = [
-    {
-      id: "1",
-      question: "How do I find LGBTQ+ friendly businesses?",
-      answer:
-        "Use our search feature or browse the map view. Look for businesses with the rainbow flag icon or 'LGBTQ+ Friendly' badge. You can also filter by category and read reviews from other community members.",
-      category: "General",
-    },
-    {
-      id: "2",
-      question: "How do I report inappropriate content or behavior?",
-      answer:
-        "You can report content by tapping the three dots menu on any post or profile and selecting 'Report'. For urgent safety concerns, use the Safety Center in your profile or contact emergency services directly.",
-      category: "Safety",
-    },
-    {
-      id: "3",
-      question: "What is the Buddy System?",
-      answer:
-        "The Buddy System connects you with trusted community members for safety check-ins when visiting new places or attending events. Your buddy can track your location and receive alerts if you don't check in as planned.",
-      category: "Safety",
-    },
-    {
-      id: "4",
-      question: "How do I create an event?",
-      answer:
-        "Go to the Events tab and tap the '+' button. Fill in the event details, set the date and location, and publish. Your event will be visible to the community and people can RSVP.",
-      category: "Events",
-    },
-    {
-      id: "5",
-      question: "Can I use the app offline?",
-      answer:
-        "Yes! The app works offline with cached data. You can view previously loaded businesses and events, but some features like messaging and live updates require an internet connection.",
-      category: "Technical",
-    },
-    {
-      id: "6",
-      question: "How do I change my privacy settings?",
-      answer:
-        "Go to Profile > Privacy & Safety to control who can see your profile, send you messages, and access your location. You can also manage data collection preferences there.",
-      category: "Privacy",
-    },
-  ]
+  useEffect(() => {
+    loadData()
+  }, [])
 
-  const supportOptions = [
-    {
-      title: "Email Support",
-      description: "Get help via email within 24 hours",
-      icon: "email",
-      action: () => Linking.openURL("mailto:support@pridesafeplaces.com"),
-    },
-    {
-      title: "Community Forum",
-      description: "Ask questions and get help from the community",
-      icon: "forum",
-      action: () => Alert.alert("Coming Soon", "Community forum will be available soon!"),
-    },
-    {
-      title: "Live Chat",
-      description: "Chat with our support team (Mon-Fri 9AM-5PM)",
-      icon: "chat",
-      action: () => Alert.alert("Live Chat", "Live chat is currently unavailable. Please use email support."),
-    },
-    {
-      title: "Phone Support",
-      description: "Call us for urgent issues",
-      icon: "phone",
-      action: () => Linking.openURL("tel:+1-555-PRIDE-HELP"),
-    },
-  ]
-
-  const toggleFAQ = (faqId: string) => {
-    setExpandedFAQ(expandedFAQ === faqId ? null : faqId)
-  }
-
-  const submitContactForm = async () => {
-    if (!contactForm.subject.trim() || !contactForm.message.trim() || !contactForm.email.trim()) {
-      Alert.alert("Error", "Please fill in all fields")
-      return
-    }
-
-    setLoading(true)
+  const loadData = async () => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      Alert.alert("Success", "Your message has been sent! We'll get back to you within 24 hours.")
-      setContactForm({ subject: "", message: "", email: "" })
-      setShowContactForm(false)
+      setLoading(true)
+      const [spacesData, contactsData, emailData] = await Promise.all([
+        SafeSpacesService.getSafeSpaces(),
+        SafeSpacesService.getCrisisContacts(),
+        SafeSpacesService.getAdminEmail(),
+      ])
+
+      setSafeSpaces(spacesData)
+      setCrisisContacts(contactsData)
+      setAdminEmail(emailData)
     } catch (error) {
-      Alert.alert("Error", "Failed to send message. Please try again.")
+      console.error("Error loading help data:", error)
+      Alert.alert("Error", "Failed to load help information")
     } finally {
       setLoading(false)
     }
   }
 
-  const renderFAQ = (faq: FAQ) => (
-    <TouchableOpacity key={faq.id} style={styles.faqItem} onPress={() => toggleFAQ(faq.id)}>
-      <View style={styles.faqHeader}>
-        <Text style={styles.faqQuestion}>{faq.question}</Text>
-        <MaterialIcons name={expandedFAQ === faq.id ? "expand-less" : "expand-more"} size={24} color="#666" />
-      </View>
-      {expandedFAQ === faq.id && <Text style={styles.faqAnswer}>{faq.answer}</Text>}
-    </TouchableOpacity>
+  const handlePhoneCall = (phoneNumber: string) => {
+    Alert.alert("Call Confirmation", `Do you want to call ${phoneNumber}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Call",
+        onPress: () => {
+          Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+            Alert.alert("Error", "Unable to make phone call")
+          })
+        },
+      },
+    ])
+  }
+
+  const handleEmailContact = (email: string) => {
+    Alert.alert("Email Contact", `Do you want to send an email to ${email}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Email",
+        onPress: () => {
+          Linking.openURL(`mailto:${email}`).catch(() => {
+            Alert.alert("Error", "Unable to open email client")
+          })
+        },
+      },
+    ])
+  }
+
+  const getCategoryIcon = (category: SafeSpace["category"]): string => {
+    switch (category) {
+      case "organization":
+        return "🏢"
+      case "healthcare":
+        return "🏥"
+      case "restaurant":
+        return "🍽️"
+      case "drop_in_center":
+        return "🏠"
+      case "community_center":
+        return "🏘️"
+      default:
+        return "📍"
+    }
+  }
+
+  const getCategoryTitle = (category: SafeSpace["category"]): string => {
+    switch (category) {
+      case "organization":
+        return "Organizations"
+      case "healthcare":
+        return "Healthcare"
+      case "restaurant":
+        return "Restaurants & Cafes"
+      case "drop_in_center":
+        return "Drop-in Centers"
+      case "community_center":
+        return "Community Centers"
+      default:
+        return "Other"
+    }
+  }
+
+  const groupedSafeSpaces = safeSpaces.reduce(
+    (groups, space) => {
+      const category = space.category
+      if (!groups[category]) {
+        groups[category] = []
+      }
+      groups[category].push(space)
+      return groups
+    },
+    {} as Record<SafeSpace["category"], SafeSpace[]>,
   )
 
-  const renderSupportOption = (option: (typeof supportOptions)[0]) => (
-    <TouchableOpacity key={option.title} style={styles.supportOption} onPress={option.action}>
-      <View style={styles.supportIcon}>
-        <MaterialIcons name={option.icon as any} size={24} color="black" />
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading help information...</Text>
       </View>
-      <View style={styles.supportContent}>
-        <Text style={styles.supportTitle}>{option.title}</Text>
-        <Text style={styles.supportDescription}>{option.description}</Text>
-      </View>
-      <MaterialIcons name="chevron-right" size={24} color="#ccc" />
-    </TouchableOpacity>
-  )
+    )
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Help & Support</Text>
-          <View style={styles.headerRight} />
-        </View>
-      </LinearGradient>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Help & Support</Text>
+        <Text style={styles.subtitle}>Resources and assistance for the LGBTQ+ community</Text>
+      </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Get Help</Text>
-          {supportOptions.map(renderSupportOption)}
-        </View>
-
-        {/* Contact Form Toggle */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.contactFormToggle} onPress={() => setShowContactForm(!showContactForm)}>
-            <MaterialIcons name="contact-support" size={24} color="black" />
-            <Text style={styles.contactFormToggleText}>Send us a message</Text>
-            <MaterialIcons name={showContactForm ? "expand-less" : "expand-more"} size={24} color="#666" />
-          </TouchableOpacity>
-
-          {showContactForm && (
-            <View style={styles.contactForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  value={contactForm.email}
-                  onChangeText={(text) => setContactForm((prev) => ({ ...prev, email: text }))}
-                  placeholder="your.email@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Subject</Text>
-                <TextInput
-                  style={styles.input}
-                  value={contactForm.subject}
-                  onChangeText={(text) => setContactForm((prev) => ({ ...prev, subject: text }))}
-                  placeholder="Brief description of your issue"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Message</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={contactForm.message}
-                  onChangeText={(text) => setContactForm((prev) => ({ ...prev, message: text }))}
-                  placeholder="Please describe your issue in detail..."
-                  multiline
-                  numberOfLines={6}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.submitButton, loading && styles.disabledButton]}
-                onPress={submitContactForm}
-                disabled={loading}
-              >
-                <Text style={styles.submitButtonText}>{loading ? "Sending..." : "Send Message"}</Text>
-              </TouchableOpacity>
+      {/* Crisis Helplines */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🚨 Crisis Helplines</Text>
+        <Text style={styles.sectionDescription}>Immediate legal assistance and support</Text>
+        {crisisContacts.map((contact) => (
+          <View key={contact.id} style={styles.contactCard}>
+            <View style={styles.contactHeader}>
+              <Text style={styles.contactName}>{contact.name}</Text>
+              <Text style={styles.contactLocation}>{contact.country}</Text>
             </View>
-          )}
-        </View>
-
-        {/* FAQ Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-          {faqs.map(renderFAQ)}
-        </View>
-
-        {/* App Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App Information</Text>
-
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Version</Text>
-            <Text style={styles.infoValue}>1.0.0</Text>
+            <Text style={styles.contactDescription}>{contact.description}</Text>
+            <TouchableOpacity style={styles.phoneButton} onPress={() => handlePhoneCall(contact.phone)}>
+              <Text style={styles.phoneButtonText}>📞 {contact.phone}</Text>
+            </TouchableOpacity>
+            <Text style={styles.availabilityText}>Available: {contact.available_hours}</Text>
+            {contact.available_24_7 && <Text style={styles.available24Text}>Available 24/7</Text>}
           </View>
+        ))}
+      </View>
 
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Last Updated</Text>
-            <Text style={styles.infoValue}>January 2024</Text>
+      {/* Safe Spaces */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🏳️‍🌈 Safe Spaces</Text>
+        <Text style={styles.sectionDescription}>LGBTQ+ friendly locations and organizations in Zimbabwe</Text>
+
+        {Object.entries(groupedSafeSpaces).map(([category, spaces]) => (
+          <View key={category} style={styles.categorySection}>
+            <Text style={styles.categoryTitle}>
+              {getCategoryIcon(category as SafeSpace["category"])} {getCategoryTitle(category as SafeSpace["category"])}
+            </Text>
+            {spaces.map((space) => (
+              <View key={space.id} style={styles.spaceCard}>
+                <View style={styles.spaceHeader}>
+                  <Text style={styles.spaceName}>{space.name}</Text>
+                  {space.verified && <Text style={styles.verifiedBadge}>✓ Verified</Text>}
+                </View>
+                <Text style={styles.spaceDescription}>{space.description}</Text>
+                <Text style={styles.spaceAddress}>📍 {space.address}</Text>
+
+                {space.services.length > 0 && (
+                  <View style={styles.servicesContainer}>
+                    <Text style={styles.servicesTitle}>Services:</Text>
+                    <View style={styles.servicesTags}>
+                      {space.services.map((service, index) => (
+                        <Text key={index} style={styles.serviceTag}>
+                          {service}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.spaceFeatures}>
+                  {space.lgbtq_friendly && <Text style={styles.featureTag}>🏳️‍🌈 LGBTQ+ Friendly</Text>}
+                  {space.trans_friendly && <Text style={styles.featureTag}>🏳️‍⚧️ Trans Friendly</Text>}
+                </View>
+
+                {space.phone && (
+                  <TouchableOpacity style={styles.contactButton} onPress={() => handlePhoneCall(space.phone!)}>
+                    <Text style={styles.contactButtonText}>📞 Call</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
           </View>
+        ))}
+      </View>
 
-          <TouchableOpacity
-            style={styles.infoItem}
-            onPress={() => Linking.openURL("https://pridesafeplaces.com/terms")}
-          >
-            <Text style={styles.infoLabel}>Terms of Service</Text>
-            <MaterialIcons name="open-in-new" size={16} color="black" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.infoItem}
-            onPress={() => Linking.openURL("https://pridesafeplaces.com/privacy")}
-          >
-            <Text style={styles.infoLabel}>Privacy Policy</Text>
-            <MaterialIcons name="open-in-new" size={16} color="black" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Emergency Resources */}
+      {/* Admin Contact */}
+      {adminEmail && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Emergency Resources</Text>
-
-          <TouchableOpacity style={styles.emergencyOption} onPress={() => Linking.openURL("tel:988")}>
-            <MaterialIcons name="phone" size={24} color="black" />
-            <View style={styles.emergencyContent}>
-              <Text style={styles.emergencyTitle}>Crisis Hotline</Text>
-              <Text style={styles.emergencyDescription}>988 - 24/7 Mental Health Crisis Support</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.emergencyOption} onPress={() => Linking.openURL("tel:911")}>
-            <MaterialIcons name="local-hospital" size={24} color="black" />
-            <View style={styles.emergencyContent}>
-              <Text style={styles.emergencyTitle}>Emergency Services</Text>
-              <Text style={styles.emergencyDescription}>911 - Police, Fire, Medical Emergency</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.emergencyOption}
-            onPress={() => Linking.openURL("https://www.thetrevorproject.org/")}
-          >
-            <MaterialIcons name="favorite" size={24} color="black" />
-            <View style={styles.emergencyContent}>
-              <Text style={styles.emergencyTitle}>Trevor Project</Text>
-              <Text style={styles.emergencyDescription}>LGBTQ+ Crisis Support & Suicide Prevention</Text>
-            </View>
+          <Text style={styles.sectionTitle}>📧 App Support</Text>
+          <Text style={styles.sectionDescription}>
+            Contact the app administrators for technical support or feedback
+          </Text>
+          <TouchableOpacity style={styles.adminContactCard} onPress={() => handleEmailContact(adminEmail)}>
+            <Text style={styles.adminContactTitle}>Pride Application Admin</Text>
+            <Text style={styles.adminContactEmail}>{adminEmail}</Text>
+            <Text style={styles.adminContactAction}>Tap to send email</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+
+      {/* Additional Resources */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>📚 Additional Resources</Text>
+        <View style={styles.resourceCard}>
+          <Text style={styles.resourceTitle}>Mental Health Support</Text>
+          <Text style={styles.resourceDescription}>
+            If you're experiencing mental health challenges, please reach out to local mental health professionals or
+            use our in-app mental health resources.
+          </Text>
+        </View>
+
+        <View style={styles.resourceCard}>
+          <Text style={styles.resourceTitle}>Safety Tips</Text>
+          <Text style={styles.resourceDescription}>
+            Always prioritize your safety when meeting new people or attending events. Trust your instincts and inform
+            trusted friends about your plans.
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   )
 }
 
@@ -304,186 +240,230 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  header: {
-    paddingTop: 40,
-    paddingBottom: 20,
-  },
-  headerContent: {
-    flexDirection: "row",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
+    backgroundColor: "#f5f5f5",
   },
-  backButton: {
-    padding: 8,
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
   },
-  headerTitle: {
-    fontSize: 20,
+  header: {
+    padding: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  title: {
+    fontSize: 28,
     fontWeight: "bold",
-    color: "white",
-    flex: 1,
-    textAlign: "center",
+    color: "#333",
+    marginBottom: 5,
   },
-  headerRight: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
   },
   section: {
-    backgroundColor: "white",
-    marginBottom: 20,
-    paddingVertical: 20,
+    marginTop: 20,
+    backgroundColor: "#fff",
+    padding: 20,
   },
   sectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 5,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 15,
+  },
+  contactCard: {
+    backgroundColor: "#f8f9fa",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#dc3545",
+  },
+  contactHeader: {
+    marginBottom: 10,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  contactLocation: {
+    fontSize: 14,
+    color: "#666",
+  },
+  contactDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 10,
+  },
+  phoneButton: {
+    backgroundColor: "#dc3545",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  phoneButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  availabilityText: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 5,
+  },
+  available24Text: {
+    fontSize: 12,
+    color: "#28a745",
+    fontWeight: "bold",
+  },
+  categorySection: {
+    marginBottom: 20,
+  },
+  categoryTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 15,
-    paddingHorizontal: 20,
+    marginBottom: 10,
   },
-  supportOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  supportIcon: {
-    width: 40,
-    alignItems: "center",
-  },
-  supportContent: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  supportTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  supportDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  contactFormToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  contactFormToggleText: {
-    flex: 1,
-    marginLeft: 15,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-  contactForm: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
+  spaceCard: {
+    backgroundColor: "#f8f9fa",
+    padding: 15,
     borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: "white",
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#007AFF",
   },
-  textArea: {
-    height: 120,
-    textAlignVertical: "top",
-  },
-  submitButton: {
-    backgroundColor: "#FF6B6B",
-    paddingVertical: 15,
-    borderRadius: 10,
+  spaceHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 5,
   },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  submitButtonText: {
-    color: "white",
+  spaceName: {
     fontSize: 16,
     fontWeight: "bold",
-  },
-  faqItem: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  faqHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  faqQuestion: {
-    fontSize: 16,
-    fontWeight: "600",
     color: "#333",
     flex: 1,
-    marginRight: 10,
   },
-  faqAnswer: {
+  verifiedBadge: {
+    fontSize: 12,
+    color: "#28a745",
+    fontWeight: "bold",
+  },
+  spaceDescription: {
     fontSize: 14,
     color: "#666",
-    lineHeight: 22,
-    marginTop: 10,
+    marginBottom: 5,
   },
-  infoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: "#333",
-  },
-  infoValue: {
-    fontSize: 16,
-    color: "#666",
-  },
-  emergencyOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  emergencyContent: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  emergencyTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  emergencyDescription: {
+  spaceAddress: {
     fontSize: 14,
     color: "#666",
+    marginBottom: 10,
+  },
+  servicesContainer: {
+    marginBottom: 10,
+  },
+  servicesTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 5,
+  },
+  servicesTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  serviceTag: {
+    backgroundColor: "#e9ecef",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    color: "#495057",
+    marginRight: 5,
+    marginBottom: 5,
+  },
+  spaceFeatures: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 10,
+  },
+  featureTag: {
+    backgroundColor: "#d4edda",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    color: "#155724",
+    marginRight: 5,
+    marginBottom: 5,
+  },
+  contactButton: {
+    backgroundColor: "#007AFF",
+    padding: 8,
+    borderRadius: 5,
+    alignItems: "center",
+    alignSelf: "flex-start",
+  },
+  contactButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  adminContactCard: {
+    backgroundColor: "#f8f9fa",
+    padding: 15,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#6f42c1",
+  },
+  adminContactTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 5,
+  },
+  adminContactEmail: {
+    fontSize: 14,
+    color: "#6f42c1",
+    marginBottom: 5,
+  },
+  adminContactAction: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+  },
+  resourceCard: {
+    backgroundColor: "#f8f9fa",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#ffc107",
+  },
+  resourceTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 5,
+  },
+  resourceDescription: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
   },
 })
