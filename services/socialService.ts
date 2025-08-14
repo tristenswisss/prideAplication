@@ -46,7 +46,6 @@ export const socialService: SocialService = {
           users!posts_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
             verified,
             email,
@@ -55,7 +54,8 @@ export const socialService: SocialService = {
             post_count,
             interests,
             created_at,
-            updated_at
+            updated_at,
+            profiles ( username )
           )
         `)
         .eq("visibility", "public")
@@ -66,9 +66,12 @@ export const socialService: SocialService = {
         return []
       }
 
-      return (data || []).map((post) => ({
+      return (data || []).map((post: any) => ({
         ...post,
-        user: post.users,
+        user: {
+          ...post.users,
+          username: post.users?.profiles?.username,
+        },
         is_liked: false, // Would be determined by checking likes table
         is_saved: false, // Would be determined by checking saved posts table
       }))
@@ -133,7 +136,6 @@ export const socialService: SocialService = {
           users!posts_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
             verified,
             email,
@@ -142,7 +144,8 @@ export const socialService: SocialService = {
             post_count,
             interests,
             created_at,
-            updated_at
+            updated_at,
+            profiles ( username )
           )
         `)
         .single()
@@ -154,7 +157,10 @@ export const socialService: SocialService = {
 
       return {
         ...data,
-        user: data.users,
+        user: {
+          ...data.users,
+          username: (data as any).users?.profiles?.username,
+        },
         is_liked: false,
         is_saved: false,
       }
@@ -256,9 +262,9 @@ export const socialService: SocialService = {
           users!comments_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
-            verified
+            verified,
+            profiles ( username )
           )
         `)
         .eq("post_id", postId)
@@ -269,9 +275,12 @@ export const socialService: SocialService = {
         return []
       }
 
-      return (data || []).map((comment) => ({
+      return (data || []).map((comment: any) => ({
         ...comment,
-        user: comment.users,
+        user: {
+          ...comment.users,
+          username: comment.users?.profiles?.username,
+        },
         is_liked: false, // Would be determined by checking comment likes table
       }))
     } catch (error) {
@@ -301,9 +310,9 @@ export const socialService: SocialService = {
           users!comments_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
-            verified
+            verified,
+            profiles ( username )
           )
         `)
         .single()
@@ -318,7 +327,10 @@ export const socialService: SocialService = {
 
       return {
         ...data,
-        user: data.users,
+        user: {
+          ...(data as any).users,
+          username: (data as any).users?.profiles?.username,
+        },
         is_liked: false,
       }
     } catch (error) {

@@ -13,6 +13,66 @@ CREATE TABLE IF NOT EXISTS blocked_users (
 CREATE INDEX IF NOT EXISTS idx_blocked_users_user ON blocked_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_blocked_users_blocked_user ON blocked_users(blocked_user_id);
 
+-- Ensure profiles table and columns exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'profiles'
+  ) THEN
+    CREATE TABLE profiles (
+      id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      username VARCHAR(50) UNIQUE,
+      phone VARCHAR(20),
+      date_of_birth DATE,
+      gender VARCHAR(50),
+      sexual_orientation VARCHAR(50),
+      show_profile BOOLEAN DEFAULT TRUE,
+      show_activities BOOLEAN DEFAULT TRUE,
+      appear_in_search BOOLEAN DEFAULT TRUE,
+      allow_direct_messages BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+  END IF;
+
+  -- Ensure username column exists
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'username'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN username VARCHAR(50) UNIQUE;
+  END IF;
+
+  -- Ensure appear_in_search column exists
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'appear_in_search'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN appear_in_search BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Ensure show_profile column exists
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'show_profile'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN show_profile BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Ensure allow_direct_messages column exists
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'allow_direct_messages'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN allow_direct_messages BOOLEAN DEFAULT TRUE;
+  END IF;
+END $$;
+
+-- Indexes to speed up joins and username lookups
+CREATE INDEX IF NOT EXISTS idx_profiles_id ON profiles(id);
+CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);
+
 -- Buddy Requests Table
 CREATE TABLE IF NOT EXISTS buddy_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
