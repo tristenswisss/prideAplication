@@ -45,6 +45,8 @@ export default function MessageThreads({ parentMessage, visible, onClose, onSend
         read: true,
         sent_at: new Date(Date.now() - 300000).toISOString(),
         parent_id: parentMessage.id,
+        created_at: new Date(Date.now() - 300000).toISOString(),
+        updated_at: new Date(Date.now() - 300000).toISOString(),
       },
       {
         id: "thread2",
@@ -60,6 +62,8 @@ export default function MessageThreads({ parentMessage, visible, onClose, onSend
         read: true,
         sent_at: new Date(Date.now() - 180000).toISOString(),
         parent_id: parentMessage.id,
+        created_at: new Date(Date.now() - 180000).toISOString(),
+        updated_at: new Date(Date.now() - 180000).toISOString(),
       },
     ]
 
@@ -83,6 +87,8 @@ export default function MessageThreads({ parentMessage, visible, onClose, onSend
       read: true,
       sent_at: new Date().toISOString(),
       parent_id: parentMessage.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
 
     setThreadMessages([...threadMessages, newReply])

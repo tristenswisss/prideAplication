@@ -18,16 +18,7 @@ import { socialService } from "../../services/socialService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, UserProfile } from "../../types/social"
 
-interface UserProfileScreenProps {
-  navigation: any
-  route: {
-    params: {
-      userId: string
-    }
-  }
-}
-
-export default function UserProfileScreen({ navigation, route }: UserProfileScreenProps) {
+export default function UserProfileScreen({ navigation, route }: any) {
   const { userId } = route.params
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])

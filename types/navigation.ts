@@ -1,4 +1,4 @@
-import type { NavigatorScreenParams } from "@react-navigation/native"
+import type { NavigatorScreenParams, CompositeScreenProps } from "@react-navigation/native"
 import type { StackScreenProps } from "@react-navigation/stack"
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs"
 import type { Business, Event, UserProfile } from "./index"
@@ -32,6 +32,7 @@ export type AuthStackParamList = {
 // Main Tab Navigator
 export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>
+  Search: NavigatorScreenParams<SearchStackParamList>
   Community: NavigatorScreenParams<CommunityStackParamList>
   Events: NavigatorScreenParams<EventsStackParamList>
   Messages: NavigatorScreenParams<MessagesStackParamList>
@@ -57,7 +58,7 @@ export type SearchStackParamList = {
 // Community Stack
 export type CommunityStackParamList = {
   CommunityMain: undefined
-  UserProfile: { user: UserProfile }
+  UserProfile: { userId: string }
   Messages: undefined
   Chat: { conversation: any }
 }
@@ -84,6 +85,8 @@ export type ProfileStackParamList = {
   ProfileMain: undefined
   EditProfile: undefined
   SavedPlaces: undefined
+  BusinessDetails: { business: Business }
+  UserProfile: { userId: string }
   MyEvents: undefined
   Recordings: undefined
   Safety: undefined
@@ -105,7 +108,10 @@ export type HomeScreenProps = StackScreenProps<HomeStackParamList, "HomeMain">
 export type CommunityScreenProps = StackScreenProps<CommunityStackParamList, "CommunityMain">
 export type EventsScreenProps = StackScreenProps<EventsStackParamList, "EventsMain">
 export type MessagesScreenProps = StackScreenProps<MessagesStackParamList, "MessagesMain">
-export type ProfileScreenProps = StackScreenProps<ProfileStackParamList, "ProfileMain">
+export type ProfileScreenProps = CompositeScreenProps<
+  StackScreenProps<ProfileStackParamList, "ProfileMain">,
+  BottomTabScreenProps<MainTabParamList, "Profile">
+>
 
 // Additional Screen Props
 export type CreateEventScreenProps = StackScreenProps<EventsStackParamList, "CreateEvent">
@@ -119,7 +125,10 @@ export type HelpSupportScreenProps = StackScreenProps<ProfileStackParamList, "He
 export type PrivacySafetyScreenProps = StackScreenProps<ProfileStackParamList, "PrivacySafety">
 export type NotificationSettingsScreenProps = StackScreenProps<ProfileStackParamList, "NotificationSettings">
 export type SavedPlacesScreenProps = StackScreenProps<ProfileStackParamList, "SavedPlaces">
-export type MyEventsScreenProps = StackScreenProps<ProfileStackParamList, "MyEvents">
+export type MyEventsScreenProps = CompositeScreenProps<
+  StackScreenProps<ProfileStackParamList, "MyEvents">,
+  BottomTabScreenProps<MainTabParamList, "Profile">
+>
 
 declare global {
   namespace ReactNavigation {

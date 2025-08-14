@@ -156,7 +156,7 @@ export const liveEventService = {
     if (liveEvent) {
       liveEvent.is_live = false
       liveEvent.ended_at = new Date().toISOString()
-      liveEvent.max_viewers = Math.max(liveEvent.max_viewers, liveEvent.viewer_count)
+      liveEvent.max_viewers = Math.max(liveEvent.max_viewers ?? 0, liveEvent.viewer_count)
       liveEvent.viewer_count = 0
     }
   },
@@ -166,7 +166,7 @@ export const liveEventService = {
     const liveEvent = mockLiveEvents.find((event) => event.id === liveEventId)
     if (liveEvent && liveEvent.is_live) {
       liveEvent.viewer_count += 1
-      liveEvent.max_viewers = Math.max(liveEvent.max_viewers, liveEvent.viewer_count)
+      liveEvent.max_viewers = Math.max(liveEvent.max_viewers ?? 0, liveEvent.viewer_count)
 
       // Add join message
       const joinMessage: LiveMessage = {
