@@ -121,6 +121,7 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
       <View style={styles.optionIcon}>
         <MaterialIcons name={icon as any} size={24} color={disabled ? "#ccc" : "black"} />
       </View>
+      
       <View style={styles.optionContent}>
         <Text style={[styles.optionTitle, disabled && styles.disabledText]}>{title}</Text>
         <Text style={[styles.optionDescription, disabled && styles.disabledText]}>{description}</Text>
