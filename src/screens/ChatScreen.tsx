@@ -24,6 +24,7 @@ import MessageReactions from "../../components/MessageReactions"
 import MessageThreads from "../../components/MessageThreads"
 import CallInterface from "../../components/CallInterface"
 import { callingService, type CallSession } from "../../services/callingService"
+import { realtime } from "../../lib/realtime"
 
 interface ChatScreenProps {
   navigation: any
@@ -88,6 +89,20 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     })
   }, [])
 
+  useEffect(() => {
+    if (!conversation?.id) return
+    const unsubscribe = realtime.subscribeToMessages(conversation.id, (row: any) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === row.id)) return prev
+        return [...prev, row as any]
+      })
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true })
+      }, 100)
+    })
+    return () => unsubscribe()
+  }, [conversation?.id])
+
   const loadMessages = async () => {
     try {
       setLoading(true)
@@ -119,9 +134,12 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
       // If we have an image, upload it and send as image message
       if (selectedImage) {
-        const imageUrl = await imageUploadService.uploadImage(selectedImage)
+        const result = await imageUploadService.uploadImage(selectedImage, user.id, "messages")
+        if (!result.success || !result.url) {
+          throw new Error(result.error || "Image upload failed")
+        }
         messageType = "image"
-        metadata = { image_url: imageUrl }
+        metadata = { image_url: result.url }
         messageContent = "Image"
       }
 

@@ -25,7 +25,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
     try {
       // Create a new live event
       const newLiveEvent = await liveEventService.createLiveEvent(
-        "temp-event-id", // This would typically be a real event ID
+        undefined,
         user.id,
         "Live Event",
         "Join me for a live stream!",

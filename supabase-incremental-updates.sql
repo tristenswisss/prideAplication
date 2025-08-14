@@ -225,3 +225,153 @@ ALTER TABLE buddy_matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE safety_check_ins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meetups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE buddy_ratings ENABLE ROW LEVEL SECURITY;
+
+-- Create RPC functions for post counters if not exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'increment_post_likes'
+  ) THEN
+    CREATE OR REPLACE FUNCTION increment_post_likes(post_id uuid)
+    RETURNS void AS $$
+    BEGIN
+      UPDATE posts SET likes_count = COALESCE(likes_count,0) + 1 WHERE id = post_id;
+    END;
+    $$ LANGUAGE plpgsql;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'decrement_post_likes'
+  ) THEN
+    CREATE OR REPLACE FUNCTION decrement_post_likes(post_id uuid)
+    RETURNS void AS $$
+    BEGIN
+      UPDATE posts SET likes_count = GREATEST(COALESCE(likes_count,0) - 1, 0) WHERE id = post_id;
+    END;
+    $$ LANGUAGE plpgsql;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'increment_post_comments'
+  ) THEN
+    CREATE OR REPLACE FUNCTION increment_post_comments(post_id uuid)
+    RETURNS void AS $$
+    BEGIN
+      UPDATE posts SET comments_count = COALESCE(comments_count,0) + 1 WHERE id = post_id;
+    END;
+    $$ LANGUAGE plpgsql;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'increment_post_shares'
+  ) THEN
+    CREATE OR REPLACE FUNCTION increment_post_shares(post_id uuid)
+    RETURNS void AS $$
+    BEGIN
+      UPDATE posts SET shares_count = COALESCE(shares_count,0) + 1 WHERE id = post_id;
+    END;
+    $$ LANGUAGE plpgsql;
+  END IF;
+END $$;
+
+-- Create a helper to insert notifications
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'create_notification'
+  ) THEN
+    CREATE OR REPLACE FUNCTION create_notification(
+      user_id uuid,
+      title text,
+      message text,
+      type text,
+      data jsonb DEFAULT NULL
+    ) RETURNS void AS $$
+    BEGIN
+      INSERT INTO notifications (user_id, title, message, type, data) VALUES (user_id, title, message, type, data);
+    END;
+    $$ LANGUAGE plpgsql;
+  END IF;
+END $$;
+
+-- Ensure post_likes and post_shares tables exist for social features
+CREATE TABLE IF NOT EXISTS post_likes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS post_shares (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS saved_posts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(post_id, user_id)
+);
+
+-- RLS policies for these tables
+ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE post_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE saved_posts ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can like posts') THEN
+    CREATE POLICY "Users can like posts" ON post_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can unlike their likes') THEN
+    CREATE POLICY "Users can unlike their likes" ON post_likes FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can share posts') THEN
+    CREATE POLICY "Users can share posts" ON post_shares FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can save posts') THEN
+    CREATE POLICY "Users can save posts" ON saved_posts FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can unsave their posts') THEN
+    CREATE POLICY "Users can unsave their posts" ON saved_posts FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- Storage bucket policies for 'mirae' (if using Supabase storage)
+-- These run in the storage schema and require supabase.storage to exist
+-- Provided here for reference; apply in Supabase SQL editor if needed
+-- Allow authenticated users to upload, public select
+-- CREATE POLICY "mirae upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'mirae');
+-- CREATE POLICY "mirae select" ON storage.objects FOR SELECT TO public USING (bucket_id = 'mirae');
+-- CREATE POLICY "mirae update own" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'mirae' AND owner = auth.uid());
+-- CREATE POLICY "mirae delete own" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'mirae' AND owner = auth.uid());

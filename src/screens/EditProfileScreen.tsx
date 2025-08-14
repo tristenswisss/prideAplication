@@ -108,17 +108,11 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
       if (profileImage) {
         try {
           console.log("Uploading profile image...")
-          const uploadResult = await imageUploadService.uploadImage(profileImage)
-          
-          // Handle different possible return types from uploadImage
-          if (typeof uploadResult === 'string') {
-            avatarUrl = uploadResult
-          } else if (uploadResult && typeof uploadResult === 'object' && 'url' in uploadResult) {
-            avatarUrl = (uploadResult as any).url
-          } else if (uploadResult && typeof uploadResult === 'object' && 'uri' in uploadResult) {
-            avatarUrl = (uploadResult as any).uri
+          const uploadResult = await imageUploadService.uploadImage(profileImage, user!.id, "avatars")
+          if (!uploadResult.success || !uploadResult.url) {
+            throw new Error(uploadResult.error || "Failed to upload avatar")
           }
-          
+          avatarUrl = uploadResult.url
           console.log("Image uploaded successfully:", avatarUrl)
         } catch (imageError: any) {
           console.error("Image upload failed:", imageError)
