@@ -178,7 +178,7 @@ export const messagingService = {
           allow_direct_messages
         )
       `)
-      .or(`name.ilike.%${query}%,username.ilike.%${query}%`)
+      .or(`name.ilike.%${query}%`)
       .neq('id', currentUserId) // Don't include the current user
       .not('id', 'in', `(${blockedUserIds.join(',')})`); // Exclude blocked users
 

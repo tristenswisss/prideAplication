@@ -46,7 +46,6 @@ export const socialService: SocialService = {
           users!posts_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
             verified,
             email,
@@ -133,7 +132,6 @@ export const socialService: SocialService = {
           users!posts_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
             verified,
             email,
@@ -256,7 +254,6 @@ export const socialService: SocialService = {
           users!comments_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
             verified
           )
@@ -301,7 +298,6 @@ export const socialService: SocialService = {
           users!comments_user_id_fkey (
             id,
             name,
-            username,
             avatar_url,
             verified
           )

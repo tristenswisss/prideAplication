@@ -43,7 +43,6 @@ class ProfileService {
         .select(`
           *,
           profiles!inner(
-            username,
             show_profile,
             show_activities,
             appear_in_search,
@@ -81,10 +80,16 @@ class ProfileService {
       // First check if user exists
       const existingUser = await this.getProfile(userId)
       if (!existingUser.success) {
-        console.log("User does not exist, creating new user...")
-        const createResult = await this.createUserFromAuth(userId)
-        if (!createResult.success) {
-          return createResult
+        // Only attempt to create if the error is "no rows found" (PGRST116)
+        if ((existingUser as any).error && String((existingUser as any).error).includes("PGRST116")) {
+          console.log("User does not exist, creating new user...")
+          const createResult = await this.createUserFromAuth(userId)
+          if (!createResult.success) {
+            return createResult
+          }
+        } else {
+          // Propagate the original error
+          return existingUser
         }
       }
 
@@ -218,7 +223,6 @@ class ProfileService {
       // Create profile record
       const profileData = {
         id: userId,
-        username: authUser.user.email?.split("@")[0] || "user",
         show_profile: true,
         show_activities: true,
         appear_in_search: true,
@@ -274,7 +278,6 @@ class ProfileService {
           created_at,
           updated_at,
           profiles!inner(
-            username,
             show_profile,
             appear_in_search
           )
@@ -309,7 +312,6 @@ class ProfileService {
           email: user.email,
           created_at: user.created_at,
           updated_at: user.updated_at,
-          username: profile.username,
           show_profile: profile.show_profile,
           appear_in_search: profile.appear_in_search,
         }
@@ -337,7 +339,6 @@ class ProfileService {
           created_at,
           updated_at,
           profiles(
-            username,
             show_profile
           )
         `)
@@ -360,7 +361,6 @@ class ProfileService {
           email: user.email,
           created_at: user.created_at,
           updated_at: user.updated_at,
-          username: profile?.username,
           show_profile: profile?.show_profile,
         }
       })
