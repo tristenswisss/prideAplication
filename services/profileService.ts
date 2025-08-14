@@ -298,7 +298,7 @@ class ProfileService {
 
       // Transform data to match UserProfile interface
       const transformedData: UserProfile[] = (data || []).map((user) => {
-        const profile = user.profiles as ProfileRecord
+        const profile = (Array.isArray(user.profiles) ? user.profiles[0] : user.profiles) as ProfileRecord
         return {
           id: user.id,
           name: user.name,

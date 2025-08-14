@@ -145,7 +145,7 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
     const isUpcoming = eventDate > new Date()
 
     return (
-      <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("Events", { screen: "EventDetails", params: { event: item } })}>
+      <TouchableOpacity style={styles.eventCard} onPress={() => (navigation as any).navigate("Events", { screen: "EventDetails", params: { event: item } })}>
         <View style={styles.eventImageContainer}>
           {item.image_url ? (
             <Image source={{ uri: item.image_url }} style={styles.eventImage} />
@@ -262,7 +262,7 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
                   ? "You're not going to any events yet."
                   : "You haven't shown interest in any events yet."}
           </Text>
-          <TouchableOpacity style={styles.exploreButton} onPress={() => navigation.navigate("Events", { screen: "EventsMain" })}>
+          <TouchableOpacity style={styles.exploreButton} onPress={() => (navigation as any).navigate("Events", { screen: "EventsMain" })}>
             <Text style={styles.exploreButtonText}>Explore Events</Text>
           </TouchableOpacity>
         </View>

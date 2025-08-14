@@ -32,6 +32,7 @@ export type AuthStackParamList = {
 // Main Tab Navigator
 export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>
+  Search: NavigatorScreenParams<SearchStackParamList>
   Community: NavigatorScreenParams<CommunityStackParamList>
   Events: NavigatorScreenParams<EventsStackParamList>
   Messages: NavigatorScreenParams<MessagesStackParamList>
@@ -57,7 +58,7 @@ export type SearchStackParamList = {
 // Community Stack
 export type CommunityStackParamList = {
   CommunityMain: undefined
-  UserProfile: { user: UserProfile }
+  UserProfile: { userId: string }
   Messages: undefined
   Chat: { conversation: any }
 }
@@ -93,6 +94,8 @@ export type ProfileStackParamList = {
   HelpSupport: undefined
   PrivacySafety: undefined
   NotificationSettings: undefined
+  UserProfile: { userId: string }
+  BusinessDetails: { business: Business }
 }
 
 // Screen Props Types
