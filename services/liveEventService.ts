@@ -1,217 +1,238 @@
+import { supabase } from "../lib/supabase"
 import type { LiveEvent, LiveMessage, UserProfile } from "../types/messaging"
-
-// Mock data for live events
-const mockLiveEvents: LiveEvent[] = [
-  {
-    id: "live1",
-    event_id: "1",
-    title: "Pride Month Kickoff - Live Stream",
-    description:
-      "Join us for the official Pride Month kickoff celebration with live performances and community updates!",
-    host_id: "user2",
-    host: {
-      id: "user2",
-      email: "jordan@example.com",
-      name: "Jordan Pride",
-      username: "jordanpride",
-      avatar_url: "/placeholder.svg?height=50&width=50&text=JP",
-      bio: "Trans rights are human rights 🏳️‍⚧️",
-      pronouns: "he/him",
-      location: "Oakland, CA",
-      verified: false,
-      is_online: true,
-      created_at: "2024-01-05T00:00:00Z",
-      updated_at: "2024-01-05T00:00:00Z",
-    } as UserProfile, 
-    stream_url: "https://example.com/stream/live1",
-    is_live: true,
-    viewer_count: 127,
-    started_at: "2024-01-25T19:00:00Z",
-    max_viewers: 156,
-    chat_enabled: true,
-    created_at: "2024-01-25T18:45:00Z",
-  },
-  {
-    id: "live2",
-    event_id: "3",
-    title: "Drag Show Rehearsal",
-    description: "Behind the scenes look at tonight's drag show preparation!",
-    host_id: "user3",
-    host: {
-      id: "user3",
-      email: "sam@example.com",
-      name: "Sam Fabulous",
-      username: "samfab",
-      avatar_url: "/placeholder.svg?height=50&width=50&text=SF",
-      bio: "Drag queen 💄",
-      pronouns: "she/her",
-      location: "San Francisco, CA",
-      verified: true,
-      is_online: true,
-      created_at: "2024-01-10T00:00:00Z",
-      updated_at: "2024-01-10T00:00:00Z",
-    } as UserProfile, 
-    is_live: false,
-    viewer_count: 0,
-    max_viewers: 89,
-    chat_enabled: true,
-    created_at: "2024-01-25T16:00:00Z",
-  },
-]
-
-const mockLiveMessages: { [liveEventId: string]: LiveMessage[] } = {
-  live1: [
-    {
-      id: "live_msg1",
-      live_event_id: "live1",
-      user_id: "user1",
-      user: {
-        id: "user1",
-        name: "Alex Rainbow",
-        avatar_url: "/placeholder.svg?height=40&width=40&text=AR",
-        verified: true,
-        is_online: true,
-      } as UserProfile,
-      content: "This is amazing! So excited for Pride Month! 🏳️‍🌈",
-      message_type: "chat",
-      sent_at: "2024-01-25T19:05:00Z",
-    },
-    {
-      id: "live_msg2",
-      live_event_id: "live1",
-      user_id: "user3",
-      user: {
-        id: "user3",
-        name: "Sam Fabulous",
-        avatar_url: "/placeholder.svg?height=40&width=40&text=SF",
-        verified: true,
-        is_online: true,
-      } as UserProfile,
-      content: "The decorations look incredible! 💄✨",
-      message_type: "chat",
-      sent_at: "2024-01-25T19:07:00Z",
-    },
-    {
-      id: "live_msg3",
-      live_event_id: "live1",
-      user_id: "user4",
-      content: "❤️",
-      message_type: "reaction",
-      metadata: { reaction: "❤️" },
-      sent_at: "2024-01-25T19:08:00Z",
-    },
-  ],
-}
 
 export const liveEventService = {
   // Live Events
   getLiveEvents: async (): Promise<LiveEvent[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockLiveEvents.sort((a, b) => {
-      if (a.is_live && !b.is_live) return -1
-      if (!a.is_live && b.is_live) return 1
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
+    const { data, error } = await supabase
+      .from("live_events")
+      .select(
+        `*, host:users!live_events_host_id_fkey ( id, email, name, avatar_url, verified, created_at, updated_at )`,
+      )
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching live events:", error)
+      return []
+    }
+
+    return (data || []).map((evt: any) => ({
+      id: evt.id,
+      event_id: evt.event_id,
+      title: evt.title,
+      description: evt.description,
+      host_id: evt.host_id,
+      host: (evt.host || undefined) as UserProfile | undefined,
+      stream_url: evt.stream_url || undefined,
+      is_live: !!evt.is_live,
+      viewer_count: evt.viewer_count || 0,
+      max_viewers: evt.max_viewers || 0,
+      started_at: evt.started_at || undefined,
+      ended_at: evt.ended_at || undefined,
+      chat_enabled: evt.chat_enabled ?? true,
+      created_at: evt.created_at,
+    }))
   },
 
   getLiveEvent: async (liveEventId: string): Promise<LiveEvent | null> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    return mockLiveEvents.find((event) => event.id === liveEventId) || null
-  },
+    const { data, error } = await supabase
+      .from("live_events")
+      .select(
+        `*, host:users!live_events_host_id_fkey ( id, email, name, avatar_url, verified, created_at, updated_at )`,
+      )
+      .eq("id", liveEventId)
+      .single()
 
-  createLiveEvent: async (eventId: string, hostId: string, title: string, description: string): Promise<LiveEvent> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    const newLiveEvent: LiveEvent = {
-      id: Math.random().toString(36).substr(2, 9),
-      event_id: eventId,
-      title,
-      description,
-      host_id: hostId,
-      is_live: false,
-      viewer_count: 0,
-      max_viewers: 0,
-      chat_enabled: true,
-      created_at: new Date().toISOString(),
+    if (error) {
+      console.error("Error fetching live event:", error)
+      return null
     }
 
-    mockLiveEvents.unshift(newLiveEvent)
-    return newLiveEvent
+    return data
+      ? {
+          id: data.id,
+          event_id: data.event_id,
+          title: data.title,
+          description: data.description,
+          host_id: data.host_id,
+          host: (data.host || undefined) as UserProfile | undefined,
+          stream_url: data.stream_url || undefined,
+          is_live: !!data.is_live,
+          viewer_count: data.viewer_count || 0,
+          max_viewers: data.max_viewers || 0,
+          started_at: data.started_at || undefined,
+          ended_at: data.ended_at || undefined,
+          chat_enabled: data.chat_enabled ?? true,
+          created_at: data.created_at,
+        }
+      : null
+  },
+
+  createLiveEvent: async (
+    eventId: string | undefined,
+    hostId: string,
+    title: string,
+    description: string,
+  ): Promise<LiveEvent> => {
+    const { data, error } = await supabase
+      .from("live_events")
+      .insert({
+        event_id: eventId ?? null,
+        title,
+        description,
+        host_id: hostId,
+        is_live: false,
+        viewer_count: 0,
+        max_viewers: 0,
+        chat_enabled: true,
+      })
+      .select(
+        `*, host:users!live_events_host_id_fkey ( id, email, name, avatar_url, verified, created_at, updated_at )`,
+      )
+      .single()
+
+    if (error) {
+      console.error("Error creating live event:", error)
+      throw error
+    }
+
+    return {
+      id: data.id,
+      event_id: data.event_id,
+      title: data.title,
+      description: data.description,
+      host_id: data.host_id,
+      host: (data.host || undefined) as UserProfile | undefined,
+      is_live: !!data.is_live,
+      viewer_count: data.viewer_count || 0,
+      max_viewers: data.max_viewers || 0,
+      chat_enabled: data.chat_enabled ?? true,
+      created_at: data.created_at,
+    }
   },
 
   startLiveStream: async (liveEventId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    const liveEvent = mockLiveEvents.find((event) => event.id === liveEventId)
-    if (liveEvent) {
-      liveEvent.is_live = true
-      liveEvent.started_at = new Date().toISOString()
-      liveEvent.actual_start = liveEvent.started_at
-      liveEvent.stream_url = `https://example.com/stream/${liveEventId}`
+    const { error } = await supabase
+      .from("live_events")
+      .update({
+        is_live: true,
+        started_at: new Date().toISOString(),
+        stream_url: `rtmp://stream.example/${liveEventId}`,
+      })
+      .eq("id", liveEventId)
+
+    if (error) {
+      console.error("Error starting live stream:", error)
+      throw error
     }
   },
 
   endLiveStream: async (liveEventId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    const liveEvent = mockLiveEvents.find((event) => event.id === liveEventId)
-    if (liveEvent) {
-      liveEvent.is_live = false
-      liveEvent.ended_at = new Date().toISOString()
-      liveEvent.max_viewers = Math.max(liveEvent.max_viewers ?? 0, liveEvent.viewer_count)
-      liveEvent.viewer_count = 0
+    // Fetch current counts to compute max
+    const { data } = await supabase
+      .from("live_events")
+      .select("viewer_count, max_viewers")
+      .eq("id", liveEventId)
+      .single()
+
+    const currentCount = data?.viewer_count ?? 0
+    const maxViewers = Math.max(data?.max_viewers ?? 0, currentCount)
+
+    const { error } = await supabase
+      .from("live_events")
+      .update({ is_live: false, ended_at: new Date().toISOString(), max_viewers: maxViewers, viewer_count: 0 })
+      .eq("id", liveEventId)
+
+    if (error) {
+      console.error("Error ending live stream:", error)
+      throw error
     }
   },
 
   joinLiveStream: async (liveEventId: string, userId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    const liveEvent = mockLiveEvents.find((event) => event.id === liveEventId)
-    if (liveEvent && liveEvent.is_live) {
-      liveEvent.viewer_count += 1
-      liveEvent.max_viewers = Math.max(liveEvent.max_viewers ?? 0, liveEvent.viewer_count)
+    // Increment viewer_count and maybe max_viewers
+    // Note: For strict atomicity, implement a DB function; this is acceptable in most cases
+    const { data, error } = await supabase
+      .from("live_events")
+      .select("viewer_count, max_viewers, is_live")
+      .eq("id", liveEventId)
+      .single()
 
-      // Add join message
-      const joinMessage: LiveMessage = {
-        id: Math.random().toString(36).substr(2, 9),
-        live_event_id: liveEventId,
-        user_id: userId,
-        content: "joined the stream",
-        message_type: "join",
-        sent_at: new Date().toISOString(),
-      }
-
-      if (!mockLiveMessages[liveEventId]) {
-        mockLiveMessages[liveEventId] = []
-      }
-      mockLiveMessages[liveEventId].push(joinMessage)
+    if (error) {
+      console.error("Error reading live event:", error)
+      throw error
     }
+    if (!data?.is_live) return
+
+    const newViewerCount = (data.viewer_count ?? 0) + 1
+    const newMax = Math.max(data.max_viewers ?? 0, newViewerCount)
+
+    const { error: updErr } = await supabase
+      .from("live_events")
+      .update({ viewer_count: newViewerCount, max_viewers: newMax })
+      .eq("id", liveEventId)
+    if (updErr) {
+      console.error("Error updating viewer count:", updErr)
+    }
+
+    // Add join system message
+    await supabase.from("live_messages").insert({
+      live_event_id: liveEventId,
+      user_id: userId,
+      content: "joined the stream",
+      message_type: "join",
+    })
   },
 
   leaveLiveStream: async (liveEventId: string, userId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    const liveEvent = mockLiveEvents.find((event) => event.id === liveEventId)
-    if (liveEvent && liveEvent.viewer_count > 0) {
-      liveEvent.viewer_count -= 1
+    const { data } = await supabase
+      .from("live_events")
+      .select("viewer_count")
+      .eq("id", liveEventId)
+      .single()
 
-      // Add leave message
-      const leaveMessage: LiveMessage = {
-        id: Math.random().toString(36).substr(2, 9),
-        live_event_id: liveEventId,
-        user_id: userId,
-        content: "left the stream",
-        message_type: "leave",
-        sent_at: new Date().toISOString(),
-      }
+    const curr = data?.viewer_count ?? 0
+    const next = Math.max(0, curr - 1)
 
-      if (!mockLiveMessages[liveEventId]) {
-        mockLiveMessages[liveEventId] = []
-      }
-      mockLiveMessages[liveEventId].push(leaveMessage)
+    const { error } = await supabase.from("live_events").update({ viewer_count: next }).eq("id", liveEventId)
+    if (error) {
+      console.error("Error decrementing viewer count:", error)
     }
+
+    await supabase.from("live_messages").insert({
+      live_event_id: liveEventId,
+      user_id: userId,
+      content: "left the stream",
+      message_type: "leave",
+    })
   },
 
   // Live Chat
   getLiveMessages: async (liveEventId: string): Promise<LiveMessage[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    return mockLiveMessages[liveEventId] || []
+    const { data, error } = await supabase
+      .from("live_messages")
+      .select(
+        `*, user:users!live_messages_user_id_fkey ( id, email, name, avatar_url, verified, created_at, updated_at )`,
+      )
+      .eq("live_event_id", liveEventId)
+      .order("sent_at", { ascending: true })
+
+    if (error) {
+      console.error("Error fetching live messages:", error)
+      return []
+    }
+
+    return (data || []).map((m: any) => ({
+      id: m.id,
+      live_event_id: m.live_event_id,
+      user_id: m.user_id,
+      user: (m.user || undefined) as UserProfile | undefined,
+      content: m.content,
+      message_type: (m.message_type || "chat") as LiveMessage["message_type"],
+      sent_at: m.sent_at,
+      created_at: m.created_at,
+      metadata: m.metadata || undefined,
+    }))
   },
 
   sendLiveMessage: async (
@@ -221,29 +242,40 @@ export const liveEventService = {
     messageType: LiveMessage["message_type"] = "chat",
     metadata?: LiveMessage["metadata"],
   ): Promise<LiveMessage> => {
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    const { data, error } = await supabase
+      .from("live_messages")
+      .insert({
+        live_event_id: liveEventId,
+        user_id: userId,
+        content,
+        message_type: messageType,
+        metadata: metadata ?? null,
+      })
+      .select(
+        `*, user:users!live_messages_user_id_fkey ( id, email, name, avatar_url, verified, created_at, updated_at )`,
+      )
+      .single()
 
-    const newMessage: LiveMessage = {
-      id: Math.random().toString(36).substr(2, 9),
-      live_event_id: liveEventId,
-      user_id: userId,
-      content,
-      message_type: messageType,
-      metadata,
-      sent_at: new Date().toISOString(),
+    if (error) {
+      console.error("Error sending live message:", error)
+      throw error
     }
 
-    if (!mockLiveMessages[liveEventId]) {
-      mockLiveMessages[liveEventId] = []
+    return {
+      id: data.id,
+      live_event_id: data.live_event_id,
+      user_id: data.user_id,
+      user: (data.user || undefined) as UserProfile | undefined,
+      content: data.content,
+      message_type: (data.message_type || "chat") as LiveMessage["message_type"],
+      sent_at: data.sent_at,
+      created_at: data.created_at,
+      metadata: data.metadata || undefined,
     }
-    mockLiveMessages[liveEventId].push(newMessage)
-
-    return newMessage
   },
 
   // Reactions
   sendReaction: async (liveEventId: string, userId: string, reaction: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 100))
     await liveEventService.sendLiveMessage(liveEventId, userId, reaction, "reaction", { reaction })
   },
 }

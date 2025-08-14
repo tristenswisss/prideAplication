@@ -1,45 +1,80 @@
-import { mockNotifications } from "../data/mockAtendees"
+import { supabase } from "../lib/supabase"
 import type { Notification } from "../types"
 
 export const notificationService = {
   // Get user notifications
   getUserNotifications: async (userId: string): Promise<Notification[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockNotifications
-      .filter((notification) => notification.user_id === userId)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching notifications:", error)
+      return []
+    }
+
+    return data || []
   },
 
   // Mark notification as read
   markAsRead: async (notificationId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    const notification = mockNotifications.find((n) => n.id === notificationId)
-    if (notification) {
-      notification.read = true
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("id", notificationId)
+
+    if (error) {
+      console.error("Error marking notification as read:", error)
+      throw error
     }
   },
 
   // Mark all notifications as read
   markAllAsRead: async (userId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    mockNotifications.filter((n) => n.user_id === userId).forEach((n) => (n.read = true))
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", userId)
+
+    if (error) {
+      console.error("Error marking all notifications as read:", error)
+      throw error
+    }
   },
 
   // Get unread count
   getUnreadCount: async (userId: string): Promise<number> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    return mockNotifications.filter((n) => n.user_id === userId && !n.read).length
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("read", false)
+
+    if (error) {
+      console.error("Error fetching unread notification count:", error)
+      return 0
+    }
+
+    return count || 0
   },
 
-  // Create notification (for demo purposes)
-  createNotification: async (notification: Omit<Notification, "id" | "created_at">): Promise<Notification> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    const newNotification: Notification = {
-      ...notification,
-      id: Math.random().toString(36).substr(2, 9),
-      created_at: new Date().toISOString(),
+  // Create notification
+  createNotification: async (
+    notification: Omit<Notification, "id" | "created_at">,
+  ): Promise<Notification | null> => {
+    const { data, error } = await supabase
+      .from("notifications")
+      .insert(notification)
+      .select("*")
+      .single()
+
+    if (error) {
+      console.error("Error creating notification:", error)
+      return null
     }
-    mockNotifications.push(newNotification)
-    return newNotification
+
+    return data
   },
 }

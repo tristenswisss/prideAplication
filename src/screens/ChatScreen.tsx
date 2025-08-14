@@ -119,9 +119,12 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
       // If we have an image, upload it and send as image message
       if (selectedImage) {
-        const imageUrl = await imageUploadService.uploadImage(selectedImage)
+        const result = await imageUploadService.uploadImage(selectedImage, user.id, "messages")
+        if (!result.success || !result.url) {
+          throw new Error(result.error || "Image upload failed")
+        }
         messageType = "image"
-        metadata = { image_url: imageUrl }
+        metadata = { image_url: result.url }
         messageContent = "Image"
       }
 

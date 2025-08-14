@@ -14,10 +14,11 @@ export interface CreateEventData {
   is_free: boolean
   price?: number
   max_attendees?: number
+  // Additional UI fields (ignored by DB):
   requires_approval?: boolean
-  isVirtual: boolean
+  isVirtual?: boolean
   virtual_link?: string
-  isTicketed: boolean
+  isTicketed?: boolean
 }
 
 export interface EventCreationResponse {
@@ -38,30 +39,24 @@ export class EventCreationService {
 
       // Validate date and time
       const eventDate = new Date(eventData.date)
-      if (eventDate < new Date()) {
-        return { success: false, error: "Event date cannot be in the past" }
+      if (isNaN(eventDate.getTime())) {
+        return { success: false, error: "Invalid event date" }
       }
 
-      // Prepare data for database
+      // Prepare data for database using only existing columns
       const dbEventData = {
         title: eventData.title.trim(),
         description: eventData.description.trim(),
         date: eventData.date,
         start_time: eventData.start_time,
-        end_time: eventData.end_time,
+        end_time: eventData.end_time || null,
         location: eventData.location.trim(),
         organizer_id: eventData.organizer_id,
         category: eventData.category,
         tags: eventData.tags,
         is_free: eventData.is_free,
-        price: eventData.price || null,
-        max_attendees: eventData.max_attendees || null,
-        requires_approval: eventData.requires_approval || false,
-        is_virtual: eventData.isVirtual,
-        virtual_link: eventData.virtual_link || null,
-        requires_tickets: eventData.isTicketed,
-        status: "upcoming" as const,
-        attendee_count: 0,
+        price: eventData.price ?? null,
+        max_attendees: eventData.max_attendees ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -116,12 +111,11 @@ export class EventCreationService {
         return { success: false, error: "Event ID is required" }
       }
 
-      // Prepare update data
+      // Prepare update data limited to existing columns
       const updateData: any = {
         updated_at: new Date().toISOString(),
       }
 
-      // Only include fields that are provided
       if (eventData.title) updateData.title = eventData.title.trim()
       if (eventData.description) updateData.description = eventData.description.trim()
       if (eventData.date) updateData.date = eventData.date
@@ -133,10 +127,6 @@ export class EventCreationService {
       if (typeof eventData.is_free === "boolean") updateData.is_free = eventData.is_free
       if (eventData.price !== undefined) updateData.price = eventData.price
       if (eventData.max_attendees !== undefined) updateData.max_attendees = eventData.max_attendees
-      if (typeof eventData.requires_approval === "boolean") updateData.requires_approval = eventData.requires_approval
-      if (typeof eventData.isVirtual === "boolean") updateData.is_virtual = eventData.isVirtual
-      if (eventData.virtual_link !== undefined) updateData.virtual_link = eventData.virtual_link
-      if (typeof eventData.isTicketed === "boolean") updateData.requires_tickets = eventData.isTicketed
 
       // Update event in database
       const { data, error } = await supabase.from("events").update(updateData).eq("id", eventId).select().single()
@@ -156,7 +146,7 @@ export class EventCreationService {
         title: data.title,
         description: data.description,
         date: data.date,
-        time: data.start_time, // Map start_time to time for compatibility
+        time: data.start_time,
         start_time: data.start_time,
         end_time: data.end_time,
         location: data.location,
@@ -167,7 +157,7 @@ export class EventCreationService {
         price: data.price,
         max_attendees: data.max_attendees,
         attendee_count: data.attendee_count || 0,
-        current_attendees: data.attendee_count || 0, // Map attendee_count to current_attendees
+        current_attendees: data.attendee_count || 0,
         created_at: data.created_at,
         updated_at: data.updated_at,
       }
@@ -295,10 +285,11 @@ export class EventCreationService {
     try {
       const { data, error } = await supabase
         .from("events")
-        .select(`
-          *,
+        .select(
+          `*,
           organizer:users(id, name, avatar_url)
-        `)
+        `,
+        )
         .eq("organizer_id", userId)
         .order("date", { ascending: true })
 
