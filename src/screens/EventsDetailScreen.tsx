@@ -6,9 +6,9 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { eventService, notificationService } from "../../services/eventService"
 import { useAuth } from "../../Contexts/AuthContexts"
-import type { EventDetailsScreenProps } from "../../types/navigation"
+import type { EventDetailScreenProps } from "../../types/navigation"
 
-export default function EventDetailsScreen({ route, navigation }: EventDetailsScreenProps) {
+export default function EventDetailsScreen({ route, navigation }: EventDetailScreenProps) {
   const { event } = route.params
   const { user } = useAuth()
   const [rsvpStatus, setRsvpStatus] = useState<"going" | "interested" | "not_going" | null>(null)
@@ -112,7 +112,7 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailsSc
     })
   }
 
-  const isEventFull = event.max_attendees && attendeeCount >= event.max_attendees
+  const isEventFull = !!event.max_attendees && attendeeCount >= (event.max_attendees || 0)
 
   return (
     <SafeAreaView style={styles.container}>

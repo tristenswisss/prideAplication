@@ -9,7 +9,7 @@ import type { AuthStackScreenProps } from "../../types/navigation"
 import { Image } from 'react-native';
 
 
-export default function LoadingScreen({ navigation }: AuthStackScreenProps) {
+export default function LoadingScreen({ navigation }: AuthStackScreenProps<"Loading">) {
   const { user, loading } = useAuth()
   const bounceValue = useRef(new Animated.Value(0)).current
 

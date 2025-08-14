@@ -212,8 +212,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const handlePickImage = async () => {
     try {
       const image = await imageUploadService.pickImage()
-      if (image) {
-        setSelectedImage(image.uri)
+      if (image && !image.canceled && image.assets && image.assets[0]?.uri) {
+        setSelectedImage(image.assets[0].uri)
       }
     } catch (error) {
       Alert.alert("Error", "Failed to pick image")
@@ -223,8 +223,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const handleTakePhoto = async () => {
     try {
       const image = await imageUploadService.takePhoto()
-      if (image) {
-        setSelectedImage(image.uri)
+      if (image && !image.canceled && image.assets && image.assets[0]?.uri) {
+        setSelectedImage(image.assets[0].uri)
       }
     } catch (error) {
       Alert.alert("Error", "Failed to take photo")
@@ -291,10 +291,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
             {isOwnMessage && (
               <View style={styles.messageStatus}>
-                {item.read_at ? (
+                {item.read ? (
                   <MaterialIcons name="done-all" size={14} color="#4ECDC4" />
-                ) : item.delivered_at ? (
-                  <MaterialIcons name="done-all" size={14} color="#ccc" />
                 ) : (
                   <MaterialIcons name="done" size={14} color="#ccc" />
                 )}

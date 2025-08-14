@@ -49,7 +49,7 @@ export const searchService = {
         )
           return false
         if (filters.verified !== undefined && business.verified !== filters.verified) return false
-        if (filters.rating && business.rating < filters.rating) return false
+        if (filters.rating && (business.rating ?? 0) < filters.rating) return false
         if (filters.priceRange && business.price_range !== filters.priceRange) return false
 
         return true
@@ -163,7 +163,7 @@ export const searchService = {
 
 // Helper functions
 const sortByRelevance = (businesses: Business[], query: string): Business[] => {
-  if (!query) return businesses.sort((a, b) => b.rating - a.rating)
+  if (!query) return businesses.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
 
   return businesses.sort((a, b) => {
     const aScore = getRelevanceScore(a, query)
@@ -197,7 +197,7 @@ const getRelevanceScore = (business: Business, query: string): number => {
   if (business.category.toLowerCase().includes(lowerQuery)) score += 30
 
   // Rating bonus
-  score += business.rating * 5
+  score += (business.rating ?? 0) * 5
 
   // Verification bonus
   if (business.verified) score += 10

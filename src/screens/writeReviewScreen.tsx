@@ -45,10 +45,10 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
         user: {
           id: user.id,
           name: user.name,
-          email: user.email,
+          email: user.email || "",
           verified: false,
-          created_at: user.created_at,
-          updated_at: user.created_at,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
         rating,
         comment: comment.trim() || undefined,
@@ -131,7 +131,7 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
         </View>
 
         {/* Recommendation */}
-        <View style={styles.recommendSection}>
+        <View /* recommendSection */ style={styles.commentSection}>
           <Text style={styles.recommendTitle}>Would you recommend this place?</Text>
           <View style={styles.recommendButtons}>
             <TouchableOpacity

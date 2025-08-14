@@ -32,13 +32,13 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
       setLoading(true)
       const result = await businessService.getSavedBusinesses(user.id)
 
-      if (result.success && result.data) {
-        setSavedPlaces(result.data)
-      } else {
-        console.error("Error loading saved places:", result.error)
-        Alert.alert("Error", "Failed to load saved places")
-      }
-    } catch (error) {
+                if (result.success && result.businesses) {
+            setSavedPlaces(result.businesses)
+          } else {
+            console.error("Error loading saved places:", result.error)
+            Alert.alert("Error", "Failed to load saved places")
+          }
+} catch (error) {
       console.error("Error loading saved places:", error)
       Alert.alert("Error", "Failed to load saved places")
     } finally {
@@ -56,7 +56,7 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
           if (!user) return
 
           try {
-            await businessService.unsaveBusiness(user.id, placeId)
+            await businessService.saveBusiness(placeId, user.id)
             setSavedPlaces((prev) => prev.filter((place) => place.id !== placeId))
             Alert.alert("Success", "Place removed from saved list")
           } catch (error) {
@@ -91,8 +91,8 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
           <Text style={styles.placeName}>{item.name}</Text>
           <View style={styles.ratingContainer}>
             <MaterialIcons name="star" size={16} color="#FFD700" />
-            <Text style={styles.rating}>{item.rating}</Text>
-          </View>
+                         <Text style={styles.rating}>{item.rating ?? 0}</Text>
+</View>
         </View>
 
         <Text style={styles.placeCategory}>{item.category.toUpperCase()}</Text>

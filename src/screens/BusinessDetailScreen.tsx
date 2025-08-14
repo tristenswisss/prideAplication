@@ -18,9 +18,9 @@ import { LinearGradient } from "expo-linear-gradient"
 import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Review } from "../../types"
-import type { BusinessDetailsScreenProps } from "../../types/navigation"
+import type { BusinessDetailScreenProps } from "../../types/navigation"
 
-export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailsScreenProps) {
+export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailScreenProps) {
   const { business } = route.params
   const { user } = useAuth()
   const [reviews, setReviews] = useState<Review[]>([])
