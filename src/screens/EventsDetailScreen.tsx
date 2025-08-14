@@ -11,7 +11,7 @@ import type { EventDetailScreenProps } from "../../types/navigation"
 export default function EventDetailsScreen({ route, navigation }: EventDetailScreenProps) {
   const { event } = route.params
   const { user } = useAuth()
-  const [rsvpStatus, setRsvpStatus] = useState<"going" | "interested" | "not_going" | null>(null)
+  const [rsvpStatus, setRsvpStatus] = useState<"going" | "interested" | null>(null)
   const [attendeeCount, setAttendeeCount] = useState(event.attendee_count)
   const [loading, setLoading] = useState(false)
 
@@ -44,8 +44,6 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailScr
       // Update local state
       const previousStatus = rsvpStatus
       setRsvpStatus(status === "not_going" ? null : status)
-
-      // Update attendee count
       if (status === "going" && previousStatus !== "going") {
         setAttendeeCount(attendeeCount + 1)
       } else if (status !== "going" && previousStatus === "going") {

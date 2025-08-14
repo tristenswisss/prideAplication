@@ -72,40 +72,25 @@ export const eventService = {
     return data || null;
   },
 
-  // RSVP to event
+  // RSVP to event (upsert to avoid needing DELETE policy)
   rsvpToEvent: async (eventId: string, userId: string, status: "going" | "interested" | "not_going"): Promise<void> => {
-    // Remove existing RSVP
-    const { error: deleteError } = await supabase
+    const { error } = await supabase
       .from('event_attendees')
-      .delete()
-      .match({ event_id: eventId, user_id: userId });
+      .upsert(
+        { event_id: eventId, user_id: userId, status },
+        { onConflict: 'event_id,user_id' }
+      );
 
-    if (deleteError) {
-      console.error('Error removing existing RSVP:', deleteError);
-      throw deleteError;
+    if (error) {
+      console.error('Error upserting RSVP:', error);
+      throw error;
     }
 
-    // Add new RSVP if not "not_going"
-    if (status !== "not_going") {
-      const { error: insertError } = await supabase
-        .from('event_attendees')
-        .insert({
-          event_id: eventId,
-          user_id: userId,
-          status,
-        });
-
-      if (insertError) {
-        console.error('Error inserting new RSVP:', insertError);
-        throw insertError;
-      }
-    }
-
-    // Note: The event attendee count will be automatically updated by the database trigger
+    // attendee_count trigger in DB handles counts for status = 'going'
   },
 
   // Get user's RSVP status for an event
-  getUserRSVPStatus: async (eventId: string, userId: string): Promise<"going" | "interested" | "not_going" | null> => {
+  getUserRSVPStatus: async (eventId: string, userId: string): Promise<"going" | "interested" | null> => {
     const { data, error } = await supabase
       .from('event_attendees')
       .select('status')
@@ -121,7 +106,8 @@ export const eventService = {
       return null;
     }
 
-    return data?.status || null;
+    if (!data?.status || data.status === 'not_going') return null;
+    return data.status as 'going' | 'interested';
   },
 
   // Get event attendees
@@ -172,6 +158,60 @@ export const eventService = {
     }
 
     return events || [];
+  },
+
+  // Get user's events including RSVP status and RSVP date
+  getUserEventsWithRSVP: async (
+    userId: string,
+  ): Promise<Array<Event & { rsvpStatus: 'going' | 'interested' | 'not_going'; rsvpDate: string }>> => {
+    // Fetch attendee rows for this user
+    const { data: attendeeRows, error: attendeeErr } = await supabase
+      .from('event_attendees')
+      .select('event_id, status, created_at')
+      .eq('user_id', userId)
+      .in('status', ['going','interested'])
+      .order('created_at', { ascending: false });
+
+    if (attendeeErr) {
+      console.error('Error fetching user RSVP rows:', attendeeErr);
+      return [];
+    }
+
+    if (!attendeeRows || attendeeRows.length === 0) {
+      return [];
+    }
+
+    // Fetch all related events
+    const eventIds = attendeeRows.map((r: any) => r.event_id);
+    const { data: events, error: eventsErr } = await supabase
+      .from('events')
+      .select('*')
+      .in('id', eventIds);
+
+    if (eventsErr) {
+      console.error('Error fetching events for RSVP list:', eventsErr);
+      return [];
+    }
+
+    const eventById: Record<string, Event> = {};
+    (events || []).forEach((ev: any) => {
+      eventById[ev.id] = ev as Event;
+    });
+
+    // Merge
+    const merged = attendeeRows
+      .map((row: any) => {
+        const ev = eventById[row.event_id];
+        if (!ev) return null;
+        return {
+          ...ev,
+          rsvpStatus: row.status as 'going' | 'interested' | 'not_going',
+          rsvpDate: row.created_at as string,
+        };
+      })
+      .filter(Boolean) as Array<Event & { rsvpStatus: 'going' | 'interested' | 'not_going'; rsvpDate: string }>;
+
+    return merged;
   },
 }
 

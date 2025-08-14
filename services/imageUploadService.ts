@@ -37,7 +37,7 @@ class ImageUploadService {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.image,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -207,7 +207,7 @@ class ImageUploadService {
   async compressImage(imageUri: string, quality = 0.8): Promise<string> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.image,
         allowsEditing: true,
         quality: quality,
         base64: false,
@@ -273,7 +273,7 @@ class ImageUploadService {
   async resizeImageIfNeeded(imageUri: string, maxWidth = 1080, maxHeight = 1080): Promise<string> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.image,
         allowsEditing: true,
         quality: 0.8,
       })

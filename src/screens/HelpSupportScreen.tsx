@@ -25,7 +25,7 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
       const [spacesData, contactsData, emailData] = await Promise.all([
         (await safeSpacesService.getAllSafeSpaces()).data || [],
         (await safeSpacesService.getCrisisContacts()).data || [],
-        "admin@miraeapp.com",
+        "prog.shout@gmail.com",
       ])
 
       setSafeSpaces(spacesData as SafeSpace[])
