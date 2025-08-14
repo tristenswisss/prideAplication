@@ -1,6 +1,12 @@
 import * as ImagePicker from "expo-image-picker"
 import { supabase } from "../lib/supabase"
 
+// Compatibility for mediaTypes across ImagePicker versions
+const IMAGE_MEDIA_TYPE: any = (ImagePicker as any)?.MediaType?.images
+  ?? (ImagePicker as any)?.MediaType?.image
+  ?? (ImagePicker as any)?.MediaType?.Images
+  ?? (ImagePicker as any)?.MediaTypeOptions?.Images
+
 export interface ImageUploadResult {
   success: boolean
   url?: string
@@ -37,7 +43,7 @@ class ImageUploadService {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.image,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -207,7 +213,7 @@ class ImageUploadService {
   async compressImage(imageUri: string, quality = 0.8): Promise<string> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.image,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsEditing: true,
         quality: quality,
         base64: false,
@@ -273,7 +279,7 @@ class ImageUploadService {
   async resizeImageIfNeeded(imageUri: string, maxWidth = 1080, maxHeight = 1080): Promise<string> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.image,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsEditing: true,
         quality: 0.8,
       })
