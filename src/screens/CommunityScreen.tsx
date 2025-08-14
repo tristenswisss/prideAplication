@@ -21,6 +21,7 @@ import { socialService } from "../../services/socialService"
 import { imageUploadService } from "../../services/imageUploadService"
 import { pushNotificationService } from "../../services/pushNotificationService"
 import { profileService } from "../../services/profileService"
+import { realtime } from "../../lib/realtime"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, Comment, UserProfile } from "../../types/social"
 import type { CommunityScreenProps } from "../../types/navigation"
@@ -50,6 +51,19 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     initializePushNotifications()
     getCurrentLocation()
     loadBuddyList()
+    const unsubPosts = realtime.subscribeToPosts((row: any) => {
+      setPosts((prev) => {
+        if (prev.some((p) => p.id === row.id)) return prev
+        return [{ ...(row as any), is_liked: false, is_saved: false }, ...prev]
+      })
+    })
+    const unsubComments = realtime.subscribeToComments((row: any) => {
+      setPosts((prev) => prev.map((p) => (p.id === row.post_id ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p)))
+    })
+    return () => {
+      unsubPosts()
+      unsubComments()
+    }
   }, [])
 
   const initializePushNotifications = async () => {

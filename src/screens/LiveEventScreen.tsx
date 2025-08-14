@@ -20,6 +20,7 @@ import { useAuth } from "../../Contexts/AuthContexts"
 import type { LiveEvent, LiveMessage } from "../../types/messaging"
 import { liveStreamingService, type StreamRecording } from "../../services/liveStreamingService"
 import { callingService } from "../../services/callingService"
+import { realtime } from "../../lib/realtime"
 
 // Import the type for StackScreenProps
 import type { StackScreenProps } from "@react-navigation/stack"
@@ -65,6 +66,28 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!liveEvent?.id) return
+    const unsubMsgs = realtime.subscribeToLiveMessages(liveEvent.id, (row: any) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === row.id)) return prev
+        return [...prev, row as any]
+      })
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true })
+      }, 50)
+    })
+
+    const unsubEvt = realtime.subscribeToLiveEventUpdates(liveEvent.id, (row: any) => {
+      setLiveEvent((prev) => ({ ...(prev || row), ...row }))
+    })
+
+    return () => {
+      unsubMsgs()
+      unsubEvt()
+    }
+  }, [liveEvent?.id])
 
   const joinStream = async () => {
     if (!user || isJoined) return
