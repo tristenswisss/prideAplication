@@ -46,7 +46,7 @@ export default function SafetyScreen({ navigation }: SafetyScreenProps) {
 
   const loadAdminEmail = async () => {
     // In a real app, you'd fetch this from your app settings
-    setAdminEmail("admin@miraeapp.com")
+    setAdminEmail("prog.shout@gmail.com")
   }
 
   const onRefresh = async () => {

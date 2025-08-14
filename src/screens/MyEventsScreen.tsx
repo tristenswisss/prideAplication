@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { Event } from "../../types"
 import type { MyEventsScreenProps } from "../../types/navigation"
+import { eventService } from "../../services/eventService"
+import { useAuth } from "../../Contexts/AuthContexts"
+import { useFocusEffect } from "@react-navigation/native"
 
 interface UserEvent extends Event {
   rsvpStatus: "going" | "interested" | "not_going"
@@ -16,82 +19,29 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
   const [events, setEvents] = useState<UserEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"upcoming" | "past" | "going" | "interested">("upcoming")
+  const { user } = useAuth()
 
   useEffect(() => {
     loadMyEvents()
-  }, [])
+  }, [user])
+
+  useFocusEffect(
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (useCallback(() => {
+      loadMyEvents()
+      return () => {}
+    }, [user]))
+  )
 
   const loadMyEvents = async () => {
     try {
       setLoading(true)
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const mockEvents: UserEvent[] = [
-        {
-          id: "1",
-          title: "Pride Month Celebration",
-          description: "Join us for a month-long celebration of Pride with various activities and events.",
-          date: "2024-06-15T18:00:00Z",
-          start_time: "18:00",
-          end_time: "22:00",
-          location: "Castro District, San Francisco",
-          latitude: 37.7749,
-          longitude: -122.4194,
-          category: "celebration",
-          organizer: {
-            id: "org1",
-            email: "info@sfpride.org",
-            name: "SF Pride Committee",
-            verified: true,
-            created_at: "2020-01-01T00:00:00Z",
-            updated_at: "2020-01-01T00:00:00Z"
-          },
-          attendee_count: 1500,
-          max_attendees: 2000,
-          is_free: true,
-          tags: ["pride", "celebration", "community"],
-          image_url: "",
-          organizer_id: "org1",
-          rsvpStatus: "going",
-          rsvpDate: "2024-05-20T10:00:00Z",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z"
-        },
-        {
-          id: "2",
-          title: "LGBTQ+ Business Networking",
-          description: "Connect with other LGBTQ+ business owners and entrepreneurs.",
-          date: "2024-02-10T19:00:00Z",
-          start_time: "19:00",
-          end_time: "21:00",
-          location: "Downtown Conference Center",
-          latitude: 37.7849,
-          longitude: -122.4094,
-          category: "networking",
-          organizer: {
-            id: "org2",
-            email: "info@pridebusiness.org",
-            name: "Pride Business Alliance",
-            verified: true,
-            created_at: "2020-01-01T00:00:00Z",
-            updated_at: "2020-01-01T00:00:00Z"
-          },
-          attendee_count: 75,
-          max_attendees: 100,
-          is_free: false,
-          price: 25,
-          tags: ["business", "networking", "professional"],
-          image_url: "",
-          organizer_id: "org2",
-          rsvpStatus: "interested",
-          rsvpDate: "2024-01-15T14:30:00Z",
-          created_at: "2024-01-01T00:00:00Z",
-          updated_at: "2024-01-01T00:00:00Z"
-        },
-      ]
-
-      setEvents(mockEvents)
+      if (!user) {
+        setEvents([])
+        return
+      }
+      const rows = await eventService.getUserEventsWithRSVP(user.id)
+      setEvents(rows as UserEvent[])
     } catch (error) {
       Alert.alert("Error", "Failed to load your events")
     } finally {
@@ -99,12 +49,22 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
     }
   }
 
-  const updateRSVP = (eventId: string, newStatus: UserEvent["rsvpStatus"]) => {
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId ? { ...event, rsvpStatus: newStatus, rsvpDate: new Date().toISOString() } : event,
-      ),
-    )
+  const updateRSVP = async (eventId: string, newStatus: UserEvent["rsvpStatus"]) => {
+    try {
+      if (!user) return
+      await eventService.rsvpToEvent(eventId, user.id, newStatus)
+      if (newStatus === 'not_going') {
+        setEvents((prev) => prev.filter((e) => e.id !== eventId))
+      } else {
+        setEvents((prev) =>
+          prev.map((event) =>
+            event.id === eventId ? { ...event, rsvpStatus: newStatus, rsvpDate: new Date().toISOString() } : event,
+          ),
+        )
+      }
+    } catch (e) {
+      Alert.alert("Error", "Failed to update RSVP")
+    }
   }
 
   const removeEvent = (eventId: string) => {
