@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, Alert, ActivityIndicator } from "react-native"
-import { SafeSpacesService } from "../../services/safeSpacesService"
-import type { SafeSpace, CrisisContact } from "../../services/safeSpacesService"
+import { safeSpacesService, type CrisisContact } from "../../services/safeSpacesService"
+import type { SafeSpace } from "../../types"
 
 interface HelpSupportScreenProps {
   navigation: any
@@ -23,14 +23,14 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
     try {
       setLoading(true)
       const [spacesData, contactsData, emailData] = await Promise.all([
-        SafeSpacesService.getSafeSpaces(),
-        SafeSpacesService.getCrisisContacts(),
-        SafeSpacesService.getAdminEmail(),
+        (await safeSpacesService.getAllSafeSpaces()).data || [],
+        (await safeSpacesService.getCrisisContacts()).data || [],
+        "admin@miraeapp.com",
       ])
 
-      setSafeSpaces(spacesData)
-      setCrisisContacts(contactsData)
-      setAdminEmail(emailData)
+      setSafeSpaces(spacesData as SafeSpace[])
+      setCrisisContacts(contactsData as CrisisContact[])
+      setAdminEmail(emailData as string)
     } catch (error) {
       console.error("Error loading help data:", error)
       Alert.alert("Error", "Failed to load help information")
@@ -101,8 +101,8 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
     }
   }
 
-  const groupedSafeSpaces = safeSpaces.reduce(
-    (groups, space) => {
+     const groupedSafeSpaces = safeSpaces.reduce(
+    (groups, space: SafeSpace) => {
       const category = space.category
       if (!groups[category]) {
         groups[category] = []
@@ -144,7 +144,8 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
               <Text style={styles.phoneButtonText}>📞 {contact.phone}</Text>
             </TouchableOpacity>
             <Text style={styles.availabilityText}>Available: {contact.available_hours}</Text>
-            {contact.available_24_7 && <Text style={styles.available24Text}>Available 24/7</Text>}
+            {/* available_24_7 not in CrisisContact; show if text contains 24/7 */}
+            {(/24\/?7/i.test(contact.available_hours)) && <Text style={styles.available24Text}>Available 24/7</Text>}
           </View>
         ))}
       </View>

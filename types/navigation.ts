@@ -23,6 +23,12 @@ export type RootStackParamList = {
   NotificationSettings: undefined
 }
 
+// Auth Stack Navigator (for Loading/Auth flow inside a stack)
+export type AuthStackParamList = {
+  Loading: undefined
+  Auth: undefined
+}
+
 // Main Tab Navigator
 export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>
@@ -38,6 +44,14 @@ export type HomeStackParamList = {
   BusinessDetails: { business: Business }
   Search: undefined
   SavedPlaces: undefined
+  WriteReview: { business: Business }
+}
+
+// Search Stack
+export type SearchStackParamList = {
+  SearchMain: undefined
+  BusinessDetails: { business: Business }
+  WriteReview: { business: Business }
 }
 
 // Community Stack
@@ -45,6 +59,7 @@ export type CommunityStackParamList = {
   CommunityMain: undefined
   UserProfile: { user: UserProfile }
   Messages: undefined
+  Chat: { conversation: any }
 }
 
 // Events Stack
@@ -55,6 +70,7 @@ export type EventsStackParamList = {
   MyEvents: undefined
   LiveEvents: undefined
   LiveEvent: { liveEvent: LiveEvent }
+  Recordings: undefined
 }
 
 // Messages Stack
@@ -82,6 +98,7 @@ export type ProfileStackParamList = {
 // Screen Props Types
 export type RootStackScreenProps<T extends keyof RootStackParamList> = StackScreenProps<RootStackParamList, T>
 export type MainTabScreenProps<T extends keyof MainTabParamList> = BottomTabScreenProps<MainTabParamList, T>
+export type AuthStackScreenProps<T extends keyof AuthStackParamList> = StackScreenProps<AuthStackParamList, T>
 
 // Individual Screen Props
 export type HomeScreenProps = StackScreenProps<HomeStackParamList, "HomeMain">
@@ -97,10 +114,12 @@ export type BusinessDetailScreenProps = StackScreenProps<HomeStackParamList, "Bu
 export type EventDetailScreenProps = StackScreenProps<EventsStackParamList, "EventDetails">
 export type UserProfileScreenProps = StackScreenProps<CommunityStackParamList, "UserProfile">
 export type ChatScreenProps = StackScreenProps<MessagesStackParamList, "Chat">
-export type WriteReviewScreenProps = StackScreenProps<RootStackParamList, "WriteReview">
-export type HelpSupportScreenProps = StackScreenProps<RootStackParamList, "HelpSupport">
-export type PrivacySafetyScreenProps = StackScreenProps<RootStackParamList, "PrivacySafety">
-export type NotificationSettingsScreenProps = StackScreenProps<RootStackParamList, "NotificationSettings">
+export type WriteReviewScreenProps = StackScreenProps<HomeStackParamList, "WriteReview">
+export type HelpSupportScreenProps = StackScreenProps<ProfileStackParamList, "HelpSupport">
+export type PrivacySafetyScreenProps = StackScreenProps<ProfileStackParamList, "PrivacySafety">
+export type NotificationSettingsScreenProps = StackScreenProps<ProfileStackParamList, "NotificationSettings">
+export type SavedPlacesScreenProps = StackScreenProps<ProfileStackParamList, "SavedPlaces">
+export type MyEventsScreenProps = StackScreenProps<ProfileStackParamList, "MyEvents">
 
 declare global {
   namespace ReactNavigation {

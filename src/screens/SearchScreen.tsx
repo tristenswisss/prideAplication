@@ -49,7 +49,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
     { id: "hotel", name: "Accomodation", icon: "hotel", color: "#98D8C8" },
   ]
 
-  const { isOnline, isOfflineMode } = useOffline()
+  const { isConnected, isOffline } = useOffline()
 
   useEffect(() => {
     loadSearchHistory()
@@ -370,7 +370,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
           <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder={isOfflineMode ? "Search offline..." : "Search places and events..."}
+            placeholder={isOffline ? "Search offline..." : "Search places and events..."}
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={() => performSearch()}
@@ -384,7 +384,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
         </View>
 
         {/* Offline Indicator */}
-        {!isOnline && (
+        {!isConnected && (
           <View style={styles.offlineIndicator}>
             <MaterialIcons name="cloud-off" size={16} color="white" />
             <Text style={styles.offlineText}>Searching offline data</Text>

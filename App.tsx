@@ -45,7 +45,7 @@ import OfflineStatus from "./components/OfflineStatus"
 import type {
   RootStackParamList,
   AuthStackParamList,
-  TabParamList,
+  MainTabParamList,
   HomeStackParamList,
   SearchStackParamList,
   EventsStackParamList,
@@ -55,7 +55,7 @@ import type {
 
 const RootStack = createStackNavigator<RootStackParamList>()
 const AuthStack = createStackNavigator<AuthStackParamList>()
-const Tab = createBottomTabNavigator<TabParamList>()
+const Tab = createBottomTabNavigator<MainTabParamList>()
 const HomeStack = createStackNavigator<HomeStackParamList>()
 const SearchStack = createStackNavigator<SearchStackParamList>()
 const EventsStack = createStackNavigator<EventsStackParamList>()

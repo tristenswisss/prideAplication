@@ -4,12 +4,13 @@ export interface Message {
   sender_id: string
   sender?: UserProfile
   content: string
-  type: "text" | "image" | "location" | "system"
+  message_type: "text" | "image" | "video" | "file"
   read: boolean
   sent_at: string
+  read_at?: string
+  delivered_at?: string
   created_at: string
   updated_at: string
-   message_type: "text" | "image" | "video" | "file"
   metadata?: Record<string, any>
 }
 
@@ -33,6 +34,7 @@ export interface UserProfile {
   username?: string
   avatar_url?: string
   bio?: string
+  pronouns?: string
   verified: boolean
   is_online?: boolean
   created_at: string
@@ -52,7 +54,9 @@ export interface LiveEvent {
   max_viewers?: number
   scheduled_start?: string
   actual_start?: string
+  started_at?: string
   ended_at?: string
+  chat_enabled?: boolean
   created_at: string
 }
 
@@ -62,8 +66,10 @@ export interface LiveMessage {
   user_id: string
   user?: UserProfile
   content: string
-  type: "message" | "join" | "leave" | "system"
-  created_at: string
+  message_type: "chat" | "join" | "leave" | "reaction" | "system"
+  sent_at: string
+  created_at?: string
+  metadata?: Record<string, any>
 }
 
 export interface LiveReaction {

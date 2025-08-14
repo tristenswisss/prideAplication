@@ -18,15 +18,11 @@ const mockLiveEvents: LiveEvent[] = [
       bio: "Trans rights are human rights 🏳️‍⚧️",
       pronouns: "he/him",
       location: "Oakland, CA",
-      interests: ["activism", "photography"],
       verified: false,
-      follower_count: 189,
-      following_count: 203,
-      post_count: 67,
       is_online: true,
       created_at: "2024-01-05T00:00:00Z",
       updated_at: "2024-01-05T00:00:00Z",
-    },
+    } as UserProfile, 
     stream_url: "https://example.com/stream/live1",
     is_live: true,
     viewer_count: 127,
@@ -50,15 +46,11 @@ const mockLiveEvents: LiveEvent[] = [
       bio: "Drag queen 💄",
       pronouns: "she/her",
       location: "San Francisco, CA",
-      interests: ["drag", "performance"],
       verified: true,
-      follower_count: 567,
-      following_count: 89,
-      post_count: 134,
       is_online: true,
       created_at: "2024-01-10T00:00:00Z",
       updated_at: "2024-01-10T00:00:00Z",
-    },
+    } as UserProfile, 
     is_live: false,
     viewer_count: 0,
     max_viewers: 89,
@@ -153,6 +145,7 @@ export const liveEventService = {
     if (liveEvent) {
       liveEvent.is_live = true
       liveEvent.started_at = new Date().toISOString()
+      liveEvent.actual_start = liveEvent.started_at
       liveEvent.stream_url = `https://example.com/stream/${liveEventId}`
     }
   },

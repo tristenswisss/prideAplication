@@ -74,7 +74,7 @@ export interface Event {
   title: string
   description: string
   date: string
-  time: string
+  time?: string
   start_time: string
   end_time?: string
   location: string
@@ -84,7 +84,7 @@ export interface Event {
   organizer_id: string
   organizer?: User
   attendee_count: number
-  current_attendees: number
+  current_attendees?: number
   max_attendees?: number
   category: "celebration" | "networking" | "entertainment" | "education" | "support" | "other"
   tags: string[]
