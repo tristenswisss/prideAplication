@@ -168,19 +168,25 @@ export const messagingService = {
       : [];
 
     // Search for users with privacy settings respected
-    const { data, error } = await supabase
+    let search = supabase
       .from('users')
       .select(`
         *,
         profiles (
+          username,
           show_profile,
           appear_in_search,
           allow_direct_messages
         )
       `)
-      .or(`name.ilike.%${query}%,username.ilike.%${query}%`)
-      .neq('id', currentUserId) // Don't include the current user
-      .not('id', 'in', `(${blockedUserIds.join(',')})`); // Exclude blocked users
+      .or(`name.ilike.%${query}%,profiles.username.ilike.%${query}%`)
+      .neq('id', currentUserId); // Don't include the current user
+
+    if (blockedUserIds.length > 0) {
+      search = search.not('id', 'in', `(${blockedUserIds.join(',')})`); // Exclude blocked users
+    }
+
+    const { data, error } = await search
 
     if (error) {
       console.error('Error searching users:', error);
@@ -188,19 +194,18 @@ export const messagingService = {
     }
 
     // Filter results based on privacy settings
-    const filteredUsers = data.filter(user => {
-      // Check if user has a profile with privacy settings
+    const filteredUsers = (data || []).filter((user: any) => {
       if (user.profiles) {
-        // User must have show_profile, appear_in_search, and allow_direct_messages all set to true
-        return user.profiles.show_profile &&
-               user.profiles.appear_in_search &&
-               user.profiles.allow_direct_messages;
+        return (
+          user.profiles.show_profile === true &&
+          user.profiles.appear_in_search === true &&
+          user.profiles.allow_direct_messages === true
+        );
       }
-      // If no profile data, exclude the user
       return false;
     });
 
-    return filteredUsers || [];
+    return filteredUsers as unknown as UserProfile[] || [];
   },
 
   // Online status

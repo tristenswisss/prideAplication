@@ -65,3 +65,16 @@ INSERT INTO post_likes (post_id, user_id)
 VALUES
   ('dddddddd-dddd-dddd-dddd-dddddddddddd', '22222222-2222-2222-2222-222222222222')
 ON CONFLICT DO NOTHING;
+
+-- Demo Businesses across categories
+INSERT INTO businesses (id, name, description, category, address, latitude, longitude, phone, website, image_url, rating, review_count, lgbtq_friendly, trans_friendly, wheelchair_accessible, verified, owner_id, price_range)
+VALUES
+  ('e1111111-1111-1111-1111-111111111111', 'Rainbow Transit', 'Safe and inclusive rides across the city.', 'transport', '123 Transit Ave', 37.7749, -122.4194, '555-0101', 'https://example.com/transit', NULL, 4.6, 12, true, true, true, true, '11111111-1111-1111-1111-111111111111', '$$'),
+  ('e2222222-2222-2222-2222-222222222222', 'Pride Academy', 'Community classes and workshops.', 'education', '456 Learning St', 37.7755, -122.4183, '555-0102', 'https://example.com/academy', NULL, 4.8, 20, true, true, true, false, '11111111-1111-1111-1111-111111111111', '$'),
+  ('e3333333-3333-3333-3333-333333333333', 'Unity Eats', 'Delicious inclusive dining.', 'restaurant', '789 Food Blvd', 37.7762, -122.4177, '555-0103', 'https://example.com/eats', NULL, 4.5, 34, true, true, false, true, '22222222-2222-2222-2222-222222222222', '$$'),
+  ('e4444444-4444-4444-4444-444444444444', 'Queer Credit Union', 'Financial services for all.', 'finance', '101 Finance Way', 37.777, -122.416, '555-0104', 'https://example.com/finance', NULL, 4.7, 9, true, true, true, true, '22222222-2222-2222-2222-222222222222', '$$'),
+  ('e5555555-5555-5555-5555-555555555555', 'Spectrum Health', 'LGBTQ+ friendly clinic.', 'healthcare', '202 Health Rd', 37.778, -122.415, '555-0105', 'https://example.com/health', NULL, 4.9, 52, true, true, true, true, '11111111-1111-1111-1111-111111111111', '$$$'),
+  ('e6666666-6666-6666-6666-666666666666', 'Pride Mall', 'Shops supporting the community.', 'shopping', '303 Market St', 37.779, -122.414, '555-0106', 'https://example.com/mall', NULL, 4.3, 18, true, false, true, false, '11111111-1111-1111-1111-111111111111', '$$'),
+  ('e7777777-7777-7777-7777-777777777777', 'Ally Services', 'LGBTQ+ owned essential services.', 'service', '404 Service Ln', 37.780, -122.413, '555-0107', 'https://example.com/services', NULL, 4.4, 7, true, true, false, false, '22222222-2222-2222-2222-222222222222', '$$'),
+  ('e8888888-8888-8888-8888-888888888888', 'Harbor Hotel', 'Inclusive accommodation for all.', 'hotel', '505 Harbor Dr', 37.781, -122.412, '555-0108', 'https://example.com/hotel', NULL, 4.6, 23, true, true, true, true, '22222222-2222-2222-2222-222222222222', '$$$')
+ON CONFLICT (id) DO NOTHING;

@@ -42,7 +42,7 @@ class ProfileService {
         .from("users")
         .select(`
           *,
-          profiles!inner(
+          profiles (
             username,
             show_profile,
             show_activities,
@@ -57,12 +57,12 @@ class ProfileService {
         console.error("Error fetching profile:", error)
 
         // If user doesn't exist, try to create from auth user
-        if (error.code === "PGRST116") {
+        if ((error as any).code === "PGRST116") {
           console.log("User not found in database, attempting to create...")
           return await this.createUserFromAuth(userId)
         }
 
-        return { success: false, error: error.message }
+        return { success: false, error: (error as any).message }
       }
 
       console.log("Profile fetched successfully:", data)
@@ -208,14 +208,14 @@ class ProfileService {
 
       console.log("Creating user with data:", userData)
 
-      const { data, error } = await supabase.from("users").insert([userData]).select().single()
-
-      if (error) {
+      const { error } = await supabase.from("users").insert([userData])
+      if (error && (error as any).code !== "23505") {
+        // 23505 = unique violation; ignore if user already exists
         console.error("Error creating user:", error)
-        return { success: false, error: error.message }
+        return { success: false, error: (error as any).message }
       }
 
-      // Create profile record
+      // Create profile record if missing
       const profileData = {
         id: userId,
         username: authUser.user.email?.split("@")[0] || "user",
@@ -227,10 +227,16 @@ class ProfileService {
         updated_at: new Date().toISOString(),
       }
 
-      await supabase.from("profiles").insert([profileData])
+      const { error: profileInsertError } = await supabase.from("profiles").insert([profileData])
+      if (profileInsertError && (profileInsertError as any).code !== "23505") {
+        console.error("Error creating profile:", profileInsertError)
+        // non-fatal; continue
+      }
 
-      console.log("User created successfully:", data)
-      return { success: true, data }
+      // Return the fresh profile
+      const result = await this.getProfile(userId)
+      if (!result.success) return { success: true, data: userData as unknown as User }
+      return result
     } catch (error: any) {
       console.error("Error in createUserFromAuth:", error)
       return { success: false, error: error.message }
@@ -273,13 +279,13 @@ class ProfileService {
           email,
           created_at,
           updated_at,
-          profiles!inner(
+          profiles(
             username,
             show_profile,
             appear_in_search
           )
         `)
-        .or(`name.ilike.%${query}%,bio.ilike.%${query}%`)
+        .or(`name.ilike.%${query}%,bio.ilike.%${query}%,profiles.username.ilike.%${query}%`)
         .eq("profiles.appear_in_search", true)
         .eq("profiles.show_profile", true)
         .limit(20)
@@ -297,7 +303,7 @@ class ProfileService {
       }
 
       // Transform data to match UserProfile interface
-      const transformedData: UserProfile[] = (data || []).map((user) => {
+      const transformedData: UserProfile[] = (data || []).map((user: any) => {
         const profile = (Array.isArray(user.profiles) ? user.profiles[0] : user.profiles) as ProfileRecord
         return {
           id: user.id,
@@ -309,10 +315,10 @@ class ProfileService {
           email: user.email,
           created_at: user.created_at,
           updated_at: user.updated_at,
-          username: profile.username,
-          show_profile: profile.show_profile,
-          appear_in_search: profile.appear_in_search,
-        }
+          username: profile?.username,
+          show_profile: profile?.show_profile,
+          appear_in_search: profile?.appear_in_search,
+        } as unknown as UserProfile
       })
 
       return { success: true, data: transformedData }
@@ -348,7 +354,7 @@ class ProfileService {
         return { success: false, error: error.message }
       }
 
-      const transformedData: UserProfile[] = (data || []).map((user) => {
+      const transformedData: UserProfile[] = (data || []).map((user: any) => {
         const profile = Array.isArray(user.profiles) ? user.profiles[0] : user.profiles
         return {
           id: user.id,
@@ -362,7 +368,7 @@ class ProfileService {
           updated_at: user.updated_at,
           username: profile?.username,
           show_profile: profile?.show_profile,
-        }
+        } as unknown as UserProfile
       })
 
       return { success: true, data: transformedData }
