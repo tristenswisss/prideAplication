@@ -422,27 +422,30 @@ export default function BuddySystemScreen({ navigation }: any) {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.smallAction, { backgroundColor: "#FF6B6B" }]}
-                  onPress={() => setSelectedBuddy({
-                    id: item.id,
-                    email: item.email,
-                    name: item.name,
-                    avatar_url: item.avatar_url,
-                    bio: item.bio,
-                    pronouns: item.pronouns,
-                    interests: item.interests || [],
-                    verified: item.verified,
-                    follower_count: item.follower_count || 0,
-                    following_count: item.following_count || 0,
-                    post_count: item.post_count || 0,
-                    safetyRating: 5,
-                    buddyPreferences: { ageRange: [18, 100], interests: [], meetupTypes: [], maxDistance: 50 },
-                    verificationStatus: "verified",
-                    lastActive: item.updated_at,
-                    responseRate: 100,
-                    meetupCount: 0,
-                    created_at: item.created_at,
-                    updated_at: item.updated_at,
-                  }) || setShowRequestModal(true)}
+                  onPress={() => {
+                    setSelectedBuddy({
+                      id: item.id,
+                      email: item.email,
+                      name: item.name,
+                      avatar_url: item.avatar_url,
+                      bio: item.bio,
+                      pronouns: item.pronouns,
+                      interests: item.interests || [],
+                      verified: item.verified,
+                      follower_count: item.follower_count || 0,
+                      following_count: item.following_count || 0,
+                      post_count: item.post_count || 0,
+                      safetyRating: 5,
+                      buddyPreferences: { ageRange: [18, 100], interests: [], meetupTypes: [], maxDistance: 50 },
+                      verificationStatus: "verified",
+                      lastActive: item.updated_at,
+                      responseRate: 100,
+                      meetupCount: 0,
+                      created_at: item.created_at,
+                      updated_at: item.updated_at,
+                    })
+                    setShowRequestModal(true)
+                  }}
                 >
                   <MaterialIcons name="person-add" size={20} color="#fff" />
                 </TouchableOpacity>

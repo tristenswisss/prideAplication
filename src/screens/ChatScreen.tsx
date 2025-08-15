@@ -280,6 +280,26 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     setSelectedFile(null)
   }
 
+  const handlePickDocument = async () => {
+    try {
+      const doc = await fileUploadService.pickDocument(["*/*"])
+      if (doc && !doc.canceled && doc.uri) {
+        setSelectedFile({ uri: doc.uri, name: doc.name, mimeType: doc.mimeType })
+        setSelectedImage(null)
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick document")
+    }
+  }
+
+  const toggleEmojiPicker = () => {
+    setShowEmojiPicker((prev) => !prev)
+  }
+
+  const handleSelectEmoji = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji)
+  }
+
   const handleSendThreadReply = async (content: string) => {
     if (!selectedThreadMessage || !user) return
 
@@ -356,12 +376,18 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           {item.message_type === "image" && item.metadata?.image_url ? (
             <Image source={{ uri: item.metadata.image_url }} style={styles.inlineImage} />
           ) : item.message_type === "file" && item.metadata?.file_url ? (
-            <TouchableOpacity onPress={() => {
-              try { require("react-native").Linking.openURL(item.metadata.file_url) } catch {}
-            }} style={styles.fileAttachment}>
+            <TouchableOpacity
+              onPress={() => {
+                const url = item.metadata?.file_url
+                if (url) {
+                  Linking.openURL(url).catch(() => {})
+                }
+              }}
+              style={styles.fileAttachment}
+            >
               <MaterialIcons name="attach-file" size={16} color={isOwnMessage ? "#fff" : "#333"} />
               <Text style={[styles.fileAttachmentText, isOwnMessage && styles.ownMessageText]} numberOfLines={1}>
-                {item.metadata.file_name || "Attachment"}
+                {item.metadata?.file_name ?? "Attachment"}
               </Text>
             </TouchableOpacity>
           ) : (

@@ -21,7 +21,7 @@ import type { LiveEvent, LiveMessage } from "../../types/messaging"
 import { liveStreamingService, type StreamRecording } from "../../services/liveStreamingService"
 import { callingService } from "../../services/callingService"
 import { realtime } from "../../lib/realtime"
-import { LiveKitRoom, ParticipantView } from "@livekit/react-native-webrtc"
+import { LiveKitRoom } from "@livekit/react-native"
 import { Room } from "livekit-client"
 
 // Import the type for StackScreenProps
@@ -338,9 +338,11 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
       {/* Stream Area */}
       <View style={styles.streamContainer}>
         {lkUrl && lkToken ? (
-          <LiveKitRoom token={lkToken} serverUrl={lkUrl} connect style={{ flex: 1 }}>
-            <ParticipantView style={{ flex: 1 }} />
-          </LiveKitRoom>
+          <View style={{ flex: 1 }}>
+            <LiveKitRoom token={lkToken} serverUrl={lkUrl} connect>
+              {/* TODO: Render participants using appropriate components if needed */}
+            </LiveKitRoom>
+          </View>
         ) : (
           <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.streamPlaceholder}>
             <MaterialIcons name="live-tv" size={64} color="white" />
