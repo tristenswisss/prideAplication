@@ -21,8 +21,7 @@ import type { LiveEvent, LiveMessage } from "../../types/messaging"
 import { liveStreamingService, type StreamRecording } from "../../services/liveStreamingService"
 import { callingService } from "../../services/callingService"
 import { realtime } from "../../lib/realtime"
-import { LiveKitRoom } from "@livekit/react-native"
-import { Room } from "livekit-client"
+import { WebView } from "react-native-webview"
 
 // Import the type for StackScreenProps
 import type { StackScreenProps } from "@react-navigation/stack"
@@ -31,7 +30,7 @@ import type { EventsStackParamList } from "../../types/navigation"
 // Define the props type using the navigation type
 type LiveEventScreenProps = StackScreenProps<EventsStackParamList, "LiveEvent">
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window")
+const { height: screenHeight } = Dimensions.get("window")
 
 export default function LiveEventScreen({ navigation, route }: LiveEventScreenProps) {
   const { liveEvent: initialLiveEvent } = route.params
@@ -48,9 +47,7 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const [currentRecording, setCurrentRecording] = useState<StreamRecording | null>(null)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [streamQuality, setStreamQuality] = useState<"720p" | "1080p" | "4K">("1080p")
-  const [room, setRoom] = useState<Room | null>(null)
-  const [lkUrl, setLkUrl] = useState<string | null>(null)
-  const [lkToken, setLkToken] = useState<string | null>(null)
+  const [jitsiUrl, setJitsiUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (liveEvent.is_live) {
@@ -97,13 +94,9 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const hostStartLive = async () => {
     if (!user) return
     try {
-      const { liveEvent: created, livekit } = await liveEventService.createLiveEventRoom(user.id, {
-        title: liveEvent.title || "Live Event",
-        description: liveEvent.description,
-      })
-      setLiveEvent(created)
-      setLkUrl(livekit.url)
-      setLkToken(livekit.token)
+      await liveEventService.startLiveStream(liveEvent.id)
+      // Use a predictable Jitsi room for the event
+      setJitsiUrl(`https://meet.jit.si/live_${liveEvent.id}`)
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Could not start live event")
     }
@@ -112,9 +105,7 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const viewerJoinLive = async () => {
     if (!user) return
     try {
-      const creds = await liveEventService.getViewerCredentials(liveEvent.id, user.id)
-      setLkUrl(creds.url)
-      setLkToken(creds.token)
+      setJitsiUrl(`https://meet.jit.si/live_${liveEvent.id}`)
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Could not join live event")
     }
@@ -126,7 +117,6 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
     try {
       await liveEventService.joinLiveStream(liveEvent.id, user.id)
       setIsJoined(true)
-      // If host, create & connect; else, fetch viewer token and connect
       if (user.id === liveEvent.host_id) {
         await hostStartLive()
       } else {
@@ -233,7 +223,7 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
         <View style={styles.chatContent}>
           <View style={styles.chatMessageHeader}>
             <Text style={styles.chatUsername}>{item.user?.name || "Anonymous"}</Text>
-            {item.user?.verified && <MaterialIcons name="verified" size={12} color="#4CAF50" />}
+            <MaterialIcons name="verified" size={12} color="#4CAF50" />
             <Text style={styles.chatTime}>{formatMessageTime(item.sent_at)}</Text>
           </View>
           <Text style={styles.chatText}>{item.content}</Text>
@@ -337,12 +327,18 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
 
       {/* Stream Area */}
       <View style={styles.streamContainer}>
-        {lkUrl && lkToken ? (
-          <View style={{ flex: 1 }}>
-            <LiveKitRoom token={lkToken} serverUrl={lkUrl} connect>
-              {/* TODO: Render participants using appropriate components if needed */}
-            </LiveKitRoom>
-          </View>
+        {jitsiUrl ? (
+          <WebView
+            source={{ uri: jitsiUrl }}
+            style={{ flex: 1 }}
+            allowsFullscreenVideo
+            javaScriptEnabled
+            domStorageEnabled
+            mediaPlaybackRequiresUserAction={false}
+            startInLoadingState
+            onHttpError={() => {}}
+            onError={() => {}}
+          />
         ) : (
           <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.streamPlaceholder}>
             <MaterialIcons name="live-tv" size={64} color="white" />

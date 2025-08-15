@@ -1,5 +1,3 @@
-import type { LiveKitTokenResponse } from "../lib/livekit"
-import { livekit } from "../lib/livekit"
 import { supabase } from "../lib/supabase"
 
 export interface CallSession {
@@ -9,8 +7,7 @@ export interface CallSession {
   type: "voice" | "video"
   status: "ringing" | "active" | "ended" | "declined"
   room_name: string
-  lk_url?: string
-  lk_token?: string
+  jitsi_url?: string
   started_at?: string
   ended_at?: string
   duration?: number
@@ -28,13 +25,9 @@ export interface ScreenShareSession {
 const buildRoomName = (a: string, b: string) => `call_${[a, b].sort().join("_")}`
 
 export const callingService = {
-  // Voice/Video Calling (LiveKit room per conversation)
+  // Voice/Video Calling (Jitsi room per conversation)
   initiateCall: async (callerId: string, calleeId: string, type: "voice" | "video"): Promise<CallSession> => {
     const roomName = buildRoomName(callerId, calleeId)
-    const tok: LiveKitTokenResponse = await livekit.getAccessToken(roomName, callerId, {
-      autoCreate: true,
-      participantName: "caller",
-    })
 
     // Optionally notify callee via notification table
     await supabase.rpc("create_notification", {
@@ -45,6 +38,11 @@ export const callingService = {
       data: { room: roomName, callerId, type },
     })
 
+    // Build Jitsi URL. For voice calls, start with video muted.
+    const base = "https://meet.jit.si"
+    const params = type === "voice" ? "#config.startWithVideoMuted=true&config.disableDeepLinking=true" : "#config.disableDeepLinking=true"
+    const jitsiUrl = `${base}/${roomName}${params}`
+
     return {
       id: Math.random().toString(36).slice(2),
       caller_id: callerId,
@@ -52,14 +50,12 @@ export const callingService = {
       type,
       status: "ringing",
       room_name: roomName,
-      lk_url: tok.url,
-      lk_token: tok.token,
+      jitsi_url: jitsiUrl,
       started_at: new Date().toISOString(),
     }
   },
 
   answerCall: async (_callId: string): Promise<void> => {
-    // UI joins the same LiveKit room using fetched token for authenticated user
     return
   },
 
@@ -71,7 +67,7 @@ export const callingService = {
     return
   },
 
-  // Screen Sharing (handled by LiveKit; keep API surface)
+  // Screen Sharing placeholders
   startScreenShare: async (hostId: string, liveEventId: string): Promise<ScreenShareSession> => {
     return {
       id: Math.random().toString(36).slice(2),

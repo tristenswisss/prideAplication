@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert, Platform } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { callingService, type CallSession } from "../services/callingService"
-import { Room, RoomEvent, createLocalTracks, createLocalAudioTrack, createLocalVideoTrack } from "livekit-client"
-import { LiveKitRoom } from "@livekit/react-native"
+import { WebView } from "react-native-webview"
 
 interface CallInterfaceProps {
   callSession: CallSession
@@ -18,13 +17,9 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window")
 
 export default function CallInterface({ callSession, onEndCall, isIncoming = false }: CallInterfaceProps) {
   const [isMuted, setIsMuted] = useState(false)
-  const [isVideoOn, setIsVideoOn] = useState(callSession.type === "video")
   const [isSpeakerOn, setIsSpeakerOn] = useState(false)
   const [callDuration, setCallDuration] = useState(0)
   const [callStatus, setCallStatus] = useState(callSession.status)
-
-  // LiveKit state
-  const [room, setRoom] = useState<Room | null>(null)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -35,40 +30,16 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
   }, [callStatus])
 
   const handleConnect = async () => {
-    if (!callSession.lk_url || !callSession.lk_token) {
-      Alert.alert("Error", "Missing call credentials")
+    if (!callSession.jitsi_url) {
+      Alert.alert("Error", "Missing call URL")
       return
     }
-    try {
-      const r = new Room()
-      await r.connect(callSession.lk_url, callSession.lk_token)
-      setRoom(r)
-
-      // Publish local tracks based on call type
-      if (callSession.type === "video") {
-        const cam = await createLocalVideoTrack()
-        await r.localParticipant.publishTrack(cam)
-      }
-      const mic = await createLocalAudioTrack()
-      await r.localParticipant.publishTrack(mic)
-
-      setCallStatus("active")
-      r.on(RoomEvent.Disconnected, () => {
-        setCallStatus("ended")
-        onEndCall()
-      })
-    } catch (e: any) {
-      Alert.alert("Call Error", e?.message || String(e))
-    }
+    setCallStatus("active")
   }
 
   useEffect(() => {
     if (!isIncoming) {
-      // Caller auto-connects
       handleConnect()
-    }
-    return () => {
-      room?.disconnect()
     }
   }, [])
 
@@ -93,59 +64,30 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
   const handleEndCall = async () => {
     try {
       await callingService.endCall(callSession.id)
-      room?.disconnect()
       onEndCall()
     } catch (error) {
       Alert.alert("Error", "Failed to end call")
     }
   }
 
-  const handleToggleMute = async () => {
-    try {
-      const lp = room?.localParticipant
-      if (lp) {
-        if (!isMuted) {
-          await lp.setMicrophoneEnabled(false)
-        } else {
-          await lp.setMicrophoneEnabled(true)
-        }
-      }
-      setIsMuted(!isMuted)
-    } catch (error) {
-      Alert.alert("Error", "Failed to toggle mute")
-    }
-  }
-
-  const handleToggleVideo = async () => {
-    if (callSession.type === "voice") return
-    try {
-      const lp = room?.localParticipant
-      if (lp) {
-        if (isVideoOn) {
-          await lp.setCameraEnabled(false)
-        } else {
-          await lp.setCameraEnabled(true)
-        }
-      }
-      setIsVideoOn(!isVideoOn)
-    } catch (error) {
-      Alert.alert("Error", "Failed to toggle video")
-    }
-  }
-
-  const handleSwitchCamera = async () => {
-    // LiveKit RN handles camera switching via enabling front/back in device options
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.videoContainer}>
-        {callSession.type === "video" && isVideoOn && room ? (
-          <View style={{ flex: 1 }}>
-            <LiveKitRoom token={callSession.lk_token!} serverUrl={callSession.lk_url!} connect={false}>
-              {/* TODO: Render participants using appropriate components if needed */}
-            </LiveKitRoom>
-          </View>
+        {callSession.type === "video" && callStatus === "active" && callSession.jitsi_url ? (
+          <WebView
+            source={{ uri: callSession.jitsi_url }}
+            style={{ flex: 1 }}
+            allowsFullscreenVideo
+            javaScriptEnabled
+            domStorageEnabled
+            mediaPlaybackRequiresUserAction={false}
+            startInLoadingState
+            onHttpError={() => {}}
+            onError={() => {}}
+            {...(Platform.OS === "android"
+              ? { onPermissionRequest: (event: any) => event.grant(event.resources) }
+              : {})}
+          />
         ) : (
           <LinearGradient colors={["#333", "#666"]} style={styles.audioPlaceholder}>
             <MaterialIcons name="person" size={100} color="white" />
@@ -164,14 +106,9 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
       <View style={styles.controlsContainer}>
         {callStatus === "active" && (
           <View style={styles.activeControls}>
-            <TouchableOpacity style={[styles.controlButton, isMuted && styles.activeControlButton]} onPress={handleToggleMute}>
+            <TouchableOpacity style={[styles.controlButton, isMuted && styles.activeControlButton]} onPress={() => setIsMuted(!isMuted)}>
               <MaterialIcons name={isMuted ? "mic-off" : "mic"} size={24} color={isMuted ? "white" : "#333"} />
             </TouchableOpacity>
-            {callSession.type === "video" && (
-              <TouchableOpacity style={[styles.controlButton, !isVideoOn && styles.activeControlButton]} onPress={handleToggleVideo}>
-                <MaterialIcons name={isVideoOn ? "videocam" : "videocam-off"} size={24} color={!isVideoOn ? "white" : "#333"} />
-              </TouchableOpacity>
-            )}
             <TouchableOpacity style={[styles.controlButton, isSpeakerOn && styles.activeControlButton]} onPress={() => setIsSpeakerOn(!isSpeakerOn)}>
               <MaterialIcons name={isSpeakerOn ? "volume-up" : "volume-down"} size={24} color={isSpeakerOn ? "white" : "#333"} />
             </TouchableOpacity>
