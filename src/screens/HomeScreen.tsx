@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView } from "react-native"
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
+import MapView, { Marker } from "react-native-maps"
 import * as Location from "expo-location"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
@@ -242,49 +242,52 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               </Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={[styles.categoryTab, { backgroundColor: "#4CAF50" }]}
+                          onPress={() => navigation.navigate("SuggestSafeSpace" as never)}
+>
+            <MaterialIcons name="add-location" size={16} color="white" />
+            <Text style={[styles.categoryTabText, { color: "white" }]}>Recommend</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
       {/* Map or List View */}
       {showMap ? (
         <View style={styles.mapContainer}>
-          {userLocation && (
-            <MapView
-              provider={PROVIDER_GOOGLE}
-              style={styles.map}
-              initialRegion={{
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              }}
-              showsUserLocation={true}
-              showsMyLocationButton={false}
-            >
-              {filteredBusinesses &&
-                filteredBusinesses.length > 0 &&
-                filteredBusinesses.map((business) => {
-                  // Only render markers for businesses with valid coordinates
-                  if (!business.latitude || !business.longitude) {
-                    return null
-                  }
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: userLocation?.latitude ?? 37.7749,
+              longitude: userLocation?.longitude ?? -122.4194,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+            showsUserLocation={true}
+            showsMyLocationButton={false}
+          >
+            {filteredBusinesses &&
+              filteredBusinesses.length > 0 &&
+              filteredBusinesses.map((business) => {
+                if (!business.latitude || !business.longitude) {
+                  return null
+                }
 
-                  return (
-                    <Marker
-                      key={business.id}
-                      coordinate={{
-                        latitude: business.latitude,
-                        longitude: business.longitude,
-                      }}
-                      pinColor={getMarkerColor(business)}
-                      title={business.name}
-                      description={business.description}
-                      onPress={() => navigation.navigate("BusinessDetails", { business })}
-                    />
-                  )
-                })}
-            </MapView>
-          )}
+                return (
+                  <Marker
+                    key={business.id}
+                    coordinate={{
+                      latitude: business.latitude,
+                      longitude: business.longitude,
+                    }}
+                    pinColor={getMarkerColor(business)}
+                    title={business.name}
+                    description={business.description}
+                    onPress={() => navigation.navigate("BusinessDetails", { business })}
+                  />
+                )
+              })}
+          </MapView>
 
           {/* Map Legend */}
           <View style={styles.legend}>

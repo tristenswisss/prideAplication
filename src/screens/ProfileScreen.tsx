@@ -97,6 +97,12 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       icon: "help",
       onPress: () => navigation.navigate("HelpSupport"),
     },
+    {
+      title: "Review Suggestions",
+      description: "Approve or reject community recommendations",
+      icon: "approval",
+      onPress: () => navigation.navigate("SuggestionReview" as any),
+    },
   ]
 
   const renderOption = (option: (typeof profileOptions)[0]) => (

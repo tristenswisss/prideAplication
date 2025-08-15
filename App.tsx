@@ -83,6 +83,7 @@ function HomeNavigator() {
         options={{ title: "Business Details" }}
       />
       <HomeStack.Screen name="WriteReview" component={WriteReviewScreen} options={{ title: "Write Review" }} />
+      <HomeStack.Screen name="SuggestSafeSpace" component={require("./src/screens/SuggestSafeSpaceScreen").default} options={{ title: "Recommend Location" }} />
     </HomeStack.Navigator>
   )
 }
@@ -152,6 +153,7 @@ function ProfileNavigator() {
         component={BusinessDetailScreen}
         options={{ title: "Business Details" }}
       />
+      <ProfileStack.Screen name="SuggestionReview" component={require("./src/screens/SuggestionReviewScreen").default} options={{ title: "Review Suggestions" }} />
     </ProfileStack.Navigator>
   )
 }

@@ -329,7 +329,7 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
       <View style={styles.streamContainer}>
         {jitsiUrl ? (
           <WebView
-            source={{ uri: jitsiUrl }}
+            source={{ uri: `${jitsiUrl}#config.disableDeepLinking=true&config.prejoinPageEnabled=false` }}
             style={{ flex: 1 }}
             allowsFullscreenVideo
             javaScriptEnabled

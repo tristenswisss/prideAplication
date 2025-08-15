@@ -38,11 +38,16 @@ export const callingService = {
       data: { room: roomName, callerId, type },
     })
 
-    // Build Jitsi URL. For voice calls, start with video muted.
+        // Build Jitsi URL with sensible defaults and optional auto-mute
     const base = "https://meet.jit.si"
-    const params = type === "voice" ? "#config.startWithVideoMuted=true&config.disableDeepLinking=true" : "#config.disableDeepLinking=true"
-    const jitsiUrl = `${base}/${roomName}${params}`
-
+    const hashParams = [
+      "config.disableDeepLinking=true",
+      "config.prejoinPageEnabled=false",
+      type === "voice" ? "config.startWithAudioMuted=true" : "config.startWithAudioMuted=false",
+      type === "voice" ? "config.startWithVideoMuted=true" : "config.startWithVideoMuted=false",
+    ].join("&")
+    const jitsiUrl = `${base}/${roomName}#${hashParams}`
+    
     return {
       id: Math.random().toString(36).slice(2),
       caller_id: callerId,

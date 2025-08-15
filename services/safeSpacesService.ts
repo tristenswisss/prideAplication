@@ -192,6 +192,80 @@ class SafeSpacesService {
       { id: "other", name: "Other Support", icon: "help" },
     ]
   }
+
+  // Suggest a new location (pending approval)
+  async suggestSafeSpace(payload: Omit<SafeSpace, "id" | "verified" | "created_at" | "updated_at"> & { suggested_by: string }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from("safe_space_suggestions").insert({
+        ...payload,
+        status: "pending",
+      })
+      if (error) {
+        return { success: false, error: error.message }
+      }
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async listSuggestions(status: "pending" | "approved" | "rejected" = "pending"): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    try {
+      const { data, error } = await supabase.from("safe_space_suggestions").select("*").eq("status", status).order("created_at", { ascending: false })
+      if (error) return { success: false, error: error.message }
+      return { success: true, data: data || [] }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async approveSuggestion(suggestionId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: suggestion, error: fetchError } = await supabase.from("safe_space_suggestions").select("*").eq("id", suggestionId).single()
+      if (fetchError || !suggestion) return { success: false, error: fetchError?.message || "Not found" }
+
+      const insertPayload = {
+        name: suggestion.name,
+        description: suggestion.description,
+        category: suggestion.category,
+        address: suggestion.address,
+        city: suggestion.city,
+        country: suggestion.country,
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        phone: suggestion.phone,
+        email: suggestion.email,
+        website: suggestion.website,
+        services: suggestion.services,
+        lgbtq_friendly: suggestion.lgbtq_friendly,
+        trans_friendly: suggestion.trans_friendly,
+        wheelchair_accessible: suggestion.wheelchair_accessible,
+        verified: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const { error: insertError } = await supabase.from("safe_spaces").insert(insertPayload)
+      if (insertError) return { success: false, error: insertError.message }
+
+      const { error: updateError } = await supabase.from("safe_space_suggestions").update({ status: "approved" }).eq("id", suggestionId)
+      if (updateError) return { success: false, error: updateError.message }
+
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async rejectSuggestion(suggestionId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from("safe_space_suggestions").update({ status: "rejected", rejection_reason: reason || null }).eq("id", suggestionId)
+      if (error) return { success: false, error: error.message }
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  }
 }
 
 export const safeSpacesService = new SafeSpacesService()
