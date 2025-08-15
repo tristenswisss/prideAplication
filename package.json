@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
-    "@livekit/react-native": "^2.9.1",
-    "@livekit/react-native-webrtc": "^137.0.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "8.4.1",
     "@react-native-community/netinfo": "^11.4.1",
@@ -28,7 +26,6 @@
     "expo-location": "~18.1.6",
     "expo-notifications": "^0.31.4",
     "expo-status-bar": "~2.2.3",
-    "livekit-client": "^2.2.1",
     "react": "19.0.0",
     "react-native": "0.79.5",
     "react-native-chart-kit": "^6.12.0",
@@ -38,12 +35,11 @@
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.13.1",
     "react-native-svg": "15.11.2",
-    "react-native-url-polyfill": "^2.0.0"
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-webview": "^13.15.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@config-plugins/react-native-webrtc": "^12.0.0",
-    "@livekit/react-native-expo-plugin": "^1.0.1",
     "@react-native-community/cli": "^20.0.0",
     "@types/base64-arraybuffer": "^0.1.0",
     "@types/react": "~19.0.10",

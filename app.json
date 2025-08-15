@@ -24,7 +24,7 @@
       "bundleIdentifier": "com.mirae.safeplaces",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs location access to show nearby LGBTQ+ friendly places and send location-based event notifications.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to show nearby LGBTQ+ friendly places and send location-based event notifications.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to show nearby LGBTQ+ friendly places and send event notifications.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -66,9 +66,7 @@
             "./assets/notification-sound.wav"
           ]
         }
-      ],
-      "@livekit/react-native-expo-plugin",
-      "@config-plugins/react-native-webrtc"
+      ]
     ],
     "extra": {
       "eas": {

@@ -1,6 +1,7 @@
-// supabase edge function: livekit-token
-// Save as: supabase/functions/livekit-token/index.ts when deploying
-// Uses environment variables: LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL
+// supabase edge function: livekit-token (disabled)
+// This project build uses Jitsi via WebView in Expo Go. LiveKit token script is kept for reference but unused.
+
+export {}
 
 // Minimal implementation without importing server SDK to keep footprint small here.
 // In your real function, use @livekit/server-sdk to generate a JWT with grants.
