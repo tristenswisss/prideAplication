@@ -21,7 +21,7 @@ import type { LiveEvent, LiveMessage } from "../../types/messaging"
 import { liveStreamingService, type StreamRecording } from "../../services/liveStreamingService"
 import { callingService } from "../../services/callingService"
 import { realtime } from "../../lib/realtime"
-import { LiveKitRoom, ParticipantView } from "@livekit/react-native-webrtc"
+import { LiveKitRoom, ParticipantView } from "@livekit/react-native"
 import { Room } from "livekit-client"
 
 // Import the type for StackScreenProps

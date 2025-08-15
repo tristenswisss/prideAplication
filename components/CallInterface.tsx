@@ -6,7 +6,7 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { callingService, type CallSession } from "../services/callingService"
 import { Room, RoomEvent, createLocalTracks, createLocalAudioTrack, createLocalVideoTrack } from "livekit-client"
-import { LiveKitRoom, ParticipantView } from "@livekit/react-native-webrtc"
+import { LiveKitRoom, ParticipantView } from "@livekit/react-native"
 
 interface CallInterfaceProps {
   callSession: CallSession
