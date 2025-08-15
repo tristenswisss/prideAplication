@@ -21,6 +21,8 @@ import type { LiveEvent, LiveMessage } from "../../types/messaging"
 import { liveStreamingService, type StreamRecording } from "../../services/liveStreamingService"
 import { callingService } from "../../services/callingService"
 import { realtime } from "../../lib/realtime"
+import { LiveKitRoom, ParticipantView } from "@livekit/react-native-webrtc"
+import { Room } from "livekit-client"
 
 // Import the type for StackScreenProps
 import type { StackScreenProps } from "@react-navigation/stack"
@@ -46,6 +48,9 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const [currentRecording, setCurrentRecording] = useState<StreamRecording | null>(null)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [streamQuality, setStreamQuality] = useState<"720p" | "1080p" | "4K">("1080p")
+  const [room, setRoom] = useState<Room | null>(null)
+  const [lkUrl, setLkUrl] = useState<string | null>(null)
+  const [lkToken, setLkToken] = useState<string | null>(null)
 
   useEffect(() => {
     if (liveEvent.is_live) {
@@ -89,12 +94,44 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
     }
   }, [liveEvent?.id])
 
+  const hostStartLive = async () => {
+    if (!user) return
+    try {
+      const { liveEvent: created, livekit } = await liveEventService.createLiveEventRoom(user.id, {
+        title: liveEvent.title || "Live Event",
+        description: liveEvent.description,
+      })
+      setLiveEvent(created)
+      setLkUrl(livekit.url)
+      setLkToken(livekit.token)
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not start live event")
+    }
+  }
+
+  const viewerJoinLive = async () => {
+    if (!user) return
+    try {
+      const creds = await liveEventService.getViewerCredentials(liveEvent.id, user.id)
+      setLkUrl(creds.url)
+      setLkToken(creds.token)
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not join live event")
+    }
+  }
+
   const joinStream = async () => {
     if (!user || isJoined) return
 
     try {
       await liveEventService.joinLiveStream(liveEvent.id, user.id)
       setIsJoined(true)
+      // If host, create & connect; else, fetch viewer token and connect
+      if (user.id === liveEvent.host_id) {
+        await hostStartLive()
+      } else {
+        await viewerJoinLive()
+      }
     } catch (error) {
       console.error("Error joining stream:", error)
     }
@@ -291,93 +328,42 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackButton}>
-          <MaterialIcons name="arrow-back" size={24} color="white" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <MaterialIcons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {liveEvent.title}
-          </Text>
-          <View style={styles.headerStats}>
-            <View style={styles.liveIndicator}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-            <Text style={styles.viewerCount}>{liveEvent.viewer_count} viewers</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.headerAction}>
-          <MaterialIcons name="more-vert" size={24} color="white" />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{liveEvent.title}</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Video Stream Area */}
-      <View style={styles.videoContainer}>
-        <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.videoPlaceholder}>
-          <MaterialIcons name="videocam" size={64} color="white" />
-          <Text style={styles.videoPlaceholderText}>Live Stream</Text>
-          <Text style={styles.videoPlaceholderSubtext}>Hosted by {liveEvent.host?.name}</Text>
-        </LinearGradient>
+      {/* Stream Area */}
+      <View style={styles.streamContainer}>
+        {lkUrl && lkToken ? (
+          <LiveKitRoom token={lkToken} serverUrl={lkUrl} connect style={{ flex: 1 }}>
+            <ParticipantView style={{ flex: 1 }} />
+          </LiveKitRoom>
+        ) : (
+          <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.streamPlaceholder}>
+            <MaterialIcons name="live-tv" size={64} color="white" />
+            <Text style={styles.streamPlaceholderText}>{liveEvent.is_live ? "Live" : "Offline"}</Text>
+          </LinearGradient>
+        )}
+      </View>
 
-        {/* Floating Reactions */}
-        <View style={styles.reactionsContainer}>
-          <TouchableOpacity style={styles.reactionButton} onPress={() => handleSendReaction("❤️")}>
-            <Text style={styles.reactionEmoji}>❤️</Text>
+      {/* Controls */}
+      <View style={styles.controls}>
+        <View style={styles.leftControls}>
+          <TouchableOpacity style={styles.controlButton} onPress={() => setShowChat(!showChat)}>
+            <MaterialIcons name="chat" size={20} color="#333" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionButton} onPress={() => handleSendReaction("🏳️‍🌈")}>
-            <Text style={styles.reactionEmoji}>🏳️‍🌈</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionButton} onPress={() => handleSendReaction("👏")}>
-            <Text style={styles.reactionEmoji}>👏</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.reactionButton} onPress={() => handleSendReaction("🔥")}>
-            <Text style={styles.reactionEmoji}>🔥</Text>
+          <TouchableOpacity style={styles.controlButton} onPress={() => setStreamQuality("1080p")}>
+            <MaterialIcons name="high-quality" size={20} color="#333" />
           </TouchableOpacity>
         </View>
-
-        {/* Host Controls (only show if user is the host) */}
-        {user?.id === liveEvent.host_id && (
-          <View style={styles.hostControls}>
-            <TouchableOpacity
-              style={[styles.hostControlButton, isRecording && styles.activeHostControl]}
-              onPress={isRecording ? handleStopRecording : handleStartRecording}
-            >
-              <MaterialIcons
-                name={isRecording ? "stop" : "fiber-manual-record"}
-                size={20}
-                color={isRecording ? "white" : "#FF4444"}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.hostControlButton, isScreenSharing && styles.activeHostControl]}
-              onPress={isScreenSharing ? handleStopScreenShare : handleStartScreenShare}
-            >
-              <MaterialIcons name="screen-share" size={20} color={isScreenSharing ? "white" : "#4ECDC4"} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.hostControlButton}
-              onPress={() => {
-                Alert.alert("Stream Quality", "Select stream quality", [
-                  { text: "720p", onPress: () => handleQualityChange("720p") },
-                  { text: "1080p", onPress: () => handleQualityChange("1080p") },
-                  { text: "4K", onPress: () => handleQualityChange("4K") },
-                  { text: "Cancel", style: "cancel" },
-                ])
-              }}
-            >
-              <MaterialIcons name="high-quality" size={20} color="#FFA726" />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Chat Toggle */}
-        <TouchableOpacity style={styles.chatToggle} onPress={() => setShowChat(!showChat)}>
-          <MaterialIcons name={showChat ? "chat" : "chat-bubble-outline"} size={24} color="white" />
-        </TouchableOpacity>
+        <View style={styles.rightControls}>
+          <TouchableOpacity style={[styles.goLiveButton, liveEvent.is_live && styles.endLiveButton]} onPress={joinStream}>
+            <Text style={styles.goLiveText}>{liveEvent.is_live ? "Join" : "Go Live"}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Live Chat */}
@@ -688,5 +674,50 @@ const styles = StyleSheet.create({
   },
   activeHostControl: {
     backgroundColor: "#FF6B6B",
+  },
+  streamContainer: {
+    flex: 1,
+    position: "relative",
+  },
+  streamPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  streamPlaceholderText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "white",
+    marginTop: 15,
+  },
+  controls: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  leftControls: {
+    flexDirection: "row",
+  },
+  controlButton: {
+    marginRight: 15,
+  },
+  rightControls: {
+    //
+  },
+  goLiveButton: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+  },
+  endLiveButton: {
+    backgroundColor: "#FF4444",
+  },
+  goLiveText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 })

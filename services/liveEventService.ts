@@ -1,5 +1,11 @@
 import { supabase } from "../lib/supabase"
 import type { LiveEvent, LiveMessage, UserProfile } from "../types/messaging"
+import { livekit } from "../lib/livekit"
+
+export interface CreateLiveEventOptions {
+  title: string
+  description?: string
+}
 
 export const liveEventService = {
   // Live Events
@@ -277,5 +283,78 @@ export const liveEventService = {
   // Reactions
   sendReaction: async (liveEventId: string, userId: string, reaction: string): Promise<void> => {
     await liveEventService.sendLiveMessage(liveEventId, userId, reaction, "reaction", { reaction })
+  },
+
+  async getFeedPosts(userId?: string): Promise<any[]> {
+    return []
+  },
+
+  // Create a Live Event and return host LiveKit credentials
+  createLiveEventRoom: async (hostId: string, options: CreateLiveEventOptions) => {
+    // create DB row
+    const { data, error } = await supabase
+      .from("live_events")
+      .insert({
+        event_id: null,
+        title: options.title,
+        description: options.description,
+        host_id: hostId,
+        stream_url: null,
+        is_live: true,
+        started_at: new Date().toISOString(),
+      })
+      .select("*")
+      .single()
+
+    if (error || !data) throw error || new Error("Failed to create live event")
+
+    const roomName = `live_${data.id}`
+    const token = await livekit.getAccessToken(roomName, hostId, {
+      autoCreate: true,
+      participantName: "host",
+      grants: { roomCreate: true, room: roomName, canPublish: true, canSubscribe: true },
+    })
+
+    return { liveEvent: data as LiveEvent, livekit: token }
+  },
+
+  // Get viewer token to join an existing live event
+  getViewerCredentials: async (liveEventId: string, userId: string) => {
+    const roomName = `live_${liveEventId}`
+    const token = await livekit.getAccessToken(roomName, userId, {
+      autoCreate: false,
+      participantName: "viewer",
+      grants: { room: roomName, canPublish: false, canSubscribe: true },
+    })
+    return token
+  },
+
+  // Existing chat/reactions (placeholders)
+  async getLiveMessages(_liveEventId: string): Promise<LiveMessage[]> {
+    const { data, error } = await supabase
+      .from("live_messages")
+      .select("*")
+      .order("sent_at", { ascending: true })
+
+    if (error) return []
+    return (data || []) as any
+  },
+
+  async sendLiveMessage(liveEventId: string, userId: string, content: string): Promise<LiveMessage> {
+    const { data, error } = await supabase
+      .from("live_messages")
+      .insert({ live_event_id: liveEventId, user_id: userId, content })
+      .select("*")
+      .single()
+
+    if (error) throw error
+    return data as any
+  },
+
+  async joinLiveStream(_liveEventId: string, _userId: string): Promise<void> { return },
+  async leaveLiveStream(_liveEventId: string, _userId: string): Promise<void> { return },
+  async getLiveEvent(liveEventId: string): Promise<LiveEvent | null> {
+    const { data } = await supabase.from("live_events").select("*").eq("id", liveEventId).single()
+    return (data as any) || null
   },
 }

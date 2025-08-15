@@ -5,6 +5,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert } from "rea
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { callingService, type CallSession } from "../services/callingService"
+import { Room, RoomEvent, createLocalTracks, createLocalAudioTrack, createLocalVideoTrack } from "livekit-client"
+import { LiveKitRoom, ParticipantView } from "@livekit/react-native-webrtc"
 
 interface CallInterfaceProps {
   callSession: CallSession
@@ -21,26 +23,59 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
   const [callDuration, setCallDuration] = useState(0)
   const [callStatus, setCallStatus] = useState(callSession.status)
 
+  // LiveKit state
+  const [room, setRoom] = useState<Room | null>(null)
+
   useEffect(() => {
     let interval: NodeJS.Timeout
     if (callStatus === "active") {
-      interval = setInterval(() => {
-        setCallDuration((prev) => prev + 1)
-      }, 1000)
+      interval = setInterval(() => setCallDuration((prev) => prev + 1), 1000)
     }
     return () => clearInterval(interval)
   }, [callStatus])
 
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  const handleConnect = async () => {
+    if (!callSession.lk_url || !callSession.lk_token) {
+      Alert.alert("Error", "Missing call credentials")
+      return
+    }
+    try {
+      const r = new Room()
+      await r.connect(callSession.lk_url, callSession.lk_token)
+      setRoom(r)
+
+      // Publish local tracks based on call type
+      if (callSession.type === "video") {
+        const cam = await createLocalVideoTrack()
+        await r.localParticipant.publishTrack(cam)
+      }
+      const mic = await createLocalAudioTrack()
+      await r.localParticipant.publishTrack(mic)
+
+      setCallStatus("active")
+      r.on(RoomEvent.Disconnected, () => {
+        setCallStatus("ended")
+        onEndCall()
+      })
+    } catch (e: any) {
+      Alert.alert("Call Error", e?.message || String(e))
+    }
   }
+
+  useEffect(() => {
+    if (!isIncoming) {
+      // Caller auto-connects
+      handleConnect()
+    }
+    return () => {
+      room?.disconnect()
+    }
+  }, [])
 
   const handleAnswerCall = async () => {
     try {
       await callingService.answerCall(callSession.id)
-      setCallStatus("active")
+      await handleConnect()
     } catch (error) {
       Alert.alert("Error", "Failed to answer call")
     }
@@ -58,6 +93,7 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
   const handleEndCall = async () => {
     try {
       await callingService.endCall(callSession.id)
+      room?.disconnect()
       onEndCall()
     } catch (error) {
       Alert.alert("Error", "Failed to end call")
@@ -66,7 +102,14 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
 
   const handleToggleMute = async () => {
     try {
-      await callingService.toggleMute(callSession.id, !isMuted)
+      const lp = room?.localParticipant
+      if (lp) {
+        if (!isMuted) {
+          await lp.setMicrophoneEnabled(false)
+        } else {
+          await lp.setMicrophoneEnabled(true)
+        }
+      }
       setIsMuted(!isMuted)
     } catch (error) {
       Alert.alert("Error", "Failed to toggle mute")
@@ -75,9 +118,15 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
 
   const handleToggleVideo = async () => {
     if (callSession.type === "voice") return
-
     try {
-      await callingService.toggleVideo(callSession.id, !isVideoOn)
+      const lp = room?.localParticipant
+      if (lp) {
+        if (isVideoOn) {
+          await lp.setCameraEnabled(false)
+        } else {
+          await lp.setCameraEnabled(true)
+        }
+      }
       setIsVideoOn(!isVideoOn)
     } catch (error) {
       Alert.alert("Error", "Failed to toggle video")
@@ -85,39 +134,31 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
   }
 
   const handleSwitchCamera = async () => {
-    if (callSession.type === "voice" || !isVideoOn) return
-
-    try {
-      await callingService.switchCamera(callSession.id)
-    } catch (error) {
-      Alert.alert("Error", "Failed to switch camera")
-    }
+    // LiveKit RN handles camera switching via enabling front/back in device options
   }
 
   return (
     <View style={styles.container}>
-      {/* Video Area */}
       <View style={styles.videoContainer}>
-        {callSession.type === "video" && isVideoOn ? (
-          <LinearGradient colors={["#FF6B6B", "#4ECDC4"]} style={styles.videoPlaceholder}>
-            <MaterialIcons name="videocam" size={64} color="white" />
-            <Text style={styles.videoPlaceholderText}>Video Call</Text>
-          </LinearGradient>
+        {callSession.type === "video" && isVideoOn && room ? (
+          <LiveKitRoom
+            token={callSession.lk_token!}
+            serverUrl={callSession.lk_url!}
+            connect={false}
+            style={{ flex: 1 }}
+          >
+            <ParticipantView style={{ flex: 1 }} participant={room.localParticipant} />
+          </LiveKitRoom>
         ) : (
           <LinearGradient colors={["#333", "#666"]} style={styles.audioPlaceholder}>
             <MaterialIcons name="person" size={100} color="white" />
-            <Text style={styles.callerName}>Calling...</Text>
+            <Text style={styles.callerName}>{callStatus === "ringing" ? "Ringing..." : "Audio Call"}</Text>
           </LinearGradient>
         )}
 
-        {/* Call Status */}
         <View style={styles.callStatus}>
           <Text style={styles.callStatusText}>
-            {callStatus === "ringing"
-              ? "Ringing..."
-              : callStatus === "active"
-                ? formatDuration(callDuration)
-                : callStatus}
+            {callStatus === "ringing" ? "Ringing..." : callStatus === "active" ? `${callDuration}s` : callStatus}
           </Text>
         </View>
       </View>
@@ -126,50 +167,20 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
       <View style={styles.controlsContainer}>
         {callStatus === "active" && (
           <View style={styles.activeControls}>
-            {/* Mute Button */}
-            <TouchableOpacity
-              style={[styles.controlButton, isMuted && styles.activeControlButton]}
-              onPress={handleToggleMute}
-            >
+            <TouchableOpacity style={[styles.controlButton, isMuted && styles.activeControlButton]} onPress={handleToggleMute}>
               <MaterialIcons name={isMuted ? "mic-off" : "mic"} size={24} color={isMuted ? "white" : "#333"} />
             </TouchableOpacity>
-
-            {/* Video Toggle (for video calls) */}
             {callSession.type === "video" && (
-              <TouchableOpacity
-                style={[styles.controlButton, !isVideoOn && styles.activeControlButton]}
-                onPress={handleToggleVideo}
-              >
-                <MaterialIcons
-                  name={isVideoOn ? "videocam" : "videocam-off"}
-                  size={24}
-                  color={!isVideoOn ? "white" : "#333"}
-                />
+              <TouchableOpacity style={[styles.controlButton, !isVideoOn && styles.activeControlButton]} onPress={handleToggleVideo}>
+                <MaterialIcons name={isVideoOn ? "videocam" : "videocam-off"} size={24} color={!isVideoOn ? "white" : "#333"} />
               </TouchableOpacity>
             )}
-
-            {/* Speaker Button */}
-            <TouchableOpacity
-              style={[styles.controlButton, isSpeakerOn && styles.activeControlButton]}
-              onPress={() => setIsSpeakerOn(!isSpeakerOn)}
-            >
-              <MaterialIcons
-                name={isSpeakerOn ? "volume-up" : "volume-down"}
-                size={24}
-                color={isSpeakerOn ? "white" : "#333"}
-              />
+            <TouchableOpacity style={[styles.controlButton, isSpeakerOn && styles.activeControlButton]} onPress={() => setIsSpeakerOn(!isSpeakerOn)}>
+              <MaterialIcons name={isSpeakerOn ? "volume-up" : "volume-down"} size={24} color={isSpeakerOn ? "white" : "#333"} />
             </TouchableOpacity>
-
-            {/* Camera Switch (for video calls) */}
-            {callSession.type === "video" && isVideoOn && (
-              <TouchableOpacity style={styles.controlButton} onPress={handleSwitchCamera}>
-                <MaterialIcons name="flip-camera-ios" size={24} color="#333" />
-              </TouchableOpacity>
-            )}
           </View>
         )}
 
-        {/* Call Action Buttons */}
         <View style={styles.callActions}>
           {isIncoming && callStatus === "ringing" ? (
             <>
@@ -192,97 +203,18 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-  videoContainer: {
-    flex: 1,
-    position: "relative",
-  },
-  videoPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  videoPlaceholderText: {
-    color: "white",
-    fontSize: 18,
-    marginTop: 10,
-  },
-  audioPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  callerName: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 20,
-  },
-  callStatus: {
-    position: "absolute",
-    top: 60,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  callStatusText: {
-    color: "white",
-    fontSize: 16,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  controlsContainer: {
-    paddingBottom: 50,
-    paddingHorizontal: 30,
-  },
-  activeControls: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 30,
-  },
-  controlButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  activeControlButton: {
-    backgroundColor: "#FF6B6B",
-  },
-  callActions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-  },
-  answerButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#4CAF50",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  declineButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F44336",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  endCallButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F44336",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  container: { flex: 1, backgroundColor: "#000" },
+  videoContainer: { flex: 1, position: "relative" },
+  audioPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
+  callerName: { color: "white", fontSize: 24, fontWeight: "bold", marginTop: 20 },
+  callStatus: { position: "absolute", top: 60, left: 0, right: 0, alignItems: "center" },
+  callStatusText: { color: "white", fontSize: 16, backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
+  controlsContainer: { paddingBottom: 50, paddingHorizontal: 30 },
+  activeControls: { flexDirection: "row", justifyContent: "space-around", marginBottom: 30 },
+  controlButton: { width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  activeControlButton: { backgroundColor: "#FF6B6B" },
+  callActions: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  declineButton: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#F44336", alignItems: "center", justifyContent: "center", marginHorizontal: 20 },
+  answerButton: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#4CAF50", alignItems: "center", justifyContent: "center", marginHorizontal: 20 },
+  endCallButton: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#F44336", alignItems: "center", justifyContent: "center" },
 })

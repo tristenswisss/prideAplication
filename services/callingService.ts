@@ -1,9 +1,16 @@
+import type { LiveKitTokenResponse } from "../lib/livekit"
+import { livekit } from "../lib/livekit"
+import { supabase } from "../lib/supabase"
+
 export interface CallSession {
   id: string
   caller_id: string
   callee_id: string
   type: "voice" | "video"
   status: "ringing" | "active" | "ended" | "declined"
+  room_name: string
+  lk_url?: string
+  lk_token?: string
   started_at?: string
   ended_at?: string
   duration?: number
@@ -18,72 +25,76 @@ export interface ScreenShareSession {
   ended_at?: string
 }
 
-export const callingService = {
-  // Voice/Video Calling
-  initiateCall: async (callerId: string, calleeId: string, type: "voice" | "video"): Promise<CallSession> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
+const buildRoomName = (a: string, b: string) => `call_${[a, b].sort().join("_")}`
 
-    const callSession: CallSession = {
-      id: Math.random().toString(36).substr(2, 9),
+export const callingService = {
+  // Voice/Video Calling (LiveKit room per conversation)
+  initiateCall: async (callerId: string, calleeId: string, type: "voice" | "video"): Promise<CallSession> => {
+    const roomName = buildRoomName(callerId, calleeId)
+    const tok: LiveKitTokenResponse = await livekit.getAccessToken(roomName, callerId, {
+      autoCreate: true,
+      participantName: "caller",
+    })
+
+    // Optionally notify callee via notification table
+    await supabase.rpc("create_notification", {
+      user_id: calleeId,
+      title: type === "video" ? "Incoming Video Call" : "Incoming Voice Call",
+      message: "Tap to join the call",
+      type: "call_invite",
+      data: { room: roomName, callerId, type },
+    })
+
+    return {
+      id: Math.random().toString(36).slice(2),
       caller_id: callerId,
       callee_id: calleeId,
       type,
       status: "ringing",
+      room_name: roomName,
+      lk_url: tok.url,
+      lk_token: tok.token,
       started_at: new Date().toISOString(),
     }
-
-    // Simulate call notification to callee
-    console.log(`Initiating ${type} call to user ${calleeId}`)
-
-    return callSession
   },
 
-  answerCall: async (callId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    console.log(`Call ${callId} answered`)
+  answerCall: async (_callId: string): Promise<void> => {
+    // UI joins the same LiveKit room using fetched token for authenticated user
+    return
   },
 
-  declineCall: async (callId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    console.log(`Call ${callId} declined`)
+  declineCall: async (_callId: string): Promise<void> => {
+    return
   },
 
-  endCall: async (callId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    console.log(`Call ${callId} ended`)
+  endCall: async (_callId: string): Promise<void> => {
+    return
   },
 
-  // Screen Sharing
+  // Screen Sharing (handled by LiveKit; keep API surface)
   startScreenShare: async (hostId: string, liveEventId: string): Promise<ScreenShareSession> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    const session: ScreenShareSession = {
-      id: Math.random().toString(36).substr(2, 9),
+    return {
+      id: Math.random().toString(36).slice(2),
       host_id: hostId,
       live_event_id: liveEventId,
       is_active: true,
       started_at: new Date().toISOString(),
     }
-
-    console.log(`Screen sharing started for live event ${liveEventId}`)
-    return session
   },
 
-  stopScreenShare: async (sessionId: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    console.log(`Screen sharing stopped for session ${sessionId}`)
+  stopScreenShare: async (_sessionId: string): Promise<void> => {
+    return
   },
 
-  // Call Quality Management
-  toggleMute: async (callId: string, isMuted: boolean): Promise<void> => {
-    console.log(`Call ${callId} ${isMuted ? "muted" : "unmuted"}`)
+  toggleMute: async (_callId: string, _isMuted: boolean): Promise<void> => {
+    return
   },
 
-  toggleVideo: async (callId: string, isVideoOn: boolean): Promise<void> => {
-    console.log(`Call ${callId} video ${isVideoOn ? "enabled" : "disabled"}`)
+  toggleVideo: async (_callId: string, _isVideoOn: boolean): Promise<void> => {
+    return
   },
 
-  switchCamera: async (callId: string): Promise<void> => {
-    console.log(`Camera switched for call ${callId}`)
+  switchCamera: async (_callId: string): Promise<void> => {
+    return
   },
 }

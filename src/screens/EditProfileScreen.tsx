@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
@@ -23,6 +23,7 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
     interests: [] as string[],
   })
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(user?.avatar_url || null)
 
   const [privacySettings, setPrivacySettings] = useState({
     profileVisible: true,
@@ -31,6 +32,37 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
     allowMessages: true,
     showLocation: true,
   })
+
+  useEffect(() => {
+    const loadExistingProfile = async () => {
+      if (!user?.id) return
+      try {
+        const result = await profileService.getProfile(user.id)
+        if (result.success && result.data) {
+          const dbUser: any = result.data
+          const profile = Array.isArray(dbUser.profiles) ? dbUser.profiles[0] : dbUser.profiles
+          setFormData((prev) => ({
+            ...prev,
+            name: dbUser.name || prev.name,
+            email: dbUser.email || prev.email,
+            bio: dbUser.bio || "",
+            location: dbUser.location || "",
+            pronouns: dbUser.pronouns || "",
+            interests: dbUser.interests || [],
+          }))
+          setCurrentAvatarUrl(dbUser.avatar_url || null)
+          setPrivacySettings((prev) => ({
+            ...prev,
+            profileVisible: profile?.show_profile ?? true,
+            allowMessages: profile?.allow_direct_messages ?? true,
+          }))
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    loadExistingProfile()
+  }, [user?.id])
 
   const interestOptions = [
     "Art & Culture",
@@ -78,6 +110,8 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
         avatar_url: avatarUrl || undefined,
         pronouns: formData.pronouns,
         location: formData.location,
+        show_profile: privacySettings.profileVisible,
+        allow_direct_messages: privacySettings.allowMessages,
       }
 
       console.log("Saving profile data:", profileData)
@@ -87,9 +121,10 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
         throw new Error(error)
       }
 
-      Alert.alert("Success", "Profile updated successfully!")
-      // Refresh the user data in the AuthContext
+      // persist in context
       await refreshUser()
+
+      Alert.alert("Success", "Profile updated successfully!")
       navigation.goBack()
     }
   }
@@ -187,6 +222,8 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
           <View style={styles.photoContainer}>
             {profileImage ? (
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
+            ) : currentAvatarUrl ? (
+              <Image source={{ uri: currentAvatarUrl }} style={styles.profileImage} />
             ) : (
               <View style={styles.photoPlaceholder}>
                 <MaterialIcons name="person" size={60} color="#ccc" />

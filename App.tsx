@@ -4,7 +4,7 @@ import { createStackNavigator } from "@react-navigation/stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { MaterialIcons } from "@expo/vector-icons"
 import { StatusBar } from "expo-status-bar"
-import { View, ActivityIndicator } from "react-native"
+import { View, ActivityIndicator, Image } from "react-native"
 
 // Contexts
 import { AuthProvider, useAuth } from "./Contexts/AuthContexts"
@@ -158,32 +158,36 @@ function ProfileNavigator() {
 
 // Main Tab Navigator
 function TabNavigator() {
+  const { user } = useAuth()
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ color, size }) => {
+          if (route.name === "Profile") {
+            return user?.avatar_url ? (
+              <Image source={{ uri: user.avatar_url }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+            ) : (
+              <MaterialIcons name="person" size={size} color={color} />
+            )
+          }
+
           let iconName: keyof typeof MaterialIcons.glyphMap
-
           switch (route.name) {
-                      case "Home":
-                        iconName = "home"
-                        break
-                      case "Search":
-                        iconName = "search"
-                        break
-                      case "Events":
-                        iconName = "event"
-                        break
-                      case "Community":
-                        iconName = "people"
-                        break
-                      case "Profile":
-                        iconName = "person"
-                        break
-                      default:
-                        iconName = "home"
-                      }
-
+            case "Home":
+              iconName = "home"
+              break
+            case "Search":
+              iconName = "search"
+              break
+            case "Events":
+              iconName = "event"
+              break
+            case "Community":
+              iconName = "people"
+              break
+            default:
+              iconName = "home"
+          }
           return <MaterialIcons name={iconName} size={size} color={color} />
         },
         tabBarActiveTintColor: "#FF6B6B",
@@ -192,10 +196,10 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
-            <Tab.Screen name="Search" component={SearchNavigator} />
-            <Tab.Screen name="Events" component={EventsNavigator} />
-            <Tab.Screen name="Community" component={CommunityNavigator} />
-            <Tab.Screen name="Profile" component={ProfileNavigator} />
+      <Tab.Screen name="Search" component={SearchNavigator} />
+      <Tab.Screen name="Events" component={EventsNavigator} />
+      <Tab.Screen name="Community" component={CommunityNavigator} />
+      <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   )
 }

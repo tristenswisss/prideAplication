@@ -1,20 +1,30 @@
 "use client"
 
 import { useState } from "react"
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { ProfileScreenProps } from "../../types/navigation"
+import React from "react"
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
-  const { user, signOut } = useAuth()
+  const { user, signOut, refreshUser } = useAuth()
   const [stats, setStats] = useState({
     savedPlaces: 12,
     eventsAttended: 8,
     reviewsWritten: 15,
     buddyConnections: 3,
   })
+
+  // Refresh user when returning to this screen
+  // @ts-ignore navigation has addListener
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      refreshUser()
+    })
+    return unsubscribe
+  }, [navigation])
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -107,9 +117,13 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       <LinearGradient colors={["black", "black"]} style={styles.header}>
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
+                      <View style={styles.avatar}>
+            {user?.avatar_url ? (
+              <Image source={{ uri: user.avatar_url }} style={{ width: 80, height: 80, borderRadius: 40 }} />
+            ) : (
               <MaterialIcons name="person" size={40} color="#ccc" />
-            </View>
+            )}
+          </View>
             <TouchableOpacity style={styles.editAvatarButton}>
               <MaterialIcons name="camera-alt" size={16} color="white" />
             </TouchableOpacity>

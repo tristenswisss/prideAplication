@@ -150,7 +150,13 @@ export default function UserProfileScreen({ navigation, route }: any) {
         {/* Profile Info */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+            {profile.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { alignItems: "center", justifyContent: "center", backgroundColor: "#eee" }]}>
+                <MaterialIcons name="person" size={40} color="#ccc" />
+              </View>
+            )}
             {profile.verified && (
               <View style={styles.verifiedBadge}>
                 <MaterialIcons name="verified" size={20} color="#4CAF50" />

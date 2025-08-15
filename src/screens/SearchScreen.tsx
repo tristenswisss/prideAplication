@@ -56,17 +56,23 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   }, [])
 
   useEffect(() => {
-    if (query.length > 2) {
-      getSuggestions()
-    } else {
-      setSuggestions([])
-    }
+    const t = setTimeout(() => {
+      if (query.length > 2) {
+        getSuggestions()
+      } else {
+        setSuggestions([])
+      }
+    }, 250)
+    return () => clearTimeout(t)
   }, [query])
 
   useEffect(() => {
-    if (selectedCategory !== "all" || filters.category) {
-      performSearch()
-    }
+    const t = setTimeout(() => {
+      if (selectedCategory !== "all" || filters.category) {
+        performSearch()
+      }
+    }, 200)
+    return () => clearTimeout(t)
   }, [selectedCategory, filters.category])
 
   const loadSearchHistory = async () => {

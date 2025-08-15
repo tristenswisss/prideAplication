@@ -116,6 +116,25 @@ export const buddySystemService = {
     }))
   },
 
+  // Unfriend (remove buddy match between two users)
+  unfriendBuddy: async (userId: string, buddyId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase
+        .from("buddy_matches")
+        .delete()
+        .or(`and(user1_id.eq.${userId},user2_id.eq.${buddyId}),and(user1_id.eq.${buddyId},user2_id.eq.${userId})`)
+
+      if (error) {
+        console.error("Error unfriending buddy:", error)
+        return { success: false, error: error.message }
+      }
+      return { success: true }
+    } catch (error: any) {
+      console.error("Error in unfriendBuddy:", error)
+      return { success: false, error: error.message }
+    }
+  },
+
   // Send buddy request
   sendBuddyRequest: async (fromUserId: string, toUserId: string, message: string): Promise<BuddyRequest> => {
     const { data, error } = await supabase

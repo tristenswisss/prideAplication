@@ -16,8 +16,10 @@ import {
   Modal,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
+import { Linking } from "react-native"
 import { messagingService } from "../../services/messagingService"
 import { imageUploadService } from "../../services/imageUploadService"
+import { fileUploadService } from "../../services/fileUploadService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Message, Conversation } from "../../types/messaging"
 import MessageReactions from "../../components/MessageReactions"
@@ -45,6 +47,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
   const { user } = useAuth()
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<{ uri: string; name?: string; mimeType?: string } | null>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   const [showThreads, setShowThreads] = useState(false)
   const [selectedThreadMessage, setSelectedThreadMessage] = useState<Message | null>(null)
@@ -123,14 +127,14 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   }
 
   const handleSendMessage = async () => {
-    if ((!newMessage.trim() && !selectedImage) || !user || sending) return
+    if ((!newMessage.trim() && !selectedImage && !selectedFile) || !user || sending) return
 
     setSending(true)
 
     try {
       let messageContent = newMessage.trim()
-      let messageType: "text" | "image" = "text"
-      let metadata = undefined
+      let messageType: "text" | "image" | "file" = "text"
+      let metadata: any = undefined
 
       // If we have an image, upload it and send as image message
       if (selectedImage) {
@@ -141,6 +145,22 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         messageType = "image"
         metadata = { image_url: result.url }
         messageContent = "Image"
+      }
+
+      // If we have a file, upload and send as file message
+      if (selectedFile && !selectedImage) {
+        const result = await fileUploadService.uploadFile(
+          selectedFile.uri,
+          user.id,
+          selectedFile.name,
+          selectedFile.mimeType,
+        )
+        if (!result.success || !result.url) {
+          throw new Error(result.error || "File upload failed")
+        }
+        messageType = "file"
+        metadata = { file_url: result.url, file_name: result.name, mime_type: result.mimeType }
+        messageContent = result.name || "File"
       }
 
       const message = await messagingService.sendMessage(
@@ -160,6 +180,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       // Clear inputs
       setNewMessage("")
       setSelectedImage(null)
+      setSelectedFile(null)
+      setShowEmojiPicker(false)
     } catch (error) {
       console.error("Error sending message:", error)
       Alert.alert("Error", "Failed to send message")
@@ -232,6 +254,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       const image = await imageUploadService.pickImage()
       if (image && !image.canceled && image.assets && image.assets[0]?.uri) {
         setSelectedImage(image.assets[0].uri)
+        setSelectedFile(null)
       }
     } catch (error) {
       Alert.alert("Error", "Failed to pick image")
@@ -243,6 +266,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       const image = await imageUploadService.takePhoto()
       if (image && !image.canceled && image.assets && image.assets[0]?.uri) {
         setSelectedImage(image.assets[0].uri)
+        setSelectedFile(null)
       }
     } catch (error) {
       Alert.alert("Error", "Failed to take photo")
@@ -251,6 +275,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
   const handleRemoveImage = () => {
     setSelectedImage(null)
+  }
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
   }
 
   const handleSendThreadReply = async (content: string) => {
@@ -281,6 +308,33 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
+  const renderAttachmentPreview = () => {
+    if (selectedImage) {
+      return (
+        <View style={styles.imagePreviewContainer}>
+          <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+          <TouchableOpacity style={styles.removeImageButton} onPress={handleRemoveImage}>
+            <MaterialIcons name="close" size={16} color="white" />
+          </TouchableOpacity>
+        </View>
+      )
+    }
+    if (selectedFile) {
+      return (
+        <View style={styles.filePreviewContainer}>
+          <MaterialIcons name="attach-file" size={18} color="#666" />
+          <Text style={styles.filePreviewName} numberOfLines={1}>{selectedFile.name || "Selected file"}</Text>
+          <TouchableOpacity style={styles.removeFileButton} onPress={handleRemoveFile}>
+            <MaterialIcons name="close" size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )
+    }
+    return null
+  }
+
+  const EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🤗","👍","👏","🙏","🔥","💯","🎉","🌈","✨"]
+
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwnMessage = item.sender_id === user?.id
     const previousMessage = index > 0 ? messages[index - 1] : null
@@ -299,8 +353,20 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
         <View style={[styles.messageBubble, isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble]}>
           {showName && <Text style={styles.senderName}>{item.sender?.name}</Text>}
-
-          <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>{item.content}</Text>
+          {item.message_type === "image" && item.metadata?.image_url ? (
+            <Image source={{ uri: item.metadata.image_url }} style={styles.inlineImage} />
+          ) : item.message_type === "file" && item.metadata?.file_url ? (
+            <TouchableOpacity onPress={() => {
+              try { require("react-native").Linking.openURL(item.metadata.file_url) } catch {}
+            }} style={styles.fileAttachment}>
+              <MaterialIcons name="attach-file" size={16} color={isOwnMessage ? "#fff" : "#333"} />
+              <Text style={[styles.fileAttachmentText, isOwnMessage && styles.ownMessageText]} numberOfLines={1}>
+                {item.metadata.file_name || "Attachment"}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>{item.content}</Text>
+          )}
 
           <View style={styles.messageFooter}>
             <Text style={[styles.messageTime, isOwnMessage && styles.ownMessageTime]}>
@@ -359,20 +425,32 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           }
         />
 
+        {/* Emoji Picker */}
+        {showEmojiPicker && (
+          <View style={styles.emojiPicker}>
+            {EMOJIS.map((e) => (
+              <TouchableOpacity key={e} style={styles.emojiButton} onPress={() => handleSelectEmoji(e)}>
+                <Text style={styles.emojiText}>{e}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {/* Message Input */}
         <View style={styles.inputContainer}>
           <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
-            <MaterialIcons name="add" size={24} color="#4ECDC4" />
+            <MaterialIcons name="image" size={22} color="#4ECDC4" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.attachButton} onPress={handlePickDocument}>
+            <MaterialIcons name="attach-file" size={22} color="#4ECDC4" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.attachButton} onPress={toggleEmojiPicker}>
+            <MaterialIcons name="emoji-emotions" size={22} color="#4ECDC4" />
           </TouchableOpacity>
 
           <View style={styles.textInputContainer}>
-            {selectedImage ? (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-                <TouchableOpacity style={styles.removeImageButton} onPress={handleRemoveImage}>
-                  <MaterialIcons name="close" size={16} color="white" />
-                </TouchableOpacity>
-              </View>
+            {selectedImage || selectedFile ? (
+              renderAttachmentPreview()
             ) : (
               <TextInput
                 style={styles.textInput}
@@ -387,11 +465,18 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           </View>
 
           <TouchableOpacity
-            style={[styles.sendButton, (!newMessage.trim() && !selectedImage || sending) && styles.sendButtonDisabled]}
+            style={[
+              styles.sendButton,
+              ((!newMessage.trim() && !selectedImage && !selectedFile) || sending) && styles.sendButtonDisabled,
+            ]}
             onPress={handleSendMessage}
-            disabled={(!newMessage.trim() && !selectedImage) || sending}
+            disabled={(!newMessage.trim() && !selectedImage && !selectedFile) || sending}
           >
-            <MaterialIcons name="send" size={20} color={(newMessage.trim() || selectedImage) && !sending ? "white" : "#ccc"} />
+            <MaterialIcons
+              name="send"
+              size={20}
+              color={(newMessage.trim() || selectedImage || selectedFile) && !sending ? "white" : "#ccc"}
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -632,5 +717,57 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#666",
     marginLeft: 4,
+  },
+  inlineImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  fileAttachment: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  fileAttachmentText: {
+    maxWidth: 220,
+    color: "#333",
+  },
+  filePreviewContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#eef",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  filePreviewName: {
+    flex: 1,
+    color: "#333",
+  },
+  removeFileButton: {
+    marginLeft: 8,
+    backgroundColor: "#999",
+    borderRadius: 10,
+    padding: 2,
+  },
+  emojiPicker: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  emojiButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emojiText: {
+    fontSize: 22,
   },
 })

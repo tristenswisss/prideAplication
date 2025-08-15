@@ -2,7 +2,8 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { auth } from "../lib/supabase"
+import { auth, supabase } from "../lib/supabase"
+import { profileService } from "../services/profileService"
 
 interface User {
   id: string
@@ -49,10 +50,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           error,
         } = await auth.getCurrentUser()
         if (!error && user) {
-          setUser({
-            ...user,
-            name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
-          })
+          try {
+            const result = await profileService.getProfile(user.id)
+            if (result.success && result.data) {
+              const dbUser: any = result.data
+              const profile = Array.isArray((dbUser as any).profiles) ? (dbUser as any).profiles[0] : (dbUser as any).profiles
+              setUser({
+                ...dbUser,
+                username: profile?.username,
+                show_profile: profile?.show_profile,
+                show_activities: profile?.show_activities,
+                appear_in_search: profile?.appear_in_search,
+                allow_direct_messages: profile?.allow_direct_messages,
+                name: dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+              })
+            } else {
+              setUser({
+                ...user,
+                name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+              })
+            }
+          } catch (e) {
+            setUser({
+              ...user,
+              name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+            })
+          }
         }
       } catch (error) {
         console.error("Error getting initial session:", error)
@@ -70,17 +93,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Auth state changed:", event, session?.user?.email)
 
       if (event === "SIGNED_IN" && session?.user) {
-        setUser({
-          ...session.user,
-          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
-        })
+        try {
+          const result = await profileService.getProfile(session.user.id)
+          if (result.success && result.data) {
+            const dbUser: any = result.data
+            const profile = Array.isArray((dbUser as any).profiles) ? (dbUser as any).profiles[0] : (dbUser as any).profiles
+            setUser({
+              ...dbUser,
+              username: profile?.username,
+              show_profile: profile?.show_profile,
+              show_activities: profile?.show_activities,
+              appear_in_search: profile?.appear_in_search,
+              allow_direct_messages: profile?.allow_direct_messages,
+              name: dbUser.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+            })
+          } else {
+            setUser({
+              ...session.user,
+              name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+            })
+          }
+        } catch (e) {
+          setUser({
+            ...session.user,
+            name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+          })
+        }
       } else if (event === "SIGNED_OUT" || !session?.user) {
         setUser(null)
       } else if (session?.user) {
-        setUser({
-          ...session.user,
-          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
-        })
+        try {
+          const result = await profileService.getProfile(session.user.id)
+          if (result.success && result.data) {
+            const dbUser: any = result.data
+            const profile = Array.isArray((dbUser as any).profiles) ? (dbUser as any).profiles[0] : (dbUser as any).profiles
+            setUser({
+              ...dbUser,
+              username: profile?.username,
+              show_profile: profile?.show_profile,
+              show_activities: profile?.show_activities,
+              appear_in_search: profile?.appear_in_search,
+              allow_direct_messages: profile?.allow_direct_messages,
+              name: dbUser.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+            })
+          } else {
+            setUser({
+              ...session.user,
+              name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+            })
+          }
+        } catch (e) {
+          setUser({
+            ...session.user,
+            name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+          })
+        }
       }
 
       setLoading(false)
@@ -90,6 +157,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
     }
   }, [])
+
+  // Realtime subscription when user changes
+  useEffect(() => {
+    if (!user?.id) return
+    const channel = supabase
+      .channel(`user-updates:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${user.id}` },
+        async () => {
+          await refreshUser()
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` },
+        async () => {
+          await refreshUser()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id])
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
@@ -132,10 +225,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
       } = await auth.getCurrentUser()
       if (!error && user) {
-        setUser({
-          ...user,
-          name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
-        })
+        try {
+          const result = await profileService.getProfile(user.id)
+          if (result.success && result.data) {
+            const dbUser: any = result.data
+            const profile = Array.isArray((dbUser as any).profiles) ? (dbUser as any).profiles[0] : (dbUser as any).profiles
+            setUser({
+              ...dbUser,
+              username: profile?.username,
+              show_profile: profile?.show_profile,
+              show_activities: profile?.show_activities,
+              appear_in_search: profile?.appear_in_search,
+              allow_direct_messages: profile?.allow_direct_messages,
+              name: dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+            })
+          } else {
+            setUser({
+              ...user,
+              name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+            })
+          }
+        } catch (e) {
+          setUser({
+            ...user,
+            name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+          })
+        }
       } else if (error) {
         console.error("Error refreshing user:", error)
       }
