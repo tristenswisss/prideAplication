@@ -73,7 +73,7 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
   return (
     <View style={styles.container}>
       <View style={styles.videoContainer}>
-        {callSession.type === "video" && callStatus === "active" && callSession.jitsi_url ? (
+        {callStatus === "active" && callSession.jitsi_url ? (
           <WebView
             source={{ uri: callSession.jitsi_url }}
             style={{ flex: 1 }}
