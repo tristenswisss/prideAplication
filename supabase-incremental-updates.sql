@@ -435,3 +435,32 @@ END $$;
 -- CREATE POLICY "mirae select" ON storage.objects FOR SELECT TO public USING (bucket_id = 'mirae');
 -- CREATE POLICY "mirae update own" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'mirae' AND owner = auth.uid());
 -- CREATE POLICY "mirae delete own" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'mirae' AND owner = auth.uid());
+
+-- User Reports Table
+CREATE TABLE IF NOT EXISTS user_reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reporter_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  reported_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  details TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE user_reports ENABLE ROW LEVEL SECURITY;
+
+-- Policies: reporters can insert and view their own reports; admins can view all (admin policy not included here)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE polname = 'Users can create user reports' AND tablename = 'user_reports'
+  ) THEN
+    CREATE POLICY "Users can create user reports" ON user_reports
+      FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE polname = 'Users can view own user reports' AND tablename = 'user_reports'
+  ) THEN
+    CREATE POLICY "Users can view own user reports" ON user_reports
+      FOR SELECT USING (auth.uid() = reporter_id);
+  END IF;
+END $$;

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView } from "react-native"
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
 import * as Location from "expo-location"
@@ -29,6 +29,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     longitude: number
   } | null>(null)
   const [isOfflineMode, setIsOfflineMode] = useState(false)
+
+  const groupedByCategory = useMemo(() => {
+    const groups: Record<string, Business[]> = {}
+    for (const b of filteredBusinesses) {
+      const cat = (b.category || "other").toLowerCase()
+      if (!groups[cat]) groups[cat] = []
+      groups[cat].push(b)
+    }
+    return groups
+  }, [filteredBusinesses])
 
   const categories: Category[] = [
     { id: "all", name: "All", icon: "apps", color: "black" },
@@ -291,9 +301,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
       ) : (
         <FlatList
-          data={filteredBusinesses || []}
-          renderItem={renderBusinessCard}
-          keyExtractor={(item) => item.id}
+          data={Object.keys(groupedByCategory)}
+          renderItem={({ item: cat }) => (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", marginHorizontal: 16, marginBottom: 8 }}>
+                {cat.toUpperCase()}
+              </Text>
+              {groupedByCategory[cat].map((biz) => (
+                <View key={biz.id} style={{ marginHorizontal: 16, marginBottom: 10 }}>{renderBusinessCard({ item: biz })}</View>
+              ))}
+            </View>
+          )}
+          keyExtractor={(cat) => cat}
           style={styles.businessList}
           contentContainerStyle={styles.businessListContent}
           showsVerticalScrollIndicator={false}

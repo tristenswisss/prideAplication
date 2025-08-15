@@ -23,16 +23,25 @@ import {
   type BuddyProfile,
 } from "../../services/buddySystemService"
 import { useAuth } from "../../Contexts/AuthContexts"
+import { profileService } from "../../services/profileService"
+import { messagingService } from "../../services/messagingService"
+import { userReportService } from "../../services/userReportService"
+import type { UserProfile } from "../../types"
 
 export default function BuddySystemScreen({ navigation }: any) {
   const { user } = useAuth()
   const [matches, setMatches] = useState<BuddyMatch[]>([])
   const [requests, setRequests] = useState<BuddyRequest[]>([])
+  const [buddies, setBuddies] = useState<BuddyMatch[]>([])
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [selectedBuddy, setSelectedBuddy] = useState<BuddyProfile | null>(null)
   const [requestMessage, setRequestMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<"matches" | "requests" | "buddies">("matches")
+  const [showFindModal, setShowFindModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<UserProfile[]>([])
+  const [searching, setSearching] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -51,12 +60,34 @@ export default function BuddySystemScreen({ navigation }: any) {
       ])
       setMatches(matchesData)
       setRequests(requestsData)
+      setBuddies(matchesData) // accepted matches
     } catch (error) {
       console.error("Error loading buddy data:", error)
     } finally {
       setLoading(false)
     }
   }
+
+  // Search users to add buddies
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      if (!user || !searchQuery.trim()) {
+        setSearchResults([])
+        return
+      }
+      try {
+        setSearching(true)
+        const result = await profileService.searchUsers(searchQuery.trim(), user.id)
+        if (result.success && result.data) {
+          setSearchResults(result.data)
+        }
+      } catch (e) {
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [searchQuery, user?.id])
 
   const handleSendRequest = async () => {
     if (!user || !selectedBuddy || !requestMessage.trim()) {
@@ -73,6 +104,44 @@ export default function BuddySystemScreen({ navigation }: any) {
       loadBuddyData()
     } catch (error) {
       Alert.alert("Error", "Failed to send buddy request")
+    }
+  }
+
+  const handleStartChat = async (target: UserProfile) => {
+    if (!user) return
+    try {
+      const conversation = await messagingService.createConversation([target.id])
+      setShowFindModal(false)
+      navigation.navigate("Chat", { conversation })
+    } catch (e) {
+      Alert.alert("Error", "Failed to start chat")
+    }
+  }
+
+  const handleBlockUser = async (target: UserProfile) => {
+    if (!user) return
+    const ok = await messagingService.blockUser(user.id, target.id)
+    Alert.alert(ok ? "Blocked" : "Error", ok ? "User has been blocked" : "Failed to block user")
+  }
+
+  const handleReportUser = async (target: UserProfile) => {
+    if (!user) return
+    const res = await userReportService.submitReport({
+      reporter_id: user.id,
+      reported_user_id: target.id,
+      reason: "abuse",
+    })
+    Alert.alert(res.success ? "Reported" : "Error", res.success ? "Report submitted" : res.error || "Failed")
+  }
+
+  const handleUnfriend = async (targetUserId: string) => {
+    if (!user) return
+    const res = await buddySystemService.unfriendBuddy(user.id, targetUserId)
+    if (res.success) {
+      setBuddies((prev) => prev.filter((m) => !(m.user1_id === targetUserId || m.user2_id === targetUserId)))
+      Alert.alert("Removed", "User has been removed from your buddies")
+    } else {
+      Alert.alert("Error", res.error || "Failed to remove buddy")
     }
   }
 
@@ -197,6 +266,24 @@ export default function BuddySystemScreen({ navigation }: any) {
     </View>
   )
 
+  const renderBuddy = ({ item }: { item: BuddyMatch }) => {
+    const otherId = item.user1_id === user?.id ? item.user2_id : item.user1_id
+    const otherName = item.user1_id === user?.id ? item.user2?.name : item.user1?.name
+    const otherAvatar = item.user1_id === user?.id ? item.user2?.avatar_url : item.user1?.avatar_url
+    return (
+      <View style={styles.matchCard}>
+        <Image source={{ uri: otherAvatar || "/placeholder.svg?height=80&width=80&text=U" }} style={styles.matchAvatar} />
+        <View style={styles.matchInfo}>
+          <Text style={styles.matchName}>{otherName || "Buddy"}</Text>
+          <Text style={styles.matchCompatibility}>Connected</Text>
+        </View>
+        <TouchableOpacity style={styles.connectButton} onPress={() => handleUnfriend(otherId)}>
+          <Text style={styles.connectButtonText}>Unfriend</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -206,9 +293,14 @@ export default function BuddySystemScreen({ navigation }: any) {
             <MaterialIcons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Buddy System</Text>
-          <TouchableOpacity onPress={handleSafetyCheckIn}>
-            <MaterialIcons name="security" size={24} color="white" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity onPress={() => setShowFindModal(true)} style={{ marginRight: 12 }}>
+              <MaterialIcons name="person-add" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSafetyCheckIn}>
+              <MaterialIcons name="security" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerSubtitle}>Find safe companions for your adventures</Text>
       </LinearGradient>
@@ -235,7 +327,7 @@ export default function BuddySystemScreen({ navigation }: any) {
           style={[styles.tab, activeTab === "buddies" && styles.activeTab]}
           onPress={() => setActiveTab("buddies")}
         >
-          <Text style={[styles.tabText, activeTab === "buddies" && styles.activeTabText]}>My Buddies</Text>
+          <Text style={[styles.tabText, activeTab === "buddies" && styles.activeTabText]}>My Buddies ({buddies.length})</Text>
         </TouchableOpacity>
       </View>
 
@@ -274,13 +366,102 @@ export default function BuddySystemScreen({ navigation }: any) {
         )}
 
         {activeTab === "buddies" && (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="group" size={64} color="#ccc" />
-            <Text style={styles.emptyTitle}>No Buddies Yet</Text>
-            <Text style={styles.emptyDescription}>Accept buddy requests to build your network</Text>
-          </View>
+          <FlatList
+            data={buddies}
+            renderItem={renderBuddy}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <MaterialIcons name="group" size={64} color="#ccc" />
+                <Text style={styles.emptyTitle}>No Buddies Yet</Text>
+                <Text style={styles.emptyDescription}>Accept buddy requests to build your network</Text>
+              </View>
+            }
+          />
         )}
       </View>
+
+      {/* Find Buddy Modal */}
+      <Modal visible={showFindModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowFindModal(false)}>
+              <Text style={styles.modalCancel}>Close</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Find Buddies</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputContainer}>
+              <MaterialIcons name="search" size={20} color="#666" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name or @username"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#666"
+                autoFocus
+              />
+            </View>
+          </View>
+
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.searchResultItem}>
+                <Image source={{ uri: item.avatar_url || "/placeholder.svg?height=50&width=50&text=U" }} style={styles.searchAvatar} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.searchUserName}>{item.name}</Text>
+                  <Text style={styles.searchUserHandle}>@{item.username || item.name.toLowerCase().replace(/\s+/g, "")}</Text>
+                </View>
+                <TouchableOpacity style={styles.smallAction} onPress={() => handleStartChat(item)}>
+                  <MaterialIcons name="chat" size={20} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.smallAction, { backgroundColor: "#FF6B6B" }]}
+                  onPress={() => setSelectedBuddy({
+                    id: item.id,
+                    email: item.email,
+                    name: item.name,
+                    avatar_url: item.avatar_url,
+                    bio: item.bio,
+                    pronouns: item.pronouns,
+                    interests: item.interests || [],
+                    verified: item.verified,
+                    follower_count: item.follower_count || 0,
+                    following_count: item.following_count || 0,
+                    post_count: item.post_count || 0,
+                    safetyRating: 5,
+                    buddyPreferences: { ageRange: [18, 100], interests: [], meetupTypes: [], maxDistance: 50 },
+                    verificationStatus: "verified",
+                    lastActive: item.updated_at,
+                    responseRate: 100,
+                    meetupCount: 0,
+                    created_at: item.created_at,
+                    updated_at: item.updated_at,
+                  }) || setShowRequestModal(true)}
+                >
+                  <MaterialIcons name="person-add" size={20} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.smallAction, { backgroundColor: "#333" }]} onPress={() => handleBlockUser(item)}>
+                  <MaterialIcons name="block" size={20} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.smallAction, { backgroundColor: "#555" }]} onPress={() => handleReportUser(item)}>
+                  <MaterialIcons name="flag" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyDescription}>{searching ? "Searching..." : "No users found"}</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
 
       {/* Safety Check-in Button */}
       <TouchableOpacity style={styles.safetyButton} onPress={handleSafetyCheckIn}>
@@ -661,5 +842,54 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderLeftWidth: 4,
     borderLeftColor: "gold",
+  },
+  smallAction: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#4ECDC4",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 4,
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    paddingHorizontal: 15,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: "#333",
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  searchAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
+  searchUserName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  searchUserHandle: {
+    fontSize: 13,
+    color: "#666",
   },
 })

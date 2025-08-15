@@ -93,6 +93,21 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
         navigation.navigate("Chat", { conversation: existingConversation })
       } else {
         const newConversation = await messagingService.createConversation([targetUser.id])
+        // enrich with participant profile for header
+        newConversation.participant_profiles = [
+          {
+            id: targetUser.id,
+            email: targetUser.email,
+            name: targetUser.name,
+            username: targetUser.username,
+            avatar_url: targetUser.avatar_url,
+            bio: targetUser.bio,
+            pronouns: targetUser.pronouns,
+            verified: !!targetUser.verified,
+            created_at: targetUser.created_at,
+            updated_at: targetUser.updated_at,
+          },
+        ]
         setConversations([newConversation, ...conversations])
         navigation.navigate("Chat", { conversation: newConversation })
       }
