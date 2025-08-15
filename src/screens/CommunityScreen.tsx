@@ -47,6 +47,14 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const { user } = useAuth()
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadPosts()
+      loadBuddyList()
+    })
+    return unsubscribe
+  }, [navigation, user?.id])
+
+  useEffect(() => {
     loadPosts()
     initializePushNotifications()
     getCurrentLocation()
@@ -405,7 +413,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     <View style={styles.postCard}>
       {/* Post Header */}
       <View style={styles.postHeader}>
-        <Image source={{ uri: item.user?.avatar_url }} style={styles.userAvatar} />
+        {item.user?.avatar_url ? (
+          <Image source={{ uri: item.user?.avatar_url }} style={styles.userAvatar} />
+        ) : (
+          <View style={[styles.userAvatar, { alignItems: "center", justifyContent: "center", backgroundColor: "#eee" }]}>
+            <MaterialIcons name="person" size={24} color="#ccc" />
+          </View>
+        )}
         <View style={styles.userInfo}>
           <View style={styles.userNameRow}>
             <Text style={styles.userName}>{item.user?.name}</Text>
