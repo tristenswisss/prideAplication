@@ -35,6 +35,8 @@
       },
       "package": "com.mirae.safeplaces",
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
@@ -64,7 +66,9 @@
             "./assets/notification-sound.wav"
           ]
         }
-      ]
+      ],
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc"
     ],
     "extra": {
       "eas": {
