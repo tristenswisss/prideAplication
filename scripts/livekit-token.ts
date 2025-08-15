@@ -5,7 +5,8 @@
 // Minimal implementation without importing server SDK to keep footprint small here.
 // In your real function, use @livekit/server-sdk to generate a JWT with grants.
 
-import type { H3Event } from "h3"
+// Ambient globals for Edge environments
+declare const Deno: { env: { get(key: string): string | undefined } }
 
 export default async (req: Request): Promise<Response> => {
   try {
@@ -41,8 +42,9 @@ export default async (req: Request): Promise<Response> => {
     const token = `${unsigned}.${signature}`
 
     return json({ token, url })
-  } catch (e) {
-    return new Response(String(e?.message || e), { status: 500 })
+  } catch (e: any) {
+    const message = typeof e === "object" && e && "message" in e ? (e as any).message : String(e)
+    return new Response(String(message), { status: 500 })
   }
 }
 

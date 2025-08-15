@@ -6,7 +6,7 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { callingService, type CallSession } from "../services/callingService"
 import { Room, RoomEvent, createLocalTracks, createLocalAudioTrack, createLocalVideoTrack } from "livekit-client"
-import { LiveKitRoom, ParticipantView } from "@livekit/react-native-webrtc"
+import { LiveKitRoom } from "@livekit/react-native"
 
 interface CallInterfaceProps {
   callSession: CallSession
@@ -141,14 +141,11 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
     <View style={styles.container}>
       <View style={styles.videoContainer}>
         {callSession.type === "video" && isVideoOn && room ? (
-          <LiveKitRoom
-            token={callSession.lk_token!}
-            serverUrl={callSession.lk_url!}
-            connect={false}
-            style={{ flex: 1 }}
-          >
-            <ParticipantView style={{ flex: 1 }} participant={room.localParticipant} />
-          </LiveKitRoom>
+          <View style={{ flex: 1 }}>
+            <LiveKitRoom token={callSession.lk_token!} serverUrl={callSession.lk_url!} connect={false}>
+              {/* TODO: Render participants using appropriate components if needed */}
+            </LiveKitRoom>
+          </View>
         ) : (
           <LinearGradient colors={["#333", "#666"]} style={styles.audioPlaceholder}>
             <MaterialIcons name="person" size={100} color="white" />

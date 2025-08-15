@@ -328,33 +328,4 @@ export const liveEventService = {
     })
     return token
   },
-
-  // Existing chat/reactions (placeholders)
-  async getLiveMessages(_liveEventId: string): Promise<LiveMessage[]> {
-    const { data, error } = await supabase
-      .from("live_messages")
-      .select("*")
-      .order("sent_at", { ascending: true })
-
-    if (error) return []
-    return (data || []) as any
-  },
-
-  async sendLiveMessage(liveEventId: string, userId: string, content: string): Promise<LiveMessage> {
-    const { data, error } = await supabase
-      .from("live_messages")
-      .insert({ live_event_id: liveEventId, user_id: userId, content })
-      .select("*")
-      .single()
-
-    if (error) throw error
-    return data as any
-  },
-
-  async joinLiveStream(_liveEventId: string, _userId: string): Promise<void> { return },
-  async leaveLiveStream(_liveEventId: string, _userId: string): Promise<void> { return },
-  async getLiveEvent(liveEventId: string): Promise<LiveEvent | null> {
-    const { data } = await supabase.from("live_events").select("*").eq("id", liveEventId).single()
-    return (data as any) || null
-  },
 }
