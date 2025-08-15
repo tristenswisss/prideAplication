@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert, Platform } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -16,10 +16,11 @@ interface CallInterfaceProps {
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window")
 
 export default function CallInterface({ callSession, onEndCall, isIncoming = false }: CallInterfaceProps) {
-  const [isMuted, setIsMuted] = useState(false)
+  const [isMuted, setIsMuted] = useState(callSession.type === "voice")
   const [isSpeakerOn, setIsSpeakerOn] = useState(false)
   const [callDuration, setCallDuration] = useState(0)
   const [callStatus, setCallStatus] = useState(callSession.status)
+  const webViewRef = useRef<WebView>(null)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -75,6 +76,7 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
       <View style={styles.videoContainer}>
         {callSession.type === "video" && callStatus === "active" && callSession.jitsi_url ? (
           <WebView
+            ref={webViewRef}
             source={{ uri: callSession.jitsi_url }}
             style={{ flex: 1 }}
             allowsFullscreenVideo
@@ -106,10 +108,21 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
       <View style={styles.controlsContainer}>
         {callStatus === "active" && (
           <View style={styles.activeControls}>
-            <TouchableOpacity style={[styles.controlButton, isMuted && styles.activeControlButton]} onPress={() => setIsMuted(!isMuted)}>
+            <TouchableOpacity
+              style={[styles.controlButton, isMuted && styles.activeControlButton]}
+              onPress={() => {
+                setIsMuted(!isMuted)
+                webViewRef.current?.injectJavaScript(
+                  "try{ if (window.APP && APP.conference) { APP.conference.toggleAudioMuted(); } }catch(e){}; true;"
+                )
+              }}
+            >
               <MaterialIcons name={isMuted ? "mic-off" : "mic"} size={24} color={isMuted ? "white" : "#333"} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.controlButton, isSpeakerOn && styles.activeControlButton]} onPress={() => setIsSpeakerOn(!isSpeakerOn)}>
+            <TouchableOpacity
+              style={[styles.controlButton, isSpeakerOn && styles.activeControlButton]}
+              onPress={() => setIsSpeakerOn(!isSpeakerOn)}
+            >
               <MaterialIcons name={isSpeakerOn ? "volume-up" : "volume-down"} size={24} color={isSpeakerOn ? "white" : "#333"} />
             </TouchableOpacity>
           </View>

@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase"
 import type { Business } from "../types"
+import { storage, STORAGE_KEYS } from "../lib/storage"
 
 export interface BusinessSearchParams {
   query?: string
@@ -33,6 +34,24 @@ export const businessService = {
   // Get all businesses
   getBusinesses: async (): Promise<BusinessResponse> => {
     try {
+      // Try fast path from cache first
+      const cached = await storage.getCacheItem<Business[]>(STORAGE_KEYS.BUSINESSES)
+      if (cached && cached.length) {
+        // Fire-and-forget background refresh
+        businessService.getBusinessesFresh().catch(() => {})
+        return { success: true, businesses: cached }
+      }
+
+      return await businessService.getBusinessesFresh()
+    } catch (error: any) {
+      console.error("Error in getBusinesses:", error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Fetch from Supabase and refresh cache
+  getBusinessesFresh: async (): Promise<BusinessResponse> => {
+    try {
       const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: false })
 
       if (error) {
@@ -40,9 +59,11 @@ export const businessService = {
         return { success: false, error: error.message }
       }
 
-      return { success: true, businesses: data || [] }
+      const list = data || []
+      await storage.setCacheItem(STORAGE_KEYS.BUSINESSES, list, 30)
+      return { success: true, businesses: list }
     } catch (error: any) {
-      console.error("Error in getBusinesses:", error)
+      console.error("Error in getBusinessesFresh:", error)
       return { success: false, error: error.message }
     }
   },
@@ -50,11 +71,11 @@ export const businessService = {
   // Search businesses
   searchBusinesses: async (params: BusinessSearchParams): Promise<BusinessResponse> => {
     try {
-      let query = supabase.from("businesses").select("*")
+      let query = supabase.from("businesses").select("*", { count: "exact" })
 
       // Apply text search
       if (params.query) {
-        query = query.or(`name.ilike.%${params.query}%,description.ilike.%${params.query}%`)
+        query = query.or(`name.ilike.%${params.query}%,description.ilike.%${params.query}%,address.ilike.%${params.query}%`)
       }
 
       // Apply category filter
@@ -107,14 +128,14 @@ export const businessService = {
         query = query.range(params.offset, params.offset + (params.limit || 20) - 1)
       }
 
-      const { data, error } = await query
+      const { data, error, count } = await query
 
       if (error) {
         console.error("Error searching businesses:", error)
         return { success: false, error: error.message }
       }
 
-      return { success: true, businesses: data || [] }
+      return { success: true, businesses: data || [], total: count ?? undefined }
     } catch (error: any) {
       console.error("Error in searchBusinesses:", error)
       return { success: false, error: error.message }
@@ -166,8 +187,6 @@ export const businessService = {
   // Get nearby businesses
   getNearbyBusinesses: async (latitude: number, longitude: number, radius = 10): Promise<BusinessResponse> => {
     try {
-      // This would use PostGIS functions in a real implementation
-      // For now, we'll just return all businesses
       const { data, error } = await supabase
         .from("businesses")
         .select("*")

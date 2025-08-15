@@ -46,6 +46,7 @@ export type HomeStackParamList = {
   Search: undefined
   SavedPlaces: undefined
   WriteReview: { business: Business }
+  SuggestSafeSpace: undefined
 }
 
 // Search Stack
@@ -96,6 +97,7 @@ export type ProfileStackParamList = {
   HelpSupport: undefined
   PrivacySafety: undefined
   NotificationSettings: undefined
+  SuggestionReview: undefined
 }
 
 // Screen Props Types

@@ -464,3 +464,61 @@ DO $$ BEGIN
       FOR SELECT USING (auth.uid() = reporter_id);
   END IF;
 END $$;
+
+-- Suggested Safe Spaces (for user recommendations)
+CREATE TABLE IF NOT EXISTS safe_space_suggestions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  suggested_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  category VARCHAR(50) NOT NULL,
+  address TEXT NOT NULL,
+  city VARCHAR(100),
+  country VARCHAR(100),
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  phone VARCHAR(20),
+  email VARCHAR(255),
+  website VARCHAR(255),
+  services TEXT[],
+  lgbtq_friendly BOOLEAN DEFAULT TRUE,
+  trans_friendly BOOLEAN DEFAULT TRUE,
+  wheelchair_accessible BOOLEAN DEFAULT FALSE,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, approved, rejected
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE safe_space_suggestions ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can insert their own suggestions') THEN
+    CREATE POLICY "Users can insert their own suggestions" ON safe_space_suggestions
+      FOR INSERT WITH CHECK (auth.uid() = suggested_by);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own suggestions') THEN
+    CREATE POLICY "Users can view their own suggestions" ON safe_space_suggestions
+      FOR SELECT USING (auth.uid() = suggested_by);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Admins can review all suggestions') THEN
+    CREATE POLICY "Admins can review all suggestions" ON safe_space_suggestions
+      FOR SELECT USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Admins can update suggestions status') THEN
+    CREATE POLICY "Admins can update suggestions status" ON safe_space_suggestions
+      FOR UPDATE USING (true);
+  END IF;
+END $$;
+
+-- Performance indexes for businesses filtering and sorting
+CREATE INDEX IF NOT EXISTS idx_businesses_category ON businesses(category);
+CREATE INDEX IF NOT EXISTS idx_businesses_rating ON businesses(rating);
+CREATE INDEX IF NOT EXISTS idx_businesses_created_at ON businesses(created_at);
+CREATE INDEX IF NOT EXISTS idx_businesses_name ON businesses(name);
+CREATE INDEX IF NOT EXISTS idx_businesses_verified ON businesses(verified);
+CREATE INDEX IF NOT EXISTS idx_businesses_lgbtq_trans ON businesses(lgbtq_friendly, trans_friendly);

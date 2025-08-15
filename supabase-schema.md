@@ -508,6 +508,33 @@ ALTER PUBLICATION supabase_realtime ADD TABLE posts;
 ALTER PUBLICATION supabase_realtime ADD TABLE comments;
 ```
 
+## Safe Space Suggestions
+```sql
+CREATE TABLE safe_space_suggestions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  suggested_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  category VARCHAR(50) NOT NULL,
+  address TEXT NOT NULL,
+  city VARCHAR(100),
+  country VARCHAR(100),
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  phone VARCHAR(20),
+  email VARCHAR(255),
+  website VARCHAR(255),
+  services TEXT[],
+  lgbtq_friendly BOOLEAN DEFAULT TRUE,
+  trans_friendly BOOLEAN DEFAULT TRUE,
+  wheelchair_accessible BOOLEAN DEFAULT FALSE,
+  status VARCHAR(20) DEFAULT 'pending',
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
 This schema provides a comprehensive database structure for the Pride App with support for:
 - User profiles and authentication
 - Real-time messaging with conversations

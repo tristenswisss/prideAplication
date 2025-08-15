@@ -499,6 +499,10 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
             <MaterialIcons name="search-off" size={64} color="#ccc" />
             <Text style={styles.noResultsText}>No results found</Text>
             <Text style={styles.noResultsSubtext}>Try adjusting your search terms or filters</Text>
+            <TouchableOpacity style={{ marginTop: 12, alignItems: "center" }} onPress={() => navigation.getParent()?.navigate("Home" as never, { screen: "SuggestSafeSpace" } as never)}>
+              <MaterialIcons name="add-location" size={20} color="#4CAF50" />
+              <Text style={{ color: "#4CAF50", fontWeight: "600", marginTop: 4 }}>Recommend a safe location</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
