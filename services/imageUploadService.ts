@@ -30,14 +30,13 @@ class ImageUploadService {
 
   async pickImage(): Promise<ImagePicker.ImagePickerResult | null> {
     try {
-      // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== "granted") {
         throw new Error("Permission to access media library was denied")
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.image,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -53,7 +52,6 @@ class ImageUploadService {
 
   async takePhoto(): Promise<ImagePicker.ImagePickerResult | null> {
     try {
-      // Request permission
       const { status } = await ImagePicker.requestCameraPermissionsAsync()
       if (status !== "granted") {
         throw new Error("Permission to access camera was denied")
@@ -78,7 +76,6 @@ class ImageUploadService {
       return { valid: false, error: "Image URI is required" }
     }
 
-    // Basic URI validation
     if (!uri.startsWith("file://") && !uri.startsWith("data:") && !uri.startsWith("http")) {
       return { valid: false, error: "Invalid image URI format" }
     }
@@ -93,13 +90,11 @@ class ImageUploadService {
       console.log("User ID:", userId)
       console.log("Folder:", folder)
 
-      // Validate image URI
       const validation = this.validateImageUri(imageUri)
       if (!validation.valid) {
         return { success: false, error: validation.error }
       }
 
-      // Generate unique filename
       const timestamp = Date.now()
       const randomString = Math.random().toString(36).substring(2, 15)
       const fileName = `${folder}/${userId || "anonymous"}/${timestamp}_${randomString}.jpg`
@@ -107,14 +102,12 @@ class ImageUploadService {
       let fileData: ArrayBuffer
 
       if (imageUri.startsWith("data:")) {
-        // Handle base64 data URI
         const base64Data = imageUri.split(",")[1]
         if (!base64Data) {
           return { success: false, error: "Invalid base64 data" }
         }
         fileData = this.base64ToArrayBuffer(base64Data)
       } else {
-        // Handle file URI
         const response = await fetch(imageUri)
         if (!response.ok) {
           return { success: false, error: "Failed to fetch image data" }
@@ -122,7 +115,6 @@ class ImageUploadService {
         fileData = await response.arrayBuffer()
       }
 
-      // Check file size
       if (fileData.byteLength > this.MAX_FILE_SIZE) {
         return {
           success: false,
@@ -134,7 +126,6 @@ class ImageUploadService {
       console.log("File name:", fileName)
       console.log("File size:", fileData.byteLength, "bytes")
 
-      // Upload to Supabase Storage using existing "mirae" bucket
       const { data, error } = await supabase.storage.from(this.BUCKET_NAME).upload(fileName, fileData, {
         contentType: "image/jpeg",
         upsert: true,
@@ -147,7 +138,6 @@ class ImageUploadService {
 
       console.log("Upload successful:", data)
 
-      // Get public URL
       const { data: urlData } = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(fileName)
 
       if (!urlData?.publicUrl) {
@@ -164,7 +154,6 @@ class ImageUploadService {
 
   async deleteImage(imageUrl: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Extract file path from URL
       const urlParts = imageUrl.split("/")
       const fileName = urlParts[urlParts.length - 1]
       const folder = urlParts[urlParts.length - 2]
@@ -203,11 +192,10 @@ class ImageUploadService {
     }
   }
 
-  // Helper method to compress image before upload
   async compressImage(imageUri: string, quality = 0.8): Promise<string> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.image,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: quality,
         base64: false,
@@ -217,14 +205,13 @@ class ImageUploadService {
         return result.assets[0].uri
       }
 
-      return imageUri // Return original if compression fails
+      return imageUri
     } catch (error) {
       console.warn("Image compression failed, using original:", error)
       return imageUri
     }
   }
 
-  // Helper method to get image dimensions
   async getImageDimensions(imageUri: string): Promise<{ width: number; height: number } | null> {
     return new Promise((resolve) => {
       const image = new Image()
@@ -238,21 +225,17 @@ class ImageUploadService {
     })
   }
 
-  // Helper method to validate image type
   private isValidImageType(mimeType: string): boolean {
     return this.ALLOWED_TYPES.includes(mimeType.toLowerCase())
   }
 
-  // Enhanced image validation with file type checking
   async validateImage(imageUri: string): Promise<ImageValidationResult> {
-    // Basic URI validation
     const basicValidation = this.validateImageUri(imageUri)
     if (!basicValidation.valid) {
       return basicValidation
     }
 
     try {
-      // For data URIs, check the mime type
       if (imageUri.startsWith("data:")) {
         const mimeType = imageUri.substring(5, imageUri.indexOf(";"))
         if (!this.isValidImageType(mimeType)) {
@@ -269,11 +252,10 @@ class ImageUploadService {
     }
   }
 
-  // Helper method to resize image if needed
   async resizeImageIfNeeded(imageUri: string, maxWidth = 1080, maxHeight = 1080): Promise<string> {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.image,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
       })
