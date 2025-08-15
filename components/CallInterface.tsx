@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert, Platform } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -13,13 +13,61 @@ interface CallInterfaceProps {
   isIncoming?: boolean
 }
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window")
+const { height: screenHeight } = Dimensions.get("window")
+
+const extractRoomName = (url: string): string | null => {
+  try {
+    const noHash = url.split("#")[0]
+    const parts = noHash.split("/")
+    const last = parts[parts.length - 1]
+    return last || null
+  } catch {
+    return null
+  }
+}
 
 export default function CallInterface({ callSession, onEndCall, isIncoming = false }: CallInterfaceProps) {
-  const [isMuted, setIsMuted] = useState(false)
-  const [isSpeakerOn, setIsSpeakerOn] = useState(false)
+  const [isMuted, setIsMuted] = useState(callSession.type === "voice")
+  const [isVideoOn, setIsVideoOn] = useState(callSession.type === "video")
   const [callDuration, setCallDuration] = useState(0)
   const [callStatus, setCallStatus] = useState(callSession.status)
+  const webRef = useRef<WebView>(null)
+
+  const roomName = useMemo(() => (callSession.jitsi_url ? extractRoomName(callSession.jitsi_url) : null), [callSession.jitsi_url])
+
+  const jitsiHtml = useMemo(() => {
+    const startAudioMuted = callSession.type === "voice"
+    const startVideoMuted = callSession.type !== "video"
+    const rnBridge = `window.ReactNativeWebView && window.ReactNativeWebView.postMessage`
+    return `<!doctype html><html><head><meta name=viewport content="initial-scale=1, maximum-scale=1"><style>html,body,#root{height:100%;margin:0;background:#000}</style></head><body><div id="root"></div><script src="https://meet.jit.si/external_api.js"></script><script>(function(){
+      const domain='meet.jit.si';
+      const options={
+        roomName: ${JSON.stringify(roomName || "")},
+        parentNode: document.querySelector('#root'),
+        configOverwrite:{
+          startWithAudioMuted:${startAudioMuted},
+          startWithVideoMuted:${startVideoMuted},
+          prejoinConfig:{enabled:false},
+          disableDeepLinking:true
+        },
+        interfaceConfigOverwrite:{
+          TOOLBAR_BUTTONS: [],
+          DEFAULT_REMOTE_DISPLAY_NAME: 'Guest'
+        },
+        userInfo:{displayName:'You'}
+      };
+      const api=new JitsiMeetExternalAPI(domain,options);
+      window.__execute=function(cmd){
+        try{
+          if(cmd==='toggleAudio') api.executeCommand('toggleAudio');
+          if(cmd==='toggleVideo') api.executeCommand('toggleVideo');
+          if(cmd==='hangup') api.executeCommand('hangup');
+        }catch(e){}
+      };
+      api.on('videoConferenceJoined',()=>{try{${rnBridge} && ${rnBridge}(JSON.stringify({type:'joined'}));}catch(e){}});
+      api.on('videoConferenceLeft',()=>{try{${rnBridge} && ${rnBridge}(JSON.stringify({type:'left'}));}catch(e){}});
+    })();</script></body></html>`
+  }, [roomName, callSession.type])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -30,7 +78,7 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
   }, [callStatus])
 
   const handleConnect = async () => {
-    if (!callSession.jitsi_url) {
+    if (!callSession.jitsi_url || !roomName) {
       Alert.alert("Error", "Missing call URL")
       return
     }
@@ -63,6 +111,8 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
 
   const handleEndCall = async () => {
     try {
+      // Ask Jitsi to hang up, then close
+      webRef.current?.injectJavaScript(`window.__execute && window.__execute('hangup'); true;`)
       await callingService.endCall(callSession.id)
       onEndCall()
     } catch (error) {
@@ -70,12 +120,25 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
     }
   }
 
+  const handleToggleMute = () => {
+    setIsMuted((prev) => !prev)
+    webRef.current?.injectJavaScript(`window.__execute && window.__execute('toggleAudio'); true;`)
+  }
+
+  const handleToggleVideo = () => {
+    if (callSession.type === "voice") return
+    setIsVideoOn((prev) => !prev)
+    webRef.current?.injectJavaScript(`window.__execute && window.__execute('toggleVideo'); true;`)
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.videoContainer}>
         {callStatus === "active" && callSession.jitsi_url ? (
           <WebView
-            source={{ uri: callSession.jitsi_url }}
+            ref={webRef}
+            originWhitelist={["*"]}
+            source={{ html: jitsiHtml }}
             style={{ flex: 1 }}
             allowsFullscreenVideo
             javaScriptEnabled
@@ -84,6 +147,14 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
             startInLoadingState
             onHttpError={() => {}}
             onError={() => {}}
+            onMessage={(e) => {
+              try {
+                const msg = JSON.parse(e.nativeEvent.data || "{}")
+                if (msg.type === "left") {
+                  onEndCall()
+                }
+              } catch {}
+            }}
             {...(Platform.OS === "android"
               ? { onPermissionRequest: (event: any) => event.grant(event.resources) }
               : {})}
@@ -91,7 +162,7 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
         ) : (
           <LinearGradient colors={["#333", "#666"]} style={styles.audioPlaceholder}>
             <MaterialIcons name="person" size={100} color="white" />
-            <Text style={styles.callerName}>{callStatus === "ringing" ? "Ringing..." : "Audio Call"}</Text>
+            <Text style={styles.callerName}>{callStatus === "ringing" ? "Ringing..." : "Connecting..."}</Text>
           </LinearGradient>
         )}
 
@@ -106,12 +177,14 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
       <View style={styles.controlsContainer}>
         {callStatus === "active" && (
           <View style={styles.activeControls}>
-            <TouchableOpacity style={[styles.controlButton, isMuted && styles.activeControlButton]} onPress={() => setIsMuted(!isMuted)}>
+            <TouchableOpacity style={[styles.controlButton, isMuted && styles.activeControlButton]} onPress={handleToggleMute}>
               <MaterialIcons name={isMuted ? "mic-off" : "mic"} size={24} color={isMuted ? "white" : "#333"} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.controlButton, isSpeakerOn && styles.activeControlButton]} onPress={() => setIsSpeakerOn(!isSpeakerOn)}>
-              <MaterialIcons name={isSpeakerOn ? "volume-up" : "volume-down"} size={24} color={isSpeakerOn ? "white" : "#333"} />
-            </TouchableOpacity>
+            {callSession.type === "video" && (
+              <TouchableOpacity style={[styles.controlButton, !isVideoOn && styles.activeControlButton]} onPress={handleToggleVideo}>
+                <MaterialIcons name={isVideoOn ? "videocam" : "videocam-off"} size={24} color={!isVideoOn ? "white" : "#333"} />
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
