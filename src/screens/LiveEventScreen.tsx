@@ -48,25 +48,37 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [streamQuality, setStreamQuality] = useState<"720p" | "1080p" | "4K">("1080p")
   const [jitsiUrl, setJitsiUrl] = useState<string | null>(null)
+  const [modeChosen, setModeChosen] = useState<"create" | "join" | null>(null)
 
   useEffect(() => {
-    if (liveEvent.is_live) {
-      joinStream()
-      loadMessages()
-
-      // Simulate real-time updates
-      const interval = setInterval(() => {
-        loadMessages()
-        updateViewerCount()
-      }, 3000)
-
-      return () => {
-        clearInterval(interval)
-        if (isJoined) {
-          leaveStream()
-        }
-      }
-    }
+    // Ask the user whether to create or join when arriving to a live event view
+    Alert.alert(
+      "Live Event",
+      "Do you want to create or join?",
+      [
+        {
+          text: "Join",
+          onPress: async () => {
+            setModeChosen("join")
+            await viewerJoinLive()
+          },
+        },
+        {
+          text: "Create",
+          onPress: async () => {
+            setModeChosen("create")
+            if (user?.id === liveEvent.host_id) {
+              await hostStartLive()
+            } else {
+              // Non-host cannot create, fallback to join
+              await viewerJoinLive()
+            }
+          },
+        },
+        { text: "Cancel", style: "cancel", onPress: () => navigation.goBack() },
+      ],
+      { cancelable: true },
+    )
   }, [])
 
   useEffect(() => {
@@ -97,6 +109,7 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
       await liveEventService.startLiveStream(liveEvent.id)
       // Use a predictable Jitsi room for the event
       setJitsiUrl(`https://meet.jit.si/live_${liveEvent.id}`)
+      await joinStream()
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Could not start live event")
     }
@@ -105,7 +118,9 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const viewerJoinLive = async () => {
     if (!user) return
     try {
+      // use the same Jitsi room; host will toggle is_live
       setJitsiUrl(`https://meet.jit.si/live_${liveEvent.id}`)
+      await joinStream()
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Could not join live event")
     }
@@ -117,11 +132,6 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
     try {
       await liveEventService.joinLiveStream(liveEvent.id, user.id)
       setIsJoined(true)
-      if (user.id === liveEvent.host_id) {
-        await hostStartLive()
-      } else {
-        await viewerJoinLive()
-      }
     } catch (error) {
       console.error("Error joining stream:", error)
     }
@@ -155,9 +165,6 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
   const updateViewerCount = async () => {
     try {
       const updatedEvent = await liveEventService.getLiveEvent(liveEvent.id)
-      if (updatedEvent) {
-        setLiveEvent(updatedEvent)
-      }
     } catch (error) {
       console.error("Error updating viewer count:", error)
     }
@@ -296,24 +303,6 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
     }
   }
 
-  if (!liveEvent.is_live) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.offlineContainer}>
-          <MaterialIcons name="videocam-off" size={64} color="#ccc" />
-          <Text style={styles.offlineTitle}>Stream Ended</Text>
-          <Text style={styles.offlineSubtitle}>This live event has ended</Text>
-          <Text style={styles.offlineStats}>
-            Max viewers: {liveEvent.max_viewers} • Duration: {liveEvent.ended_at ? "Ended" : "Not started"}
-          </Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    )
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -358,9 +347,15 @@ export default function LiveEventScreen({ navigation, route }: LiveEventScreenPr
           </TouchableOpacity>
         </View>
         <View style={styles.rightControls}>
-          <TouchableOpacity style={[styles.goLiveButton, liveEvent.is_live && styles.endLiveButton]} onPress={joinStream}>
-            <Text style={styles.goLiveText}>{liveEvent.is_live ? "Join" : "Go Live"}</Text>
-          </TouchableOpacity>
+          {user?.id === liveEvent.host_id ? (
+            <TouchableOpacity style={[styles.goLiveButton, liveEvent.is_live && styles.endLiveButton]} onPress={hostStartLive}>
+              <Text style={styles.goLiveText}>{liveEvent.is_live ? "Go Live Again" : "Go Live (Jitsi)"}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[styles.goLiveButton]} onPress={viewerJoinLive}>
+              <Text style={styles.goLiveText}>Join</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

@@ -16,27 +16,32 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "upcoming" | "today" | "this_week">("all")
 
-  const handleStartLiveEvent = async () => {
+  const createLiveEventFlow = async () => {
     if (!user) {
       Alert.alert("Error", "You must be logged in to start a live event")
       return
     }
 
     try {
-      // Create a new live event
       const newLiveEvent = await liveEventService.createLiveEvent(
         undefined,
         user.id,
         "Live Event",
         "Join me for a live stream!",
       )
-
-      // Navigate to the live event screen
       navigation.navigate("LiveEvent", { liveEvent: newLiveEvent })
     } catch (error) {
       console.error("Error starting live event:", error)
       Alert.alert("Error", "Failed to start live event")
     }
+  }
+
+  const handleLiveEventAction = () => {
+    Alert.alert("Live Event", "What would you like to do?", [
+      { text: "Join", onPress: () => navigation.navigate("LiveEvents" as any) },
+      { text: "Create", onPress: createLiveEventFlow },
+      { text: "Cancel", style: "cancel" },
+    ])
   }
 
   useEffect(() => {
@@ -167,12 +172,12 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         </View>
 
         <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.liveEventButton} onPress={handleStartLiveEvent}>
+          <TouchableOpacity style={styles.liveEventButton} onPress={handleLiveEventAction}>
             <MaterialIcons name="videocam" size={24} color="white" />
             <Text style={styles.liveEventButtonText}>Live Event</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent")}>
+          <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent") }>
             <MaterialIcons name="add" size={24} color="white" />
             <Text style={styles.createButtonText}>Create Event</Text>
           </TouchableOpacity>
