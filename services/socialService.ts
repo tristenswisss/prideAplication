@@ -28,6 +28,7 @@ export interface SocialService {
   createPost: (postData: CreatePostData) => Promise<Post>
   likePost: (postId: string, userId: string) => Promise<void>
   savePost: (postId: string, userId: string) => Promise<void>
+  hidePost: (postId: string, userId: string) => Promise<void>
   deletePost: (postId: string, userId: string) => Promise<void>
   sharePost: (postId: string, userId: string) => Promise<void>
   getComments: (postId: string) => Promise<Comment[]>
@@ -39,6 +40,24 @@ export const socialService: SocialService = {
   // Get posts for feed
   getPosts: async (userId?: string): Promise<Post[]> => {
     try {
+      // Fetch blocked users and hidden posts for current user (to filter client-side)
+      let blockedUserIds: string[] = []
+      let hiddenPostIds: string[] = []
+
+      if (userId) {
+        const [{ data: blockedData, error: blockedError }, { data: hiddenData, error: hiddenError }] = await Promise.all([
+          supabase.from("blocked_users").select("blocked_user_id").eq("user_id", userId),
+          supabase.from("hidden_posts").select("post_id").eq("user_id", userId),
+        ])
+
+        if (!blockedError && Array.isArray(blockedData)) {
+          blockedUserIds = blockedData.map((b: any) => b.blocked_user_id)
+        }
+        if (!hiddenError && Array.isArray(hiddenData)) {
+          hiddenPostIds = hiddenData.map((h: any) => h.post_id)
+        }
+      }
+
       const { data, error } = await supabase
         .from("posts")
         .select(`
@@ -55,7 +74,7 @@ export const socialService: SocialService = {
             interests,
             created_at,
             updated_at,
-            profiles ( username )
+            profiles ( username, allow_direct_messages, show_profile, appear_in_search )
           )
         `)
         .eq("visibility", "public")
@@ -66,15 +85,27 @@ export const socialService: SocialService = {
         return []
       }
 
-      return (data || []).map((post: any) => ({
+      const mapped = (data || []).map((post: any) => ({
         ...post,
         user: {
           ...post.users,
           username: post.users?.profiles?.username,
+          allow_direct_messages: post.users?.profiles?.allow_direct_messages,
+          show_profile: post.users?.profiles?.show_profile,
+          appear_in_search: post.users?.profiles?.appear_in_search,
         },
         is_liked: false, // Would be determined by checking likes table
         is_saved: false, // Would be determined by checking saved posts table
       }))
+
+      // Apply client-side filtering for hidden posts and blocked users
+      const filtered = mapped.filter((p: Post) => {
+        const isHidden = userId ? hiddenPostIds.includes(p.id) : false
+        const isByBlockedUser = userId ? blockedUserIds.includes(p.user_id) : false
+        return !isHidden && !isByBlockedUser
+      })
+
+      return filtered
     } catch (error) {
       console.error("Error in getPosts:", error)
       return []
@@ -145,7 +176,7 @@ export const socialService: SocialService = {
             interests,
             created_at,
             updated_at,
-            profiles ( username )
+            profiles ( username, allow_direct_messages, show_profile, appear_in_search )
           )
         `)
         .single()
@@ -160,6 +191,9 @@ export const socialService: SocialService = {
         user: {
           ...data.users,
           username: (data as any).users?.profiles?.username,
+          allow_direct_messages: (data as any).users?.profiles?.allow_direct_messages,
+          show_profile: (data as any).users?.profiles?.show_profile,
+          appear_in_search: (data as any).users?.profiles?.appear_in_search,
         },
         is_liked: false,
         is_saved: false,
@@ -220,6 +254,16 @@ export const socialService: SocialService = {
       }
     } catch (error) {
       console.error("Error saving post:", error)
+      throw error
+    }
+  },
+
+  // Hide a post (remove from user's feed only)
+  hidePost: async (postId: string, userId: string): Promise<void> => {
+    try {
+      await supabase.from("hidden_posts").insert({ post_id: postId, user_id: userId })
+    } catch (error) {
+      console.error("Error hiding post:", error)
       throw error
     }
   },

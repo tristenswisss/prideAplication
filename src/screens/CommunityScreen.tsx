@@ -25,6 +25,8 @@ import { realtime } from "../../lib/realtime"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, Comment, UserProfile } from "../../types/social"
 import type { CommunityScreenProps } from "../../types/navigation"
+import { messagingService } from "../../services/messagingService"
+import { buddySystemService } from "../../services/buddySystemService"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -409,6 +411,91 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     return `${diffInDays}d ago`
   }
 
+  const handleMessageUser = async (post: Post) => {
+    if (!user || post.user_id === user.id) return
+    try {
+      const conversation = await messagingService.getOrCreateDirectConversation(user.id, post.user_id)
+      navigation.navigate("Chat", { conversation })
+    } catch (err: any) {
+      if (typeof err?.message === "string" && err.message === "dms_disabled") {
+        Alert.alert(
+          "DMs are off",
+          "This user only accepts messages from buddies. Send a buddy request?",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Request Buddy", onPress: () => handleRequestBuddy(post) },
+          ],
+        )
+      } else if (typeof err?.message === "string" && err.message === "blocked") {
+        Alert.alert("Cannot message", "You cannot message this user.")
+      } else {
+        Alert.alert("Error", "Failed to start conversation")
+      }
+    }
+  }
+
+  const handleRequestBuddy = async (post: Post) => {
+    if (!user || post.user_id === user.id) return
+    try {
+      await buddySystemService.sendBuddyRequest(user.id, post.user_id, "Hi! I'd like to connect as buddies.")
+      Alert.alert("Buddy Request Sent", "They'll be notified of your request.")
+    } catch (error) {
+      Alert.alert("Error", "Failed to send buddy request")
+    }
+  }
+
+  const handleHidePost = async (post: Post) => {
+    if (!user) return
+    try {
+      await socialService.hidePost(post.id, user.id)
+      setPosts((prev) => prev.filter((p) => p.id !== post.id))
+    } catch (error) {
+      Alert.alert("Error", "Failed to hide post")
+    }
+  }
+
+  const handleBlockUser = async (post: Post) => {
+    if (!user) return
+    Alert.alert("Block User", `Block ${post.user?.name || "this user"}? You won't see their posts again.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Block",
+        style: "destructive",
+        onPress: async () => {
+          const ok = await messagingService.blockUser(user.id, post.user_id)
+          if (ok) {
+            setPosts((prev) => prev.filter((p) => p.user_id !== post.user_id))
+            Alert.alert("Blocked", "You will no longer see posts from this user.")
+          } else {
+            Alert.alert("Error", "Failed to block user")
+          }
+        },
+      },
+    ])
+  }
+
+  const handleMoreOptions = (post: Post) => {
+    if (post.user_id === user?.id) {
+      Alert.alert("Post Options", "What would you like to do?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete Post", style: "destructive", onPress: () => handleDeletePost(post.id) },
+      ])
+    } else {
+      const posterName = post.user?.name || "User"
+      Alert.alert(
+        "Post Options",
+        `Options for @${post.user?.username || posterName.toLowerCase().replace(/\s+/g, "")}`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Message", onPress: () => handleMessageUser(post) },
+          { text: "Request Buddy", onPress: () => handleRequestBuddy(post) },
+          { text: "Hide Post", onPress: () => handleHidePost(post) },
+          { text: "Block User", style: "destructive", onPress: () => handleBlockUser(post) },
+        ],
+      )
+    }
+  }
+
   const renderPost = ({ item }: { item: Post }) => (
     <View style={styles.postCard}>
       {/* Post Header */}
@@ -432,14 +519,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         </View>
         <TouchableOpacity
           style={styles.moreButton}
-          onPress={() => {
-            if (item.user_id === user?.id) {
-              Alert.alert("Post Options", "What would you like to do?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Delete Post", style: "destructive", onPress: () => handleDeletePost(item.id) },
-              ])
-            }
-          }}
+          onPress={() => handleMoreOptions(item)}
         >
           <MaterialIcons name="more-vert" size={20} color="#666" />
         </TouchableOpacity>

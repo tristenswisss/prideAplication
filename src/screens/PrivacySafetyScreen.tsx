@@ -6,6 +6,8 @@ import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { PrivacySafetyScreenProps } from "../../types/navigation"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useAuth } from "../../Contexts/AuthContexts"
+import { profileService } from "../../services/profileService"
 
 interface PrivacySettings {
   profileVisibility: "public" | "friends" | "private"
@@ -34,6 +36,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     loginAlerts: true,
   })
   const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     loadSettings()
@@ -56,10 +59,20 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
       setLoading(true)
       // Save to storage and API
       await AsyncStorage.setItem("privacySettings", JSON.stringify(settings))
-      // await api.updatePrivacySettings(settings)
+
+      // Persist to Supabase profile
+      if (user?.id) {
+        await profileService.updateProfile(user.id, {
+          appear_in_search: settings.showInSearch,
+          // Treat "public" as show_profile=true; others as false for searchability guards
+          show_profile: settings.profileVisibility === "public",
+          // Everyone => direct DMs allowed; friends/nobody => require buddy
+          allow_direct_messages: settings.allowDirectMessages === "everyone",
+        })
+      }
 
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 400))
       Alert.alert("Success", "Privacy settings updated!")
     } catch (error) {
       Alert.alert("Error", "Failed to update settings")

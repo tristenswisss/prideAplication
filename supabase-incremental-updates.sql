@@ -522,3 +522,44 @@ CREATE INDEX IF NOT EXISTS idx_businesses_created_at ON businesses(created_at);
 CREATE INDEX IF NOT EXISTS idx_businesses_name ON businesses(name);
 CREATE INDEX IF NOT EXISTS idx_businesses_verified ON businesses(verified);
 CREATE INDEX IF NOT EXISTS idx_businesses_lgbtq_trans ON businesses(lgbtq_friendly, trans_friendly);
+
+-- Hidden Posts Table
+CREATE TABLE IF NOT EXISTS hidden_posts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(post_id, user_id)
+);
+
+-- Enable RLS for hidden_posts
+ALTER TABLE hidden_posts ENABLE ROW LEVEL SECURITY;
+
+-- Policies for hidden_posts
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own hidden posts' AND tablename = 'hidden_posts') THEN
+    CREATE POLICY "Users can view their own hidden posts" ON hidden_posts
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can hide posts' AND tablename = 'hidden_posts') THEN
+    CREATE POLICY "Users can hide posts" ON hidden_posts
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can unhide their hidden posts' AND tablename = 'hidden_posts') THEN
+    CREATE POLICY "Users can unhide their hidden posts" ON hidden_posts
+      FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- Indexes for hidden_posts
+CREATE INDEX IF NOT EXISTS idx_hidden_posts_user ON hidden_posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_hidden_posts_post ON hidden_posts(post_id);
