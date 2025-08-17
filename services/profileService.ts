@@ -267,6 +267,18 @@ class ProfileService {
 
   async searchUsers(query: string, currentUserId?: string): Promise<UserSearchResponse> {
     try {
+      // Exclude users blocked by the current user
+      let blockedIds: string[] = []
+      if (currentUserId) {
+        const { data: blocked } = await supabase
+          .from("blocked_users")
+          .select("blocked_user_id")
+          .eq("user_id", currentUserId)
+        if (Array.isArray(blocked)) {
+          blockedIds = blocked.map((b: any) => b.blocked_user_id)
+        }
+      }
+
       let searchQuery = supabase
         .from("users")
         .select(`
@@ -282,7 +294,8 @@ class ProfileService {
           profiles(
             username,
             show_profile,
-            appear_in_search
+            appear_in_search,
+            allow_direct_messages
           )
         `)
         .or(`name.ilike.%${query}%,bio.ilike.%${query}%,profiles.username.ilike.%${query}%`)
@@ -293,6 +306,10 @@ class ProfileService {
       // Exclude current user from search results
       if (currentUserId) {
         searchQuery = searchQuery.neq("id", currentUserId)
+      }
+
+      if (blockedIds.length > 0) {
+        searchQuery = searchQuery.not("id", "in", `(${blockedIds.join(",")})`)
       }
 
       const { data, error } = await searchQuery
@@ -318,6 +335,7 @@ class ProfileService {
           username: profile?.username,
           show_profile: profile?.show_profile,
           appear_in_search: profile?.appear_in_search,
+          allow_direct_messages: profile?.allow_direct_messages,
         } as unknown as UserProfile
       })
 

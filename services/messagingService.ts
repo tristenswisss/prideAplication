@@ -26,6 +26,89 @@ export const messagingService = {
     return data || [];
   },
 
+  // Check whether a user can DM another user:
+  // - Not blocked by or blocking the other
+  // - Target allows DMs (profiles.allow_direct_messages)
+  // - If target doesn't allow DMs, they must be buddies (buddy_matches exists)
+  canDirectMessage: async (fromUserId: string, toUserId: string): Promise<{ allowed: boolean; reason?: string }> => {
+    try {
+      if (fromUserId === toUserId) return { allowed: false, reason: 'cannot_dm_self' }
+
+      // Check mutual blocks
+      const [{ data: blocks1 }, { data: blocks2 }] = await Promise.all([
+        supabase.from('blocked_users').select('id').match({ user_id: fromUserId, blocked_user_id: toUserId }).limit(1),
+        supabase.from('blocked_users').select('id').match({ user_id: toUserId, blocked_user_id: fromUserId }).limit(1),
+      ])
+      if ((blocks1 && blocks1.length > 0) || (blocks2 && blocks2.length > 0)) {
+        return { allowed: false, reason: 'blocked' }
+      }
+
+      // Fetch target profile settings
+      const { data: target, error: targetError } = await supabase
+        .from('users')
+        .select('id, profiles(allow_direct_messages)')
+        .eq('id', toUserId)
+        .single()
+      if (targetError || !target) {
+        return { allowed: false, reason: 'user_not_found' }
+      }
+
+      const allowDMs = (Array.isArray((target as any).profiles) ? (target as any).profiles[0]?.allow_direct_messages : (target as any).profiles?.allow_direct_messages) ?? true
+
+      if (allowDMs) {
+        return { allowed: true }
+      }
+
+      // If DMs are not allowed, require an existing buddy match
+      const { data: match } = await supabase
+        .from('buddy_matches')
+        .select('id')
+        .or(`and(user1_id.eq.${fromUserId},user2_id.eq.${toUserId}),and(user1_id.eq.${toUserId},user2_id.eq.${fromUserId})`)
+        .limit(1)
+      if (match && match.length > 0) {
+        return { allowed: true }
+      }
+
+      return { allowed: false, reason: 'dms_disabled' }
+    } catch (err) {
+      console.error('Error in canDirectMessage:', err)
+      return { allowed: false, reason: 'unknown' }
+    }
+  },
+
+  // Get or create a 1:1 conversation when allowed
+  getOrCreateDirectConversation: async (fromUserId: string, toUserId: string): Promise<Conversation> => {
+    const permission = await messagingService.canDirectMessage(fromUserId, toUserId)
+    if (!permission.allowed) {
+      throw new Error(permission.reason || 'not_allowed')
+    }
+
+    // Try to find existing conversation
+    const { data: existing, error: findError } = await supabase
+      .from('conversations')
+      .select('*')
+      .contains('participants', [fromUserId, toUserId])
+      .eq('is_group', false)
+      .limit(1)
+
+    if (!findError && existing && existing.length > 0) {
+      // Enrich with participant profile for header
+      const { data: participantProfiles } = await supabase
+        .from('users')
+        .select('*')
+        .in('id', [toUserId])
+      return {
+        ...(existing[0] as any),
+        participant_profiles: participantProfiles || [],
+        unread_count: (existing[0] as any).unread_count ?? 0,
+        last_message: (existing[0] as any).last_message ?? null,
+      } as Conversation
+    }
+
+    // Otherwise, create it
+    return await messagingService.createConversation([toUserId], false)
+  },
+
   createConversation: async (participantIds: string[], isGroup = false, groupName?: string): Promise<Conversation> => {
     // Get current user ID from auth
     const { data: { user } } = await supabase.auth.getUser();
@@ -34,6 +117,15 @@ export const messagingService = {
     }
 
     const allParticipants = [user.id, ...participantIds];
+
+    // If 1:1 chat, enforce DM permissions
+    if (!isGroup && allParticipants.length === 2) {
+      const otherId = allParticipants.find(id => id !== user.id)!
+      const permission = await messagingService.canDirectMessage(user.id, otherId)
+      if (!permission.allowed) {
+        throw new Error(permission.reason || 'not_allowed')
+      }
+    }
 
     // Create the conversation in the database
     const { data, error } = await supabase
