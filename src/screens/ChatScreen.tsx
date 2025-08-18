@@ -166,7 +166,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         messageType,
         metadata,
       )
-      setMessages((prev) => [...prev, message])
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]))
 
       // Scroll to bottom
       setTimeout(() => {
