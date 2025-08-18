@@ -156,7 +156,7 @@ export const messagingService = {
     // Try to find existing conversation
     const { data: existing, error: findError } = await supabase
       .from('conversations')
-      .select(`*, participants:users!conversations_participants_fkey(*)`)
+      .select(`*`)
       .contains('participants', [fromUserId, toUserId])
       .eq('is_group', false)
       .limit(1)
@@ -205,7 +205,7 @@ export const messagingService = {
         is_group: isGroup,
         group_name: groupName,
       })
-      .select(`*, participants:users!conversations_participants_fkey(*)`)
+      .select(`*`)
       .single();
 
     if (error) {

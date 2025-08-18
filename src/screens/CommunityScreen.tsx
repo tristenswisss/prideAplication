@@ -45,6 +45,8 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePost, setSharePost] = useState<Post | null>(null)
   const [buddyList, setBuddyList] = useState<UserProfile[]>([])
+  const [showMoreModal, setShowMoreModal] = useState(false)
+  const [morePost, setMorePost] = useState<Post | null>(null)
 
   const { user } = useAuth()
 
@@ -475,31 +477,8 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   }
 
   const handleMoreOptions = async (post: Post) => {
-    const isOwner = post.user_id === user?.id
-    const posterName = post.user?.name || "User"
-    const saveLabel = post.is_saved ? "Unsave" : "Save"
-    const actions: any[] = [{ text: "Cancel", style: "cancel" }]
-
-    if (!isOwner) {
-      // Only show Message if allowed by target's settings (appear_in_search && allow_direct_messages)
-      const canDM = post.user?.allow_direct_messages !== false
-      if (canDM) {
-        actions.push({ text: "Message", onPress: () => handleMessageUser(post) })
-      }
-      actions.push({ text: "Request Buddy", onPress: () => handleRequestBuddy(post) })
-      actions.push({ text: "Block User", style: "destructive", onPress: () => handleBlockUser(post) })
-    } else {
-      actions.push({ text: "Delete", style: "destructive", onPress: () => handleDeletePost(post.id) })
-    }
-
-    actions.push({ text: saveLabel, onPress: () => handleSavePost(post.id) })
-    actions.push({ text: "Share to Contacts", onPress: () => handleSharePost(post) })
-
-    Alert.alert(
-      "Post Options",
-      isOwner ? "Manage your post" : `Options for @${post.user?.username || posterName.toLowerCase().replace(/\s+/g, "")}`,
-      actions,
-    )
+    setMorePost(post)
+    setShowMoreModal(true)
   }
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -801,6 +780,109 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             }
           />
         </SafeAreaView>
+      </Modal>
+
+      {/* More Options Modal */}
+      <Modal
+        visible={showMoreModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowMoreModal(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.sheetBackdrop}
+          onPress={() => setShowMoreModal(false)}
+        >
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Post Options</Text>
+            {morePost && (
+              <>
+                {morePost.user_id !== user?.id && (
+                  <>
+                    {morePost.user?.allow_direct_messages !== false && (
+                      <TouchableOpacity
+                        style={styles.sheetItem}
+                        onPress={() => {
+                          setShowMoreModal(false)
+                          handleMessageUser(morePost)
+                        }}
+                      >
+                        <MaterialIcons name="mail-outline" size={20} color="#333" style={styles.sheetIcon} />
+                        <Text style={styles.sheetItemText}>Message</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.sheetItem}
+                      onPress={() => {
+                        setShowMoreModal(false)
+                        handleRequestBuddy(morePost)
+                      }}
+                    >
+                      <MaterialIcons name="group-add" size={20} color="#333" style={styles.sheetIcon} />
+                      <Text style={styles.sheetItemText}>Request Buddy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.sheetItem}
+                      onPress={() => {
+                        setShowMoreModal(false)
+                        handleBlockUser(morePost)
+                      }}
+                    >
+                      <MaterialIcons name="block" size={20} color="#FF6B6B" style={styles.sheetIcon} />
+                      <Text style={[styles.sheetItemText, styles.sheetItemDestructive]}>Block User</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                {morePost.user_id === user?.id && (
+                  <TouchableOpacity
+                    style={styles.sheetItem}
+                    onPress={() => {
+                      setShowMoreModal(false)
+                      handleDeletePost(morePost.id)
+                    }}
+                  >
+                    <MaterialIcons name="delete-outline" size={20} color="#FF6B6B" style={styles.sheetIcon} />
+                    <Text style={[styles.sheetItemText, styles.sheetItemDestructive]}>Delete</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={styles.sheetItem}
+                  onPress={() => {
+                    setShowMoreModal(false)
+                    handleSavePost(morePost.id)
+                  }}
+                >
+                  <MaterialIcons
+                    name={morePost.is_saved ? "bookmark" : "bookmark-border"}
+                    size={20}
+                    color={morePost.is_saved ? "#4ECDC4" : "#333"}
+                    style={styles.sheetIcon}
+                  />
+                  <Text style={styles.sheetItemText}>{morePost.is_saved ? "Unsave" : "Save"}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.sheetItem}
+                  onPress={() => {
+                    setShowMoreModal(false)
+                    handleSharePost(morePost)
+                  }}
+                >
+                  <MaterialIcons name="share" size={20} color="#333" style={styles.sheetIcon} />
+                  <Text style={styles.sheetItemText}>Share to Contacts</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity style={[styles.sheetItem, { justifyContent: 'center' }]} onPress={() => setShowMoreModal(false)}>
+              <Text style={[styles.sheetItemText, { textAlign: 'center', color: '#666' }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   )
@@ -1210,5 +1292,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#999",
     textAlign: "center",
+  },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: 'white',
+    paddingTop: 8,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#ddd',
+    marginBottom: 8,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  sheetIcon: {
+    marginRight: 10,
+  },
+  sheetItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  sheetItemDestructive: {
+    color: '#FF6B6B',
   },
 })
