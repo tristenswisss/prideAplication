@@ -210,18 +210,12 @@ function TabNavigator() {
 function AppContent() {
   const { user, loading } = useAuth()
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f5f5f5" }}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
-      </View>
-    )
-  }
-
   return (
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
+        {loading ? (
+          <RootStack.Screen name="Auth" component={AuthNavigator} />
+        ) : user ? (
           <RootStack.Screen name="Main" component={TabNavigator} />
         ) : (
           <RootStack.Screen name="Auth" component={AuthNavigator} />

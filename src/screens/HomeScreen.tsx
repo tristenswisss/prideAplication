@@ -180,19 +180,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <LinearGradient colors={["black", "black"]} style={styles.header}>
         <Text style={styles.headerTitle}>SafePlaces</Text>
         <Text style={styles.headerSubtitle}>Find LGBTQ+ friendly spaces</Text>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TouchableOpacity style={styles.searchInputTouchable} onPress={() => navigation.navigate("HomeMain")}>
-            <Text style={styles.searchPlaceholder}>
-              {isOfflineMode ? "Search offline..." : "Search safe places..."}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={getCurrentLocation} style={styles.locationButton}>
-            <MaterialIcons name="my-location" size={20} color="black" />
-          </TouchableOpacity>
-        </View>
       </LinearGradient>
 
       {/* View Toggle */}

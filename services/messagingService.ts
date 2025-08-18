@@ -14,7 +14,7 @@ export const messagingService = {
   getConversations: async (userId: string): Promise<Conversation[]> => {
     const { data, error } = await supabase
       .from('conversations')
-      .select('*')
+      .select(`*, participants:users!conversations_participants_fkey(*)`)
       .contains('participants', [userId])
       .order('updated_at', { ascending: false });
 
@@ -23,7 +23,7 @@ export const messagingService = {
       return [];
     }
 
-    return data || [];
+    return (data as any) || [];
   },
 
   // Check whether a user can DM another user:
@@ -86,7 +86,7 @@ export const messagingService = {
     // Try to find existing conversation
     const { data: existing, error: findError } = await supabase
       .from('conversations')
-      .select('*')
+      .select(`*, participants:users!conversations_participants_fkey(*)`)
       .contains('participants', [fromUserId, toUserId])
       .eq('is_group', false)
       .limit(1)
@@ -135,7 +135,7 @@ export const messagingService = {
         is_group: isGroup,
         group_name: groupName,
       })
-      .select()
+      .select(`*, participants:users!conversations_participants_fkey(*)`)
       .single();
 
     if (error) {
