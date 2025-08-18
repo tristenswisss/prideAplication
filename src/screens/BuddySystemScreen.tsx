@@ -112,7 +112,8 @@ export default function BuddySystemScreen({ navigation }: any) {
     try {
       const conversation = await messagingService.createConversation([target.id])
       setShowFindModal(false)
-      navigation.navigate("Chat", { conversation })
+      // Navigate to Chat inside the Community tab's stack
+      navigation.navigate("Community", { screen: "Chat", params: { conversation } })
     } catch (e) {
       Alert.alert("Error", "Failed to start chat")
     }
