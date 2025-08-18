@@ -23,6 +23,7 @@ import WriteReviewScreen from "./src/screens/writeReviewScreen"
 import EventsDetailScreen from "./src/screens/EventsDetailScreen"
 import LiveEventScreen from "./src/screens/LiveEventScreen"
 import RecordingsScreen from "./src/screens/RecordingsScreen"
+import LiveEventsScreenList from "./src/screens/LiveEventsScreeen"
 import UserProfileScreen from "./src/screens/UserProfileScreen"
 import ChatScreen from "./src/screens/ChatScreen"
 import MessageScreen from "./src/screens/MessageScreen"
@@ -108,10 +109,12 @@ function EventsNavigator() {
   return (
     <EventsStack.Navigator>
       <EventsStack.Screen name="EventsMain" component={EventsScreen} options={{ headerShown: false }} />
+      <EventsStack.Screen name="LiveEvents" component={LiveEventsScreenList} options={{ headerShown: false }} />
       <EventsStack.Screen name="EventDetails" component={EventsDetailScreen} options={{ title: "Event Details" }} />
       <EventsStack.Screen name="LiveEvent" component={LiveEventScreen} options={{ headerShown: false }} />
       <EventsStack.Screen name="Recordings" component={RecordingsScreen} options={{ title: "Recordings" }} />
       <EventsStack.Screen name="CreateEvent" component={CreateEventScreen} options={{ headerShown: false }} />
+      <EventsStack.Screen name="MyEvents" component={MyEventsScreen} options={{ headerShown: false }} />
     </EventsStack.Navigator>
   )
 }

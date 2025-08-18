@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Alert, Modal } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Alert } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { liveStreamingService, type StreamRecording } from "../../services/liveStreamingService"
+import AppModal from "../../components/AppModal"
 
 interface RecordingsScreenProps {
   navigation: any
@@ -175,42 +176,35 @@ export default function RecordingsScreen({ navigation }: RecordingsScreenProps) 
       />
 
       {/* Video Player Modal */}
-      <Modal visible={showPlayer} animationType="slide" presentationStyle="fullScreen">
-        <SafeAreaView style={styles.playerContainer}>
-          <View style={styles.playerHeader}>
-            <TouchableOpacity onPress={() => setShowPlayer(false)} style={styles.playerCloseButton}>
-              <MaterialIcons name="close" size={24} color="white" />
+      <AppModal
+        visible={showPlayer}
+        onClose={() => setShowPlayer(false)}
+        title={selectedRecording?.live_event_id || "Recording"}
+        variant="full"
+      >
+        <View style={styles.videoPlayer}>
+          <LinearGradient colors={["#333", "#666"]} style={styles.videoPlaceholder}>
+            <MaterialIcons name="play-circle-filled" size={80} color="white" />
+            <Text style={styles.videoPlaceholderText}>Video Player</Text>
+            <Text style={styles.videoPlaceholderSubtext}>
+              {selectedRecording && formatDuration(selectedRecording.duration)}
+            </Text>
+          </LinearGradient>
+
+          {/* Video Controls */}
+          <View style={styles.videoControls}>
+            <TouchableOpacity style={styles.videoControlButton}>
+              <MaterialIcons name="replay-10" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.playerTitle}>{selectedRecording?.live_event_id || "Recording"}</Text>
-            <TouchableOpacity style={styles.playerAction}>
-              <MaterialIcons name="more-vert" size={24} color="white" />
+            <TouchableOpacity style={styles.videoControlButton}>
+              <MaterialIcons name="play-arrow" size={32} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.videoControlButton}>
+              <MaterialIcons name="forward-10" size={24} color="white" />
             </TouchableOpacity>
           </View>
-
-          <View style={styles.videoPlayer}>
-            <LinearGradient colors={["#333", "#666"]} style={styles.videoPlaceholder}>
-              <MaterialIcons name="play-circle-filled" size={80} color="white" />
-              <Text style={styles.videoPlaceholderText}>Video Player</Text>
-              <Text style={styles.videoPlaceholderSubtext}>
-                {selectedRecording && formatDuration(selectedRecording.duration)}
-              </Text>
-            </LinearGradient>
-
-            {/* Video Controls */}
-            <View style={styles.videoControls}>
-              <TouchableOpacity style={styles.videoControlButton}>
-                <MaterialIcons name="replay-10" size={24} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.videoControlButton}>
-                <MaterialIcons name="play-arrow" size={32} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.videoControlButton}>
-                <MaterialIcons name="forward-10" size={24} color="white" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
+        </View>
+      </AppModal>
     </SafeAreaView>
   )
 }
