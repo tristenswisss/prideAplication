@@ -85,10 +85,15 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     if (!user) return
 
     try {
-      // Check if conversation already exists
-      const existingConversation = conversations.find(
-        (conv) => conv.participants.some((p) => p.id === targetUser.id) && !conv.is_group,
-      )
+      // Check if conversation already exists (prefer participant_profiles if present)
+      const existingConversation = conversations.find((conv) => {
+        if (conv.is_group) return false
+        const otherIdFromProfiles = conv.participant_profiles?.find((p) => p.id !== user.id)?.id
+        if (otherIdFromProfiles) {
+          return otherIdFromProfiles === targetUser.id
+        }
+        return Array.isArray(conv.participants) && conv.participants.some((id: any) => id === targetUser.id)
+      })
 
       if (existingConversation) {
         navigation.navigate("Chat", { conversation: existingConversation })
@@ -122,16 +127,16 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     if (conversation.is_group) {
       return conversation.group_name || "Group Chat"
     }
-    const otherParticipant = conversation.participants.find((p) => p.id !== user?.id)
-    return otherParticipant?.name || "Unknown User"
+    const otherProfile = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+    return otherProfile?.name || "Unknown User"
   }
 
   const getConversationAvatar = (conversation: Conversation): string => {
     if (conversation.is_group) {
       return conversation.group_avatar || "/placeholder.svg?height=50&width=50&text=GC"
     }
-    const otherParticipant = conversation.participants.find((p) => p.id !== user?.id)
-    return otherParticipant?.avatar_url || "/placeholder.svg?height=50&width=50&text=U"
+    const otherProfile = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+    return otherProfile?.avatar_url || "/placeholder.svg?height=50&width=50&text=U"
   }
 
   const formatLastSeen = (iso?: string): string => {
@@ -173,7 +178,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     >
       <View style={styles.avatarContainer}>
         <Image source={{ uri: getConversationAvatar(item) }} style={styles.avatar} />
-        {!item.is_group && item.participants.find((p) => p.id !== user?.id)?.is_online && (
+        {!item.is_group && item.participant_profiles?.find((p) => p.id !== user?.id)?.is_online && (
           <View style={styles.onlineIndicator} />
         )}
       </View>
