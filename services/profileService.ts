@@ -267,6 +267,13 @@ class ProfileService {
 
   async searchUsers(query: string, currentUserId?: string): Promise<UserSearchResponse> {
     try {
+      const trimmedQuery = (query || "").trim()
+
+      // If there is no query, return empty result to avoid PostgREST logic parsing issues with ilike.%%
+      if (!trimmedQuery) {
+        return { success: true, data: [] }
+      }
+
       // Exclude users blocked by the current user
       let blockedIds: string[] = []
       if (currentUserId) {
@@ -279,48 +286,81 @@ class ProfileService {
         }
       }
 
-      let searchQuery = supabase
+      const baseSelect = `
+        id,
+        name,
+        avatar_url,
+        bio,
+        location,
+        verified,
+        email,
+        created_at,
+        updated_at,
+        profiles(
+          username,
+          show_profile,
+          appear_in_search,
+          allow_direct_messages
+        )
+      `
+
+      // Query A: search users by name/bio
+      let usersByNameOrBio = supabase
         .from("users")
-        .select(`
-          id, 
-          name, 
-          avatar_url, 
-          bio, 
-          location, 
-          verified,
-          email,
-          created_at,
-          updated_at,
-          profiles(
-            username,
-            show_profile,
-            appear_in_search,
-            allow_direct_messages
-          )
-        `)
-        .or(`name.ilike.%${query}%,bio.ilike.%${query}%,profiles.username.ilike.%${query}%`)
+        .select(baseSelect)
+        .or(`name.ilike.%${trimmedQuery}%,bio.ilike.%${trimmedQuery}%`)
         .eq("profiles.appear_in_search", true)
         .eq("profiles.show_profile", true)
-        .limit(20)
+
+      // Query B: search users by username via profiles relationship
+      let usersByUsername = supabase
+        .from("users")
+        .select(baseSelect)
+        // Join profiles to make sure we can filter it
+        .eq("profiles.appear_in_search", true)
+        .eq("profiles.show_profile", true)
+        .ilike("profiles.username", `%${trimmedQuery}%`)
 
       // Exclude current user from search results
       if (currentUserId) {
-        searchQuery = searchQuery.neq("id", currentUserId)
+        usersByNameOrBio = usersByNameOrBio.neq("id", currentUserId)
+        usersByUsername = usersByUsername.neq("id", currentUserId)
       }
 
       if (blockedIds.length > 0) {
-        searchQuery = searchQuery.not("id", "in", `(${blockedIds.join(",")})`)
+        const blockedList = `(${blockedIds.join(",")})`
+        usersByNameOrBio = usersByNameOrBio.not("id", "in", blockedList)
+        usersByUsername = usersByUsername.not("id", "in", blockedList)
       }
 
-      const { data, error } = await searchQuery
+      const [nameBioResult, usernameResult] = await Promise.all([
+        usersByNameOrBio.limit(20),
+        usersByUsername.limit(20),
+      ])
 
-      if (error) {
-        console.error("Error searching users:", error)
-        return { success: false, error: error.message }
+      const errors = [nameBioResult.error, usernameResult.error].filter(Boolean) as any[]
+      if (errors.length > 0) {
+        const firstError = errors[0]
+        console.error("Error searching users:", firstError)
+        return { success: false, error: firstError.message }
       }
+
+      const combined: any[] = [
+        ...(nameBioResult.data || []),
+        ...(usernameResult.data || []),
+      ]
+
+      // Dedupe by user id
+      const seen = new Set<string>()
+      const deduped = combined.filter((u) => {
+        const id = u.id as string
+        if (seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
 
       // Transform data to match UserProfile interface
-      const transformedData: UserProfile[] = (data || []).map((user: any) => {
+      const transformedData: UserProfile[] = deduped.slice(0, 20).map((user: any) => {
         const profile = (Array.isArray(user.profiles) ? user.profiles[0] : user.profiles) as ProfileRecord
         return {
           id: user.id,

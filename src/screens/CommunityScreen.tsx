@@ -474,26 +474,32 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     ])
   }
 
-  const handleMoreOptions = (post: Post) => {
-    if (post.user_id === user?.id) {
-      Alert.alert("Post Options", "What would you like to do?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete Post", style: "destructive", onPress: () => handleDeletePost(post.id) },
-      ])
+  const handleMoreOptions = async (post: Post) => {
+    const isOwner = post.user_id === user?.id
+    const posterName = post.user?.name || "User"
+    const saveLabel = post.is_saved ? "Unsave" : "Save"
+    const actions: any[] = [{ text: "Cancel", style: "cancel" }]
+
+    if (!isOwner) {
+      // Only show Message if allowed by target's settings (appear_in_search && allow_direct_messages)
+      const canDM = post.user?.allow_direct_messages !== false
+      if (canDM) {
+        actions.push({ text: "Message", onPress: () => handleMessageUser(post) })
+      }
+      actions.push({ text: "Request Buddy", onPress: () => handleRequestBuddy(post) })
+      actions.push({ text: "Block User", style: "destructive", onPress: () => handleBlockUser(post) })
     } else {
-      const posterName = post.user?.name || "User"
-      Alert.alert(
-        "Post Options",
-        `Options for @${post.user?.username || posterName.toLowerCase().replace(/\s+/g, "")}`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Message", onPress: () => handleMessageUser(post) },
-          { text: "Request Buddy", onPress: () => handleRequestBuddy(post) },
-          { text: "Hide Post", onPress: () => handleHidePost(post) },
-          { text: "Block User", style: "destructive", onPress: () => handleBlockUser(post) },
-        ],
-      )
+      actions.push({ text: "Delete", style: "destructive", onPress: () => handleDeletePost(post.id) })
     }
+
+    actions.push({ text: saveLabel, onPress: () => handleSavePost(post.id) })
+    actions.push({ text: "Share to Contacts", onPress: () => handleSharePost(post) })
+
+    Alert.alert(
+      "Post Options",
+      isOwner ? "Manage your post" : `Options for @${post.user?.username || posterName.toLowerCase().replace(/\s+/g, "")}`,
+      actions,
+    )
   }
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -643,26 +649,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         }}
         ListHeaderComponent={
           <>
-            {/* Quick Actions */}
-            <View style={styles.quickActions}>
-              <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate("Messages")}>
-                <MaterialIcons name="event" size={24} color="#4ECDC4" />
-                <Text style={styles.quickActionText}>Events</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.quickActionButton} onPress={() => setShowCreatePost(true)}>
-                <MaterialIcons name="add-circle" size={24} color="#FFD166" />
-                <Text style={styles.quickActionText}>Post</Text>
-              </TouchableOpacity>
-            </View>
-
             <TouchableOpacity style={styles.createPostPrompt} onPress={() => setShowCreatePost(true)}>
               <Image
                 source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
                 style={styles.promptAvatar}
               />
-              <Text style={styles.promptText}>Share something with the community...</Text>
-              <MaterialIcons name="add" size={24} color="black" />
+              <MaterialIcons name="add-circle" size={24} color="#FFD166" />
+              <Text style={[styles.promptText, { marginLeft: 10 }]}>Share something with the community...</Text>
             </TouchableOpacity>
           </>
         }
@@ -712,22 +705,26 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           )}
 
           <View style={styles.createPostActions}>
-            <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
-              <MaterialIcons name="photo-library" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
-              <MaterialIcons name="camera-alt" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Camera</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
-              <MaterialIcons name="location-on" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Location</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
-              <MaterialIcons name="event" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Event</Text>
-            </TouchableOpacity>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
+                <MaterialIcons name="photo-library" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
+                <MaterialIcons name="camera-alt" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Camera</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
+                <MaterialIcons name="location-on" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Location</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
+                <MaterialIcons name="event" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Event</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
       </Modal>
@@ -1034,7 +1031,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   createPostActions: {
-    flexDirection: "row",
+    flexDirection: "column",
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -1042,11 +1039,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginRight: 20,
+    paddingVertical: 8,
   },
   createPostActionText: {
     marginLeft: 8,
     fontSize: 14,
     color: "#4ECDC4",
+  },
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
   },
   commentsList: {
     flex: 1,

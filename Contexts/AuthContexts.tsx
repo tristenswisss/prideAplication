@@ -4,6 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { auth, supabase } from "../lib/supabase"
 import { profileService } from "../services/profileService"
+import { messagingService } from "../services/messagingService"
 
 interface User {
   id: string
@@ -113,6 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
             })
           }
+          // mark online
+          await messagingService.updateOnlineStatus(session.user.id, true)
         } catch (e) {
           setUser({
             ...session.user,
@@ -120,6 +123,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           })
         }
       } else if (event === "SIGNED_OUT" || !session?.user) {
+        if (user?.id) {
+          await messagingService.updateOnlineStatus(user.id, false)
+        }
         setUser(null)
       } else if (session?.user) {
         try {
@@ -210,6 +216,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      if (user?.id) {
+        await messagingService.updateOnlineStatus(user.id, false)
+      }
       const result = await auth.signOut()
       setUser(null)
       return result

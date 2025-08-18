@@ -23,7 +23,77 @@ export const messagingService = {
       return [];
     }
 
-    return data || [];
+    const conversations = (data as any[]) || []
+    if (conversations.length === 0) return []
+
+    // Collect all unique participant user IDs across conversations
+    const participantIdSet = new Set<string>()
+    for (const conv of conversations) {
+      const ids: string[] = Array.isArray(conv.participants) ? conv.participants : []
+      ids.forEach((id) => participantIdSet.add(id))
+    }
+
+    const allParticipantIds = Array.from(participantIdSet)
+
+    // Fetch user profiles for participants
+    const { data: userRows, error: usersError } = await supabase
+      .from('users')
+      .select(`id, email, name, avatar_url, verified, created_at, updated_at, profiles(username)`) // minimal fields
+      .in('id', allParticipantIds)
+
+    if (usersError) {
+      console.error('Error fetching conversation participant profiles:', usersError)
+      return conversations as any
+    }
+
+    const idToUser: Record<string, any> = {}
+    for (const u of userRows || []) {
+      idToUser[u.id] = u
+    }
+
+    // Fetch presence/last seen from user_status if available
+    const { data: statusRows } = await supabase
+      .from('user_status')
+      .select('user_id, is_online, last_seen')
+      .in('user_id', allParticipantIds)
+
+    const idToStatus: Record<string, { is_online: boolean; last_seen: string | null }> = {}
+    for (const s of statusRows || []) {
+      idToStatus[(s as any).user_id] = { is_online: !!(s as any).is_online, last_seen: (s as any).last_seen || null }
+    }
+
+    // Build participant_profiles with a simple online heuristic: updated within last 2 minutes
+    const now = Date.now()
+    const withProfiles = conversations.map((conv) => {
+      const ids: string[] = Array.isArray(conv.participants) ? conv.participants : []
+      const profiles = ids
+        .map((id) => idToUser[id])
+        .filter(Boolean)
+        .map((u: any) => {
+          const status = idToStatus[u.id]
+          const isOnline = status ? status.is_online : false
+          const lastSeenIso = status?.last_seen || u.updated_at || null
+          const updatedAt = lastSeenIso ? new Date(lastSeenIso).toISOString() : new Date().toISOString()
+          return {
+            id: u.id,
+            email: u.email,
+            name: u.name,
+            username: Array.isArray(u.profiles) ? u.profiles[0]?.username : u.profiles?.username,
+            avatar_url: u.avatar_url,
+            verified: !!u.verified,
+            is_online: isOnline,
+            last_seen: lastSeenIso || undefined,
+            created_at: u.created_at,
+            updated_at: updatedAt,
+          } as any
+        })
+
+      // Prefer to place the other participant first for 1:1 threads
+      const ordered = profiles.sort((a: any) => (a.id === userId ? 1 : -1))
+      return { ...(conv as any), participant_profiles: ordered }
+    })
+
+    return withProfiles as any
   },
 
   // Check whether a user can DM another user:
@@ -86,7 +156,7 @@ export const messagingService = {
     // Try to find existing conversation
     const { data: existing, error: findError } = await supabase
       .from('conversations')
-      .select('*')
+      .select(`*, participants:users!conversations_participants_fkey(*)`)
       .contains('participants', [fromUserId, toUserId])
       .eq('is_group', false)
       .limit(1)
@@ -135,7 +205,7 @@ export const messagingService = {
         is_group: isGroup,
         group_name: groupName,
       })
-      .select()
+      .select(`*, participants:users!conversations_participants_fkey(*)`)
       .single();
 
     if (error) {
@@ -244,6 +314,12 @@ export const messagingService = {
 
   // User search for new conversations
   searchUsers: async (query: string, currentUserId: string): Promise<UserProfile[]> => {
+    const trimmedQuery = (query || '').trim();
+
+    if (!trimmedQuery) {
+      return [];
+    }
+
     // First, get the list of users that the current user has blocked
     const { data: blockedUsersData, error: blockedUsersError } = await supabase
       .from('blocked_users')
@@ -259,65 +335,90 @@ export const messagingService = {
       ? blockedUsersData.map(blocked => blocked.blocked_user_id)
       : [];
 
-    // Search for users with privacy settings respected
-    let search = supabase
+    const baseSelect = `
+      *,
+      profiles (
+        username,
+        show_profile,
+        appear_in_search,
+        allow_direct_messages
+      )
+    `;
+
+    // Query A: by name
+    let byName = supabase
       .from('users')
-      .select(`
-        *,
-        profiles (
-          username,
-          show_profile,
-          appear_in_search,
-          allow_direct_messages
-        )
-      `)
-      .or(`name.ilike.%${query}%,profiles.username.ilike.%${query}%`)
-      .neq('id', currentUserId); // Don't include the current user
+      .select(baseSelect)
+      .ilike('name', `%${trimmedQuery}%`)
+      .neq('id', currentUserId)
+      .eq('profiles.appear_in_search', true)
+      .eq('profiles.show_profile', true)
+      .eq('profiles.allow_direct_messages', true);
+
+    // Query B: by username in profiles
+    let byUsername = supabase
+      .from('users')
+      .select(baseSelect)
+      .neq('id', currentUserId)
+      .eq('profiles.appear_in_search', true)
+      .eq('profiles.show_profile', true)
+      .eq('profiles.allow_direct_messages', true)
+      .ilike('profiles.username', `%${trimmedQuery}%`);
 
     if (blockedUserIds.length > 0) {
-      search = search.not('id', 'in', `(${blockedUserIds.join(',')})`); // Exclude blocked users
+      const blockedList = `(${blockedUserIds.join(',')})`;
+      byName = byName.not('id', 'in', blockedList);
+      byUsername = byUsername.not('id', 'in', blockedList);
     }
 
-    const { data, error } = await search
+    const [nameRes, usernameRes] = await Promise.all([
+      byName.limit(20),
+      byUsername.limit(20),
+    ]);
 
-    if (error) {
-      console.error('Error searching users:', error);
+    const firstError = nameRes.error || usernameRes.error;
+    if (firstError) {
+      console.error('Error searching users:', firstError);
       return [];
     }
 
-    // Filter results based on privacy settings
-    const filteredUsers = (data || []).filter((user: any) => {
-      if (user.profiles) {
-        return (
-          user.profiles.show_profile === true &&
-          user.profiles.appear_in_search === true &&
-          user.profiles.allow_direct_messages === true
-        );
-      }
-      return false;
+    const combined = [
+      ...(nameRes.data || []),
+      ...(usernameRes.data || []),
+    ];
+
+    const seen = new Set<string>();
+    const deduped = combined.filter((u: any) => {
+      if (seen.has(u.id)) return false;
+      seen.add(u.id);
+      return true;
     });
 
-    return filteredUsers as unknown as UserProfile[] || [];
+    return deduped as unknown as UserProfile[];
   },
 
   // Online status
   updateOnlineStatus: async (userId: string, isOnline: boolean): Promise<void> => {
-    // In a real app, you might want to store this in a separate "user_status" table
-    // For now, we'll just log the status change
-    console.log(`User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
-    
-    // If you want to store this in the database, you could do something like:
-    // const { error } = await supabase
-    //   .from('users')
-    //   .update({
-    //     is_online: isOnline,
-    //     last_seen: isOnline ? null : new Date().toISOString()
-    //   })
-    //   .eq('id', userId);
-    
-    // if (error) {
-    //   console.error('Error updating user status:', error);
-    // }
+    try {
+      const timestamp = new Date().toISOString()
+      if (isOnline) {
+        const { error } = await supabase
+          .from('user_status')
+          .upsert({ user_id: userId, is_online: true, last_seen: null })
+        if (error) {
+          console.error('Error setting online status:', error)
+        }
+      } else {
+        const { error } = await supabase
+          .from('user_status')
+          .upsert({ user_id: userId, is_online: false, last_seen: timestamp })
+        if (error) {
+          console.error('Error setting offline status:', error)
+        }
+      }
+    } catch (e) {
+      console.error('Error updating user status:', e)
+    }
   },
 
   getUserOnlineStatus: async (userId: string): Promise<{ isOnline: boolean; lastSeen?: string }> => {

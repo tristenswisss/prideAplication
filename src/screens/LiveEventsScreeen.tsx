@@ -11,6 +11,7 @@ import {
   Image,
   Alert,
   RefreshControl,
+  Modal,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -26,6 +27,7 @@ export default function LiveEventsScreen({ navigation }: LiveEventsScreenProps) 
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [joinPickerVisible, setJoinPickerVisible] = useState(false)
 
   const { user } = useAuth()
 
@@ -53,6 +55,30 @@ export default function LiveEventsScreen({ navigation }: LiveEventsScreenProps) 
 
   const handleJoinLiveEvent = (liveEvent: LiveEvent) => {
     navigation.navigate("LiveEvent", { liveEvent })
+  }
+
+  const handleCreateLiveEvent = async () => {
+    if (!user) {
+      Alert.alert("Sign in required", "Please sign in to create a live event")
+      return
+    }
+    try {
+      const defaultTitle = `${user.name || "Host"}'s Live Event`
+      const created = await liveEventService.createLiveEvent(undefined, user.id, defaultTitle, "")
+      navigation.navigate("LiveEvent", { liveEvent: created })
+    } catch (e: any) {
+      console.error("Error creating live event:", e)
+      Alert.alert("Error", e?.message || "Failed to create live event")
+    }
+  }
+
+  const handleOpenJoinPicker = () => {
+    const anyLive = liveEvents.some((e) => e.is_live)
+    if (!anyLive) {
+      Alert.alert("No live events", "There are no live events at the moment. Check back soon or create one.")
+      return
+    }
+    setJoinPickerVisible(true)
   }
 
   const formatEventTime = (dateString: string): string => {
@@ -137,6 +163,18 @@ export default function LiveEventsScreen({ navigation }: LiveEventsScreenProps) 
         <Text style={styles.headerSubtitle}>Join live streams from the community</Text>
       </LinearGradient>
 
+      {/* Quick Actions */}
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={[styles.actionButton, styles.createButton]} onPress={handleCreateLiveEvent}>
+          <MaterialIcons name="videocam" size={18} color="white" />
+          <Text style={styles.actionButtonText}>Create Live Event</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.joinNowButton]} onPress={handleOpenJoinPicker}>
+          <MaterialIcons name="play-arrow" size={18} color="white" />
+          <Text style={styles.actionButtonText}>Join Live Event</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Live Events List */}
       <FlatList
         data={liveEvents}
@@ -169,6 +207,46 @@ export default function LiveEventsScreen({ navigation }: LiveEventsScreenProps) 
           ) : null
         }
       />
+
+      {/* Join Picker Modal */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={joinPickerVisible}
+        onRequestClose={() => setJoinPickerVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Join a Live Event</Text>
+              <TouchableOpacity onPress={() => setJoinPickerVisible(false)}>
+                <MaterialIcons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={liveEvents.filter((e) => e.is_live)}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setJoinPickerVisible(false)
+                    handleJoinLiveEvent(item)
+                  }}
+                >
+                  <MaterialIcons name="live-tv" size={18} color="#FF4444" />
+                  <Text style={styles.modalItemText}>{item.title}</Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.modalEmpty}>
+                  <Text style={styles.modalEmptyText}>No live events right now</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -204,6 +282,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "white",
     opacity: 0.9,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  createButton: {
+    backgroundColor: "#4ECDC4",
+    flex: 1,
+    marginRight: 8,
+    justifyContent: "center",
+  },
+  joinNowButton: {
+    backgroundColor: "#FF6B6B",
+    flex: 1,
+    marginLeft: 8,
+    justifyContent: "center",
+  },
+  actionButtonText: {
+    color: "white",
+    fontWeight: "600",
+    marginLeft: 6,
   },
   eventsList: {
     flex: 1,
@@ -373,5 +482,52 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     lineHeight: 22,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    maxHeight: 380,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    paddingVertical: 10,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+  },
+  modalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+  },
+  modalItemText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: "#333",
+    flexShrink: 1,
+  },
+  modalEmpty: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  modalEmptyText: {
+    color: "#666",
   },
 })

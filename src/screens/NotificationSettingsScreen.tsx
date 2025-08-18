@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react"
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
+import { storage } from "../../lib/storage"
+import { supabase } from "../../lib/supabase"
+import { useAuth } from "../../Contexts/AuthContexts"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { NotificationSettingsScreenProps } from "../../types/navigation"
 
@@ -30,6 +33,7 @@ interface NotificationSettings {
 }
 
 export default function NotificationSettingsScreen({ navigation }: NotificationSettingsScreenProps) {
+  const { user } = useAuth()
   const [settings, setSettings] = useState<NotificationSettings>({
     pushNotifications: true,
     emailNotifications: true,
@@ -60,11 +64,43 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
 
   const loadSettings = async () => {
     try {
-      // Load settings from storage
-      // const savedSettings = await AsyncStorage.getItem('notificationSettings')
-      // if (savedSettings) {
-      //   setSettings(JSON.parse(savedSettings))
-      // }
+      // Prefer server settings when available
+      if (user?.id) {
+        const { data } = await supabase
+          .from('notification_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+
+        if (data) {
+          setSettings({
+            pushNotifications: data.push_enabled !== false,
+            emailNotifications: !!data.email_enabled,
+            smsNotifications: !!data.sms_enabled,
+            eventReminders: true,
+            newEvents: true,
+            nearbyEvents: true,
+            businessUpdates: false,
+            communityMessages: true,
+            safetyAlerts: true,
+            buddySystemNotifications: true,
+            mentalHealthReminders: true,
+            weeklyDigest: true,
+            marketingEmails: data.email_enabled === true,
+            soundEnabled: data.sound_enabled !== false,
+            vibrationEnabled: data.vibration_enabled !== false,
+            quietHours: {
+              enabled: !!data.quiet_hours_enabled,
+              startTime: data.quiet_start || '22:00',
+              endTime: data.quiet_end || '08:00',
+            },
+          })
+          return
+        }
+      }
+
+      const saved = await storage.getItem<NotificationSettings>('notification_settings')
+      if (saved) setSettings(saved)
     } catch (error) {
       console.error("Error loading notification settings:", error)
     }
@@ -73,12 +109,21 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
   const saveSettings = async () => {
     try {
       setLoading(true)
-      // Save to storage and API
-      // await AsyncStorage.setItem('notificationSettings', JSON.stringify(settings))
-      // await api.updateNotificationSettings(settings)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await storage.setItem('notification_settings', settings)
+      // Mirror to server for Edge Function dispatch
+      if (user?.id) {
+        await supabase.from('notification_settings').upsert({
+          user_id: user.id,
+          push_enabled: settings.pushNotifications,
+          email_enabled: settings.emailNotifications,
+          sms_enabled: settings.smsNotifications,
+          sound_enabled: settings.soundEnabled,
+          vibration_enabled: settings.vibrationEnabled,
+          quiet_hours_enabled: settings.quietHours.enabled,
+          quiet_start: settings.quietHours.startTime,
+          quiet_end: settings.quietHours.endTime,
+        })
+      }
       Alert.alert("Success", "Notification settings updated!")
     } catch (error) {
       Alert.alert("Error", "Failed to update settings")
