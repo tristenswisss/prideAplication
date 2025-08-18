@@ -33,6 +33,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<UserProfile[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
 
   const { user } = useAuth()
 
@@ -147,10 +148,28 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     return `${diffDay}d ago`
   }
 
+  const handleDeleteConversation = async (conversationId: string) => {
+    const ok = await messagingService.deleteConversation(conversationId)
+    if (ok) {
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+    } else {
+      Alert.alert("Error", "Failed to delete conversation")
+    }
+  }
+
+  const openConversationMenu = (item: Conversation) => {
+    Alert.alert(getConversationName(item), undefined, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Open", onPress: () => navigation.navigate("Chat", { conversation: item }) },
+      { text: "Delete conversation", style: "destructive", onPress: () => handleDeleteConversation(item.id) },
+    ])
+  }
+
   const renderConversation = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
       style={styles.conversationItem}
       onPress={() => navigation.navigate("Chat", { conversation: item })}
+      onLongPress={() => openConversationMenu(item)}
     >
       <View style={styles.avatarContainer}>
         <Image source={{ uri: getConversationAvatar(item) }} style={styles.avatar} />

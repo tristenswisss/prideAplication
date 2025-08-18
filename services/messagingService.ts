@@ -312,7 +312,55 @@ export const messagingService = {
     }
   },
 
-  // User search for new conversations
+  // Delete a set of messages (for everyone)
+  deleteMessages: async (conversationId: string, messageIds: string[]): Promise<boolean> => {
+    try {
+      if (!Array.isArray(messageIds) || messageIds.length === 0) return true
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .in('id', messageIds)
+        .eq('conversation_id', conversationId)
+      if (error) {
+        console.error('Error deleting messages:', error)
+        return false
+      }
+      return true
+    } catch (err) {
+      console.error('Error deleting messages:', err)
+      return false
+    }
+  },
+
+  // Delete an entire conversation (and its messages)
+  deleteConversation: async (conversationId: string): Promise<boolean> => {
+    try {
+      // Delete messages first to avoid FK issues
+      const { error: msgErr } = await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId)
+      if (msgErr) {
+        console.error('Error deleting conversation messages:', msgErr)
+        return false
+      }
+
+      const { error: convErr } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId)
+      if (convErr) {
+        console.error('Error deleting conversation:', convErr)
+        return false
+      }
+      return true
+    } catch (err) {
+      console.error('Error deleting conversation:', err)
+      return false
+    }
+  },
+
+  // User search for new conversations (always surface buddies even if DMs are off)
   searchUsers: async (query: string, currentUserId: string): Promise<UserProfile[]> => {
     const trimmedQuery = (query || '').trim();
 
@@ -345,6 +393,14 @@ export const messagingService = {
       )
     `;
 
+    // Get current user's buddies
+    const { data: buddyRows } = await supabase
+      .from('buddy_matches')
+      .select('user1_id, user2_id')
+      .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`)
+
+    const buddyIds = (buddyRows || []).map((r: any) => r.user1_id === currentUserId ? r.user2_id : r.user1_id)
+
     // Query A: by name
     let byName = supabase
       .from('users')
@@ -365,18 +421,37 @@ export const messagingService = {
       .eq('profiles.allow_direct_messages', true)
       .ilike('profiles.username', `%${trimmedQuery}%`);
 
+    // Buddy queries: include buddies regardless of allow_direct_messages or appear_in_search
+    let buddiesByName = supabase
+      .from('users')
+      .select(baseSelect)
+      .neq('id', currentUserId)
+      .in('id', buddyIds.length > 0 ? buddyIds : ['00000000-0000-0000-0000-000000000000'])
+      .ilike('name', `%${trimmedQuery}%`)
+      .eq('profiles.show_profile', true)
+
+    let buddiesByUsername = supabase
+      .from('users')
+      .select(baseSelect)
+      .neq('id', currentUserId)
+      .in('id', buddyIds.length > 0 ? buddyIds : ['00000000-0000-0000-0000-000000000000'])
+      .ilike('profiles.username', `%${trimmedQuery}%`)
+      .eq('profiles.show_profile', true)
+
     if (blockedUserIds.length > 0) {
       const blockedList = `(${blockedUserIds.join(',')})`;
       byName = byName.not('id', 'in', blockedList);
       byUsername = byUsername.not('id', 'in', blockedList);
     }
 
-    const [nameRes, usernameRes] = await Promise.all([
+    const [nameRes, usernameRes, buddiesNameRes, buddiesUsernameRes] = await Promise.all([
       byName.limit(20),
       byUsername.limit(20),
+      buddiesByName.limit(20),
+      buddiesByUsername.limit(20),
     ]);
 
-    const firstError = nameRes.error || usernameRes.error;
+    const firstError = nameRes.error || usernameRes.error || buddiesNameRes.error || buddiesUsernameRes.error;
     if (firstError) {
       console.error('Error searching users:', firstError);
       return [];
@@ -385,6 +460,8 @@ export const messagingService = {
     const combined = [
       ...(nameRes.data || []),
       ...(usernameRes.data || []),
+      ...(buddiesNameRes.data || []),
+      ...(buddiesUsernameRes.data || []),
     ];
 
     const seen = new Set<string>();

@@ -54,6 +54,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const [selectedThreadMessage, setSelectedThreadMessage] = useState<Message | null>(null)
   const [activeCall, setActiveCall] = useState<CallSession | null>(null)
   const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: any[] }>({})
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
 
   useEffect(() => {
     loadMessages()
@@ -77,21 +78,16 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           <MaterialIcons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
       ),
-      headerRight: () => (
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("voice")}>
-            <MaterialIcons name="call" size={24} color="#4ECDC4" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("video")}>
-            <MaterialIcons name="videocam" size={24} color="#4ECDC4" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerAction}>
-            <MaterialIcons name="more-vert" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-      ),
+      headerRight: () => renderHeaderActions(),
     })
   }, [])
+
+  useEffect(() => {
+    // Update header actions when selection changes
+    navigation.setOptions({
+      headerRight: () => renderHeaderActions(),
+    })
+  }, [selectedMessageIds])
 
   useEffect(() => {
     if (!conversation?.id) return
@@ -211,6 +207,83 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       ...messageReactions,
       [messageId]: currentReactions,
     })
+  }
+
+  const isMessageSelected = (messageId: string): boolean => selectedMessageIds.includes(messageId)
+
+  const toggleSelectMessage = (messageId: string) => {
+    setSelectedMessageIds((prev) =>
+      prev.includes(messageId) ? prev.filter((id) => id !== messageId) : [...prev, messageId],
+    )
+  }
+
+  const clearSelection = () => setSelectedMessageIds([])
+
+  const handleDeleteSelectedMessages = async () => {
+    if (selectedMessageIds.length === 0) return
+    Alert.alert("Delete messages", `Delete ${selectedMessageIds.length} selected message(s)?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const ok = await messagingService.deleteMessages(conversation.id, selectedMessageIds)
+          if (ok) {
+            setMessages((prev) => prev.filter((m) => !selectedMessageIds.includes(m.id)))
+            setSelectedMessageIds([])
+          } else {
+            Alert.alert("Error", "Failed to delete messages")
+          }
+        },
+      },
+    ])
+  }
+
+  const handleMoreActions = () => {
+    Alert.alert("Conversation options", undefined, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete conversation",
+        style: "destructive",
+        onPress: async () => {
+          const ok = await messagingService.deleteConversation(conversation.id)
+          if (ok) {
+            navigation.goBack()
+          } else {
+            Alert.alert("Error", "Failed to delete conversation")
+          }
+        },
+      },
+    ])
+  }
+
+  const renderHeaderActions = () => {
+    const selectionActive = selectedMessageIds.length > 0
+    if (selectionActive) {
+      return (
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerAction} onPress={clearSelection}>
+            <MaterialIcons name="close" size={24} color="#333" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerAction} onPress={handleDeleteSelectedMessages}>
+            <MaterialIcons name="delete" size={24} color="#FF6B6B" />
+          </TouchableOpacity>
+        </View>
+      )
+    }
+    return (
+      <View style={styles.headerActions}>
+        <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("voice")}>
+          <MaterialIcons name="call" size={24} color="#4ECDC4" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("video")}>
+          <MaterialIcons name="videocam" size={24} color="#4ECDC4" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.headerAction} onPress={handleMoreActions}>
+          <MaterialIcons name="more-vert" size={24} color="#333" />
+        </TouchableOpacity>
+      </View>
+    )
   }
 
   const handleRemoveReaction = async (messageId: string, emoji: string) => {
@@ -363,7 +436,14 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     const reactions = messageReactions[item.id] || []
 
     return (
-      <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onLongPress={() => toggleSelectMessage(item.id)}
+        onPress={() => {
+          if (selectedMessageIds.length > 0) toggleSelectMessage(item.id)
+        }}
+        style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer, isMessageSelected(item.id) && styles.selectedMessageContainer]}
+      >
         {showAvatar && (
           <Image
             source={{ uri: item.sender?.avatar_url || "/placeholder.svg?height=30&width=30&text=U" }}
@@ -371,7 +451,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           />
         )}
 
-        <View style={[styles.messageBubble, isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble]}>
+        <View style={[
+          styles.messageBubble,
+          isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble,
+          isMessageSelected(item.id) && styles.selectedMessageBubble,
+        ]}>
           {showName && <Text style={styles.senderName}>{item.sender?.name}</Text>}
           {item.message_type === "image" && item.metadata?.image_url ? (
             <Image source={{ uri: item.metadata.image_url }} style={styles.inlineImage} />
@@ -426,7 +510,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         </View>
 
         {!showAvatar && !isOwnMessage && <View style={styles.avatarSpacer} />}
-      </View>
+      </TouchableOpacity>
     )
   }
 
@@ -588,6 +672,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 5,
   },
+  selectedMessageContainer: {
+    opacity: 0.9,
+  },
   avatarSpacer: {
     width: 38,
   },
@@ -597,6 +684,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 18,
     marginVertical: 1,
+  },
+  selectedMessageBubble: {
+    borderWidth: 1,
+    borderColor: "#4ECDC4",
   },
   ownMessageBubble: {
     backgroundColor: "#FF6B6B",

@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase"
+import { messagingService } from "./messagingService"
 import type { UserProfile } from "../types"
 
 export interface BuddyProfile extends Omit<UserProfile, "location"> {
@@ -249,7 +250,7 @@ export const buddySystemService = {
       data: { request_id: requestId, response },
     })
 
-    // If accepted, create a buddy match
+    // If accepted, create a buddy match and ensure a conversation exists
     if (response === "accepted") {
       await supabase.from("buddy_matches").insert({
         user1_id: data.from_user_id,
@@ -258,6 +259,12 @@ export const buddySystemService = {
         matched_interests: [], // Would be calculated based on user interests
         distance: 0, // Would be calculated based on user locations
       })
+
+      try {
+        await messagingService.getOrCreateDirectConversation(data.from_user_id, data.to_user_id)
+      } catch (e) {
+        console.error("Failed to auto-create conversation for new buddies:", e)
+      }
     }
   },
 
