@@ -244,6 +244,12 @@ export const messagingService = {
 
   // User search for new conversations
   searchUsers: async (query: string, currentUserId: string): Promise<UserProfile[]> => {
+    const trimmedQuery = (query || '').trim();
+
+    if (!trimmedQuery) {
+      return [];
+    }
+
     // First, get the list of users that the current user has blocked
     const { data: blockedUsersData, error: blockedUsersError } = await supabase
       .from('blocked_users')
@@ -259,45 +265,66 @@ export const messagingService = {
       ? blockedUsersData.map(blocked => blocked.blocked_user_id)
       : [];
 
-    // Search for users with privacy settings respected
-    let search = supabase
+    const baseSelect = `
+      *,
+      profiles (
+        username,
+        show_profile,
+        appear_in_search,
+        allow_direct_messages
+      )
+    `;
+
+    // Query A: by name
+    let byName = supabase
       .from('users')
-      .select(`
-        *,
-        profiles (
-          username,
-          show_profile,
-          appear_in_search,
-          allow_direct_messages
-        )
-      `)
-      .or(`name.ilike.%${query}%,profiles.username.ilike.%${query}%`)
-      .neq('id', currentUserId); // Don't include the current user
+      .select(baseSelect)
+      .ilike('name', `%${trimmedQuery}%`)
+      .neq('id', currentUserId)
+      .eq('profiles.appear_in_search', true)
+      .eq('profiles.show_profile', true)
+      .eq('profiles.allow_direct_messages', true);
+
+    // Query B: by username in profiles
+    let byUsername = supabase
+      .from('users')
+      .select(baseSelect)
+      .neq('id', currentUserId)
+      .eq('profiles.appear_in_search', true)
+      .eq('profiles.show_profile', true)
+      .eq('profiles.allow_direct_messages', true)
+      .ilike('profiles.username', `%${trimmedQuery}%`);
 
     if (blockedUserIds.length > 0) {
-      search = search.not('id', 'in', `(${blockedUserIds.join(',')})`); // Exclude blocked users
+      const blockedList = `(${blockedUserIds.join(',')})`;
+      byName = byName.not('id', 'in', blockedList);
+      byUsername = byUsername.not('id', 'in', blockedList);
     }
 
-    const { data, error } = await search
+    const [nameRes, usernameRes] = await Promise.all([
+      byName.limit(20),
+      byUsername.limit(20),
+    ]);
 
-    if (error) {
-      console.error('Error searching users:', error);
+    const firstError = nameRes.error || usernameRes.error;
+    if (firstError) {
+      console.error('Error searching users:', firstError);
       return [];
     }
 
-    // Filter results based on privacy settings
-    const filteredUsers = (data || []).filter((user: any) => {
-      if (user.profiles) {
-        return (
-          user.profiles.show_profile === true &&
-          user.profiles.appear_in_search === true &&
-          user.profiles.allow_direct_messages === true
-        );
-      }
-      return false;
+    const combined = [
+      ...(nameRes.data || []),
+      ...(usernameRes.data || []),
+    ];
+
+    const seen = new Set<string>();
+    const deduped = combined.filter((u: any) => {
+      if (seen.has(u.id)) return false;
+      seen.add(u.id);
+      return true;
     });
 
-    return filteredUsers as unknown as UserProfile[] || [];
+    return deduped as unknown as UserProfile[];
   },
 
   // Online status
