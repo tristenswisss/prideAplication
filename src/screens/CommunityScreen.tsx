@@ -475,25 +475,27 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   }
 
   const handleMoreOptions = (post: Post) => {
-    if (post.user_id === user?.id) {
-      Alert.alert("Post Options", "What would you like to do?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete Post", style: "destructive", onPress: () => handleDeletePost(post.id) },
-      ])
+    const isOwner = post.user_id === user?.id
+    const posterName = post.user?.name || "User"
+    const saveLabel = post.is_saved ? "Unsave" : "Save"
+    const actions: any[] = [{ text: "Cancel", style: "cancel" }]
+
+    if (!isOwner) {
+      actions.push({ text: "Message", onPress: () => handleMessageUser(post) })
+      actions.push({ text: "Request Buddy", onPress: () => handleRequestBuddy(post) })
+      actions.push({ text: "Block User", style: "destructive", onPress: () => handleBlockUser(post) })
     } else {
-      const posterName = post.user?.name || "User"
-      Alert.alert(
-        "Post Options",
-        `Options for @${post.user?.username || posterName.toLowerCase().replace(/\s+/g, "")}`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Message", onPress: () => handleMessageUser(post) },
-          { text: "Request Buddy", onPress: () => handleRequestBuddy(post) },
-          { text: "Hide Post", onPress: () => handleHidePost(post) },
-          { text: "Block User", style: "destructive", onPress: () => handleBlockUser(post) },
-        ],
-      )
+      actions.push({ text: "Delete", style: "destructive", onPress: () => handleDeletePost(post.id) })
     }
+
+    actions.push({ text: saveLabel, onPress: () => handleSavePost(post.id) })
+    actions.push({ text: "Share to Contacts", onPress: () => handleSharePost(post) })
+
+    Alert.alert(
+      "Post Options",
+      isOwner ? "Manage your post" : `Options for @${post.user?.username || posterName.toLowerCase().replace(/\s+/g, "")}`,
+      actions,
+    )
   }
 
   const renderPost = ({ item }: { item: Post }) => (
