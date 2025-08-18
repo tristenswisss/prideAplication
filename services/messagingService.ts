@@ -51,6 +51,17 @@ export const messagingService = {
       idToUser[u.id] = u
     }
 
+    // Fetch presence/last seen from user_status if available
+    const { data: statusRows } = await supabase
+      .from('user_status')
+      .select('user_id, is_online, last_seen')
+      .in('user_id', allParticipantIds)
+
+    const idToStatus: Record<string, { is_online: boolean; last_seen: string | null }> = {}
+    for (const s of statusRows || []) {
+      idToStatus[(s as any).user_id] = { is_online: !!(s as any).is_online, last_seen: (s as any).last_seen || null }
+    }
+
     // Build participant_profiles with a simple online heuristic: updated within last 2 minutes
     const now = Date.now()
     const withProfiles = conversations.map((conv) => {
@@ -59,8 +70,10 @@ export const messagingService = {
         .map((id) => idToUser[id])
         .filter(Boolean)
         .map((u: any) => {
-          const updatedAt = u.updated_at ? new Date(u.updated_at).toISOString() : new Date().toISOString()
-          const isOnline = u.updated_at ? now - new Date(u.updated_at).getTime() < 2 * 60 * 1000 : false
+          const status = idToStatus[u.id]
+          const isOnline = status ? status.is_online : false
+          const lastSeenIso = status?.last_seen || u.updated_at || null
+          const updatedAt = lastSeenIso ? new Date(lastSeenIso).toISOString() : new Date().toISOString()
           return {
             id: u.id,
             email: u.email,
@@ -69,6 +82,7 @@ export const messagingService = {
             avatar_url: u.avatar_url,
             verified: !!u.verified,
             is_online: isOnline,
+            last_seen: lastSeenIso || undefined,
             created_at: u.created_at,
             updated_at: updatedAt,
           } as any
@@ -386,13 +400,21 @@ export const messagingService = {
   // Online status
   updateOnlineStatus: async (userId: string, isOnline: boolean): Promise<void> => {
     try {
-      // Without a dedicated status table, we use updated_at as heartbeat for presence/last seen
-      const { error } = await supabase
-        .from('users')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', userId)
-      if (error) {
-        console.error('Error updating user status:', error)
+      const timestamp = new Date().toISOString()
+      if (isOnline) {
+        const { error } = await supabase
+          .from('user_status')
+          .upsert({ user_id: userId, is_online: true, last_seen: null })
+        if (error) {
+          console.error('Error setting online status:', error)
+        }
+      } else {
+        const { error } = await supabase
+          .from('user_status')
+          .upsert({ user_id: userId, is_online: false, last_seen: timestamp })
+        if (error) {
+          console.error('Error setting offline status:', error)
+        }
       }
     } catch (e) {
       console.error('Error updating user status:', e)

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
+import { storage } from "../../lib/storage"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { NotificationSettingsScreenProps } from "../../types/navigation"
 
@@ -60,11 +61,8 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
 
   const loadSettings = async () => {
     try {
-      // Load settings from storage
-      // const savedSettings = await AsyncStorage.getItem('notificationSettings')
-      // if (savedSettings) {
-      //   setSettings(JSON.parse(savedSettings))
-      // }
+      const saved = await storage.getItem<NotificationSettings>('notification_settings')
+      if (saved) setSettings(saved)
     } catch (error) {
       console.error("Error loading notification settings:", error)
     }
@@ -73,12 +71,7 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
   const saveSettings = async () => {
     try {
       setLoading(true)
-      // Save to storage and API
-      // await AsyncStorage.setItem('notificationSettings', JSON.stringify(settings))
-      // await api.updateNotificationSettings(settings)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await storage.setItem('notification_settings', settings)
       Alert.alert("Success", "Notification settings updated!")
     } catch (error) {
       Alert.alert("Error", "Failed to update settings")

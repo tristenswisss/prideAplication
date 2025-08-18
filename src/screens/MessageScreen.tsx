@@ -169,11 +169,8 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
             if (other?.is_online) {
               return <Text style={[styles.messageTime, { color: '#4CAF50' }]}>Online</Text>
             }
-            return (
-              <Text style={styles.messageTime}>
-                {item.last_message ? formatLastMessageTime(item.last_message.sent_at) : other?.updated_at ? `Last seen ${formatLastSeen(other.updated_at)}` : ''}
-              </Text>
-            )
+            const lastSeen = (other as any)?.last_seen || other?.updated_at
+            return <Text style={styles.messageTime}>{lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : ''}</Text>
           })()}
         </View>
 

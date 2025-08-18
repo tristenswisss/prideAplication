@@ -6,13 +6,41 @@ import type { Event } from "../types"
 
 // Configure notifications
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true, // ✅ required
-    shouldShowList: true,   // ✅ required
-  }),
+  handleNotification: async (notification) => {
+    // Respect quiet hours stored locally
+    const settings = (await storage.getItem<any>('notification_settings')) || {}
+    const now = new Date()
+    const inQuietHours = (() => {
+      const q = settings?.quietHours
+      if (!q?.enabled) return false
+      const [sh, sm] = (q.startTime || '22:00').split(':').map((n: string) => parseInt(n, 10))
+      const [eh, em] = (q.endTime || '08:00').split(':').map((n: string) => parseInt(n, 10))
+      const start = new Date(now)
+      start.setHours(sh, sm || 0, 0, 0)
+      const end = new Date(now)
+      end.setHours(eh, em || 0, 0, 0)
+      if (start <= end) {
+        return now >= start && now <= end
+      } else {
+        // spans midnight
+        return now >= start || now <= end
+      }
+    })()
+
+    const shouldShow = settings?.pushNotifications !== false
+    const shouldPlaySound = settings?.soundEnabled !== false && !inQuietHours
+    const shouldVibrate = settings?.vibrationEnabled !== false && !inQuietHours
+
+    return {
+      shouldShowAlert: shouldShow,
+      shouldPlaySound,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      priority: Notifications.AndroidNotificationPriority.DEFAULT,
+      // vibrationPattern cannot be set here; Expo uses device settings. We gate via shouldVibrate flag.
+    }
+  },
 })
 
 
@@ -38,8 +66,19 @@ export const pushNotificationService = {
       const token = (await Notifications.getExpoPushTokenAsync()).data
       console.log("Push token:", token)
 
-      // Store token locally
+      // Store token and default settings locally
       await storage.setItem("push_token", token)
+      const existing = await storage.getItem<any>('notification_settings')
+      if (!existing) {
+        await storage.setItem('notification_settings', {
+          pushNotifications: true,
+          emailNotifications: true,
+          smsNotifications: false,
+          soundEnabled: true,
+          vibrationEnabled: true,
+          quietHours: { enabled: false, startTime: '22:00', endTime: '08:00' },
+        })
+      }
 
       return token
     } catch (error) {
@@ -56,12 +95,14 @@ export const pushNotificationService = {
     trigger?: Notifications.NotificationTriggerInput,
   ): Promise<string> => {
     try {
+      // Apply sound/vibration flags from settings
+      const settings = (await storage.getItem<any>('notification_settings')) || {}
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
           data,
-          sound: true,
+          sound: settings?.soundEnabled !== false ? 'default' : undefined,
         },
         trigger: trigger || null,
       })
