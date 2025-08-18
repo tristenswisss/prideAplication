@@ -3,6 +3,7 @@ import * as Location from "expo-location"
 import { storage } from "../lib/storage"
 import type { PushNotification } from "../types/social"
 import type { Event } from "../types"
+import { supabase } from "../lib/supabase"
 
 // Configure notifications
 Notifications.setNotificationHandler({
@@ -68,6 +69,11 @@ export const pushNotificationService = {
 
       // Store token and default settings locally
       await storage.setItem("push_token", token)
+      // Persist token server-side for edge function delivery
+      const user = (await supabase.auth.getUser()).data.user
+      if (user?.id) {
+        await supabase.from('push_tokens').upsert({ user_id: user.id, token })
+      }
       const existing = await storage.getItem<any>('notification_settings')
       if (!existing) {
         await storage.setItem('notification_settings', {
