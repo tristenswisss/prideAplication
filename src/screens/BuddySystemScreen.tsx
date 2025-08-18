@@ -475,7 +475,7 @@ export default function BuddySystemScreen({ navigation }: any) {
         title="Send Buddy Request"
         leftAction={{ label: "Cancel", onPress: () => setShowRequestModal(false) }}
         rightAction={{ label: "Send", onPress: handleSendRequest, disabled: !requestMessage.trim() || !selectedBuddy }}
-        variant="sheet"
+        variant="center"
       >
         {selectedBuddy && (
           <View style={styles.modalContent}>
