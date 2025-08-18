@@ -11,7 +11,6 @@ import {
   Image,
   Alert,
   TextInput,
-  Modal,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -20,6 +19,7 @@ import { profileService } from "../../services/profileService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Conversation } from "../../types/messaging"
 import type { UserProfile } from "../../types"
+import AppModal from "../../components/AppModal"
 
 interface MessagesScreenProps {
   navigation: any
@@ -247,50 +247,46 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       />
 
       {/* New Message Modal */}
-      <Modal visible={showNewMessage} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowNewMessage(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>New Message</Text>
-            <View style={{ width: 60 }} />
+      <AppModal
+        visible={showNewMessage}
+        onClose={() => setShowNewMessage(false)}
+        title="New Message"
+        leftAction={{ label: "Cancel", onPress: () => setShowNewMessage(false) }}
+        variant="sheet"
+      >
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <MaterialIcons name="search" size={20} color="#666" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search for people..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#666"
+              autoFocus
+            />
           </View>
+        </View>
 
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputContainer}>
-              <MaterialIcons name="search" size={20} color="#666" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search for people..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholderTextColor="#666"
-                autoFocus
-              />
-            </View>
-          </View>
-
-          <FlatList
-            data={searchResults}
-            renderItem={renderSearchResult}
-            keyExtractor={(item) => item.id}
-            style={styles.searchResults}
-            ListEmptyComponent={
-              searchQuery.trim() ? (
-                <View style={styles.noResults}>
-                  <Text style={styles.noResultsText}>{searchLoading ? "Searching..." : "No users found"}</Text>
-                </View>
-              ) : (
-                <View style={styles.searchPrompt}>
-                  <MaterialIcons name="people" size={48} color="#ccc" />
-                  <Text style={styles.searchPromptText}>Search for community members to start a conversation</Text>
-                </View>
-              )
-            }
-          />
-        </SafeAreaView>
-      </Modal>
+        <FlatList
+          data={searchResults}
+          renderItem={renderSearchResult}
+          keyExtractor={(item) => item.id}
+          style={styles.searchResults}
+          ListEmptyComponent={
+            searchQuery.trim() ? (
+              <View style={styles.noResults}>
+                <Text style={styles.noResultsText}>{searchLoading ? "Searching..." : "No users found"}</Text>
+              </View>
+            ) : (
+              <View style={styles.searchPrompt}>
+                <MaterialIcons name="people" size={48} color="#ccc" />
+                <Text style={styles.searchPromptText}>Search for community members to start a conversation</Text>
+              </View>
+            )
+          }
+        />
+      </AppModal>
     </SafeAreaView>
   )
 }
