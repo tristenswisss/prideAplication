@@ -705,22 +705,26 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           )}
 
           <View style={styles.createPostActions}>
-            <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
-              <MaterialIcons name="photo-library" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
-              <MaterialIcons name="camera-alt" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Camera</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
-              <MaterialIcons name="location-on" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Location</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
-              <MaterialIcons name="event" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Event</Text>
-            </TouchableOpacity>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
+                <MaterialIcons name="photo-library" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
+                <MaterialIcons name="camera-alt" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Camera</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
+                <MaterialIcons name="location-on" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Location</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
+                <MaterialIcons name="event" size={24} color="black" />
+                <Text style={styles.createPostActionText}>Event</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
       </Modal>
@@ -1027,7 +1031,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   createPostActions: {
-    flexDirection: "row",
+    flexDirection: "column",
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -1035,11 +1039,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginRight: 20,
+    paddingVertical: 8,
   },
   createPostActionText: {
     marginLeft: 8,
     fontSize: 14,
     color: "#4ECDC4",
+  },
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
   },
   commentsList: {
     flex: 1,

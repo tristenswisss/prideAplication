@@ -385,22 +385,18 @@ export const messagingService = {
 
   // Online status
   updateOnlineStatus: async (userId: string, isOnline: boolean): Promise<void> => {
-    // In a real app, you might want to store this in a separate "user_status" table
-    // For now, we'll just log the status change
-    console.log(`User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
-    
-    // If you want to store this in the database, you could do something like:
-    // const { error } = await supabase
-    //   .from('users')
-    //   .update({
-    //     is_online: isOnline,
-    //     last_seen: isOnline ? null : new Date().toISOString()
-    //   })
-    //   .eq('id', userId);
-    
-    // if (error) {
-    //   console.error('Error updating user status:', error);
-    // }
+    try {
+      // Without a dedicated status table, we use updated_at as heartbeat for presence/last seen
+      const { error } = await supabase
+        .from('users')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', userId)
+      if (error) {
+        console.error('Error updating user status:', error)
+      }
+    } catch (e) {
+      console.error('Error updating user status:', e)
+    }
   },
 
   getUserOnlineStatus: async (userId: string): Promise<{ isOnline: boolean; lastSeen?: string }> => {
