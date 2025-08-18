@@ -69,6 +69,19 @@ BEGIN
   END IF;
 END $$;
 
+-- Allow selecting public profiles for discovery (respect settings)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policy 
+    WHERE polname = 'Users can view public profiles' 
+      AND tablename = 'profiles'
+  ) THEN
+    CREATE POLICY "Users can view public profiles" ON profiles
+      FOR SELECT USING (show_profile IS TRUE AND appear_in_search IS TRUE);
+  END IF;
+END $$;
+
 -- Indexes to speed up joins and username lookups
 CREATE INDEX IF NOT EXISTS idx_profiles_id ON profiles(id);
 CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);

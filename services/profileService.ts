@@ -296,7 +296,7 @@ class ProfileService {
         email,
         created_at,
         updated_at,
-        profiles(
+        profiles!inner(
           username,
           show_profile,
           appear_in_search,
@@ -328,7 +328,7 @@ class ProfileService {
       }
 
       if (blockedIds.length > 0) {
-        const blockedList = `(${blockedIds.join(",")})`
+        const blockedList = `(${blockedIds.map((id) => `"${id}"`).join(",")})`
         usersByNameOrBio = usersByNameOrBio.not("id", "in", blockedList)
         usersByUsername = usersByUsername.not("id", "in", blockedList)
       }
@@ -346,8 +346,8 @@ class ProfileService {
       }
 
       const combined: any[] = [
-        ...(nameBioResult.data || []),
-        ...(usernameResult.data || []),
+        ...((nameBioResult.data as any[]) || []),
+        ...((usernameResult.data as any[]) || []),
       ]
 
       // Dedupe by user id
