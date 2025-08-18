@@ -14,7 +14,7 @@ export const messagingService = {
   getConversations: async (userId: string): Promise<Conversation[]> => {
     const { data, error } = await supabase
       .from('conversations')
-      .select(`*, participants:users!conversations_participants_fkey(*)`)
+      .select('*')
       .contains('participants', [userId])
       .order('updated_at', { ascending: false });
 
@@ -23,7 +23,63 @@ export const messagingService = {
       return [];
     }
 
-    return (data as any) || [];
+    const conversations = (data as any[]) || []
+    if (conversations.length === 0) return []
+
+    // Collect all unique participant user IDs across conversations
+    const participantIdSet = new Set<string>()
+    for (const conv of conversations) {
+      const ids: string[] = Array.isArray(conv.participants) ? conv.participants : []
+      ids.forEach((id) => participantIdSet.add(id))
+    }
+
+    const allParticipantIds = Array.from(participantIdSet)
+
+    // Fetch user profiles for participants
+    const { data: userRows, error: usersError } = await supabase
+      .from('users')
+      .select(`id, email, name, avatar_url, verified, created_at, updated_at, profiles(username)`) // minimal fields
+      .in('id', allParticipantIds)
+
+    if (usersError) {
+      console.error('Error fetching conversation participant profiles:', usersError)
+      return conversations as any
+    }
+
+    const idToUser: Record<string, any> = {}
+    for (const u of userRows || []) {
+      idToUser[u.id] = u
+    }
+
+    // Build participant_profiles with a simple online heuristic: updated within last 2 minutes
+    const now = Date.now()
+    const withProfiles = conversations.map((conv) => {
+      const ids: string[] = Array.isArray(conv.participants) ? conv.participants : []
+      const profiles = ids
+        .map((id) => idToUser[id])
+        .filter(Boolean)
+        .map((u: any) => {
+          const updatedAt = u.updated_at ? new Date(u.updated_at).toISOString() : new Date().toISOString()
+          const isOnline = u.updated_at ? now - new Date(u.updated_at).getTime() < 2 * 60 * 1000 : false
+          return {
+            id: u.id,
+            email: u.email,
+            name: u.name,
+            username: Array.isArray(u.profiles) ? u.profiles[0]?.username : u.profiles?.username,
+            avatar_url: u.avatar_url,
+            verified: !!u.verified,
+            is_online: isOnline,
+            created_at: u.created_at,
+            updated_at: updatedAt,
+          } as any
+        })
+
+      // Prefer to place the other participant first for 1:1 threads
+      const ordered = profiles.sort((a: any) => (a.id === userId ? 1 : -1))
+      return { ...(conv as any), participant_profiles: ordered }
+    })
+
+    return withProfiles as any
   },
 
   // Check whether a user can DM another user:

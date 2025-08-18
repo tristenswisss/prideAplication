@@ -133,6 +133,20 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     return otherParticipant?.avatar_url || "/placeholder.svg?height=50&width=50&text=U"
   }
 
+  const formatLastSeen = (iso?: string): string => {
+    if (!iso) return ""
+    const date = new Date(iso)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 1) return "Just now"
+    if (diffMin < 60) return `${diffMin}m ago`
+    const diffHr = Math.floor(diffMin / 60)
+    if (diffHr < 24) return `${diffHr}h ago`
+    const diffDay = Math.floor(diffHr / 24)
+    return `${diffDay}d ago`
+  }
+
   const renderConversation = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
       style={styles.conversationItem}
@@ -150,9 +164,17 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           <Text style={styles.conversationName} numberOfLines={1}>
             {getConversationName(item)}
           </Text>
-          {item.last_message && (
-            <Text style={styles.messageTime}>{formatLastMessageTime(item.last_message.sent_at)}</Text>
-          )}
+          {(() => {
+            const other = item.participant_profiles?.find((p) => p.id !== user?.id)
+            if (other?.is_online) {
+              return <Text style={[styles.messageTime, { color: '#4CAF50' }]}>Online</Text>
+            }
+            return (
+              <Text style={styles.messageTime}>
+                {item.last_message ? formatLastMessageTime(item.last_message.sent_at) : other?.updated_at ? `Last seen ${formatLastSeen(other.updated_at)}` : ''}
+              </Text>
+            )
+          })()}
         </View>
 
         <View style={styles.lastMessageContainer}>
