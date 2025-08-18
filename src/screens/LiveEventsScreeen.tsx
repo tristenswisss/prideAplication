@@ -11,13 +11,13 @@ import {
   Image,
   Alert,
   RefreshControl,
-  Modal,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { liveEventService } from "../../services/liveEventService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { LiveEvent } from "../../types/messaging"
+import AppModal from "../../components/AppModal"
 
 interface LiveEventsScreenProps {
   navigation: any
@@ -209,44 +209,35 @@ export default function LiveEventsScreen({ navigation }: LiveEventsScreenProps) 
       />
 
       {/* Join Picker Modal */}
-      <Modal
-        transparent
-        animationType="fade"
+      <AppModal
         visible={joinPickerVisible}
-        onRequestClose={() => setJoinPickerVisible(false)}
+        onClose={() => setJoinPickerVisible(false)}
+        title="Join a Live Event"
+        leftAction={{ label: "Close", onPress: () => setJoinPickerVisible(false) }}
+        variant="center"
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Join a Live Event</Text>
-              <TouchableOpacity onPress={() => setJoinPickerVisible(false)}>
-                <MaterialIcons name="close" size={20} color="#666" />
-              </TouchableOpacity>
+        <FlatList
+          data={liveEvents.filter((e) => e.is_live)}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.modalItem}
+              onPress={() => {
+                setJoinPickerVisible(false)
+                handleJoinLiveEvent(item)
+              }}
+            >
+              <MaterialIcons name="live-tv" size={18} color="#FF4444" />
+              <Text style={styles.modalItemText}>{item.title}</Text>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <View style={styles.modalEmpty}>
+              <Text style={styles.modalEmptyText}>No live events right now</Text>
             </View>
-            <FlatList
-              data={liveEvents.filter((e) => e.is_live)}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setJoinPickerVisible(false)
-                    handleJoinLiveEvent(item)
-                  }}
-                >
-                  <MaterialIcons name="live-tv" size={18} color="#FF4444" />
-                  <Text style={styles.modalItemText}>{item.title}</Text>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                <View style={styles.modalEmpty}>
-                  <Text style={styles.modalEmptyText}>No live events right now</Text>
-                </View>
-              }
-            />
-          </View>
-        </View>
-      </Modal>
+          }
+        />
+      </AppModal>
     </SafeAreaView>
   )
 }

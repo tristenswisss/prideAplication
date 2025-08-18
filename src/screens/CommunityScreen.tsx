@@ -11,7 +11,6 @@ import {
   Image,
   Alert,
   TextInput,
-  Modal,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -27,6 +26,7 @@ import type { Post, Comment, UserProfile } from "../../types/social"
 import type { CommunityScreenProps } from "../../types/navigation"
 import { messagingService } from "../../services/messagingService"
 import { buddySystemService } from "../../services/buddySystemService"
+import AppModal from "../../components/AppModal"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -492,6 +492,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       actions.push({ text: "Delete", style: "destructive", onPress: () => handleDeletePost(post.id) })
     }
 
+    actions.push({ text: "Hide", onPress: () => handleHidePost(post) })
     actions.push({ text: saveLabel, onPress: () => handleSavePost(post.id) })
     actions.push({ text: "Share to Contacts", onPress: () => handleSharePost(post) })
 
@@ -662,146 +663,132 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       />
 
       {/* Create Post Modal */}
-      <Modal visible={showCreatePost} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowCreatePost(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
+      <AppModal
+        visible={showCreatePost}
+        onClose={() => setShowCreatePost(false)}
+        title="Create Post"
+        leftAction={{ label: "Cancel", onPress: () => setShowCreatePost(false) }}
+        rightAction={{ label: "Post", onPress: handleCreatePost, disabled: !newPostContent.trim() }}
+        variant="sheet"
+      >
+        <View style={styles.createPostContent}>
+          <Image
+            source={{ uri: user?.avatar_url || "/placeholder.svg?height=50&width=50&text=U" }}
+            style={styles.createPostAvatar}
+          />
+          <TextInput
+            style={styles.createPostInput}
+            placeholder="What's happening in the community?"
+            value={newPostContent}
+            onChangeText={setNewPostContent}
+            multiline
+            autoFocus
+            placeholderTextColor="#666"
+          />
+        </View>
+
+        {newPostImages.length > 0 && (
+          <ScrollView horizontal style={styles.imagePreviewContainer}>
+            {newPostImages.map((imageUri, index) => (
+              <View key={index} style={styles.imagePreviewItem}>
+                <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                <TouchableOpacity style={styles.removeImageButton} onPress={() => handleRemoveImage(index)}>
+                  <MaterialIcons name="close" size={16} color="white" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        <View style={styles.createPostActions}>
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
+              <MaterialIcons name="photo-library" size={24} color="black" />
+              <Text style={styles.createPostActionText}>Photo</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Create Post</Text>
-            <TouchableOpacity onPress={handleCreatePost} disabled={!newPostContent.trim()}>
-              <Text style={[styles.modalPost, !newPostContent.trim() && styles.modalPostDisabled]}>Post</Text>
+            <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
+              <MaterialIcons name="camera-alt" size={24} color="black" />
+              <Text style={styles.createPostActionText}>Camera</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.createPostContent}>
-            <Image
-              source={{ uri: user?.avatar_url || "/placeholder.svg?height=50&width=50&text=U" }}
-              style={styles.createPostAvatar}
-            />
-            <TextInput
-              style={styles.createPostInput}
-              placeholder="What's happening in the community?"
-              value={newPostContent}
-              onChangeText={setNewPostContent}
-              multiline
-              autoFocus
-              placeholderTextColor="#666"
-            />
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
+              <MaterialIcons name="location-on" size={24} color="black" />
+              <Text style={styles.createPostActionText}>Location</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
+              <MaterialIcons name="event" size={24} color="black" />
+              <Text style={styles.createPostActionText}>Event</Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Image Preview */}
-          {newPostImages.length > 0 && (
-            <ScrollView horizontal style={styles.imagePreviewContainer}>
-              {newPostImages.map((imageUri, index) => (
-                <View key={index} style={styles.imagePreviewItem}>
-                  <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-                  <TouchableOpacity style={styles.removeImageButton} onPress={() => handleRemoveImage(index)}>
-                    <MaterialIcons name="close" size={16} color="white" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-
-          <View style={styles.createPostActions}>
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
-                <MaterialIcons name="photo-library" size={24} color="black" />
-                <Text style={styles.createPostActionText}>Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
-                <MaterialIcons name="camera-alt" size={24} color="black" />
-                <Text style={styles.createPostActionText}>Camera</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
-                <MaterialIcons name="location-on" size={24} color="black" />
-                <Text style={styles.createPostActionText}>Location</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
-                <MaterialIcons name="event" size={24} color="black" />
-                <Text style={styles.createPostActionText}>Event</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
+        </View>
+      </AppModal>
 
       {/* Comments Modal */}
-      <Modal visible={showComments} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowComments(false)}>
-              <MaterialIcons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Comments</Text>
-            <View style={{ width: 24 }} />
-          </View>
+      <AppModal
+        visible={showComments}
+        onClose={() => setShowComments(false)}
+        title="Comments"
+        leftAction={{ label: "Close", onPress: () => setShowComments(false) }}
+        variant="sheet"
+      >
+        <FlatList
+          data={comments}
+          renderItem={renderComment}
+          keyExtractor={(item) => item.id}
+          style={styles.commentsList}
+          ListEmptyComponent={
+            <View style={styles.noComments}>
+              <Text style={styles.noCommentsText}>No comments yet</Text>
+              <Text style={styles.noCommentsSubtext}>Be the first to comment!</Text>
+            </View>
+          }
+        />
 
-          <FlatList
-            data={comments}
-            renderItem={renderComment}
-            keyExtractor={(item) => item.id}
-            style={styles.commentsList}
-            ListEmptyComponent={
-              <View style={styles.noComments}>
-                <Text style={styles.noCommentsText}>No comments yet</Text>
-                <Text style={styles.noCommentsSubtext}>Be the first to comment!</Text>
-              </View>
-            }
+        <View style={styles.addCommentContainer}>
+          <Image
+            source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
+            style={styles.commentInputAvatar}
           />
-
-          <View style={styles.addCommentContainer}>
-            <Image
-              source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
-              style={styles.commentInputAvatar}
-            />
-            <TextInput
-              style={styles.commentInput}
-              placeholder="Add a comment..."
-              value={newComment}
-              onChangeText={setNewComment}
-              placeholderTextColor="#666"
-            />
-            <TouchableOpacity
-              onPress={handleAddComment}
-              disabled={!newComment.trim()}
-              style={[styles.sendCommentButton, !newComment.trim() && styles.sendCommentButtonDisabled]}
-            >
-              <MaterialIcons name="send" size={20} color={newComment.trim() ? "gold" : "#ccc"} />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </Modal>
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Add a comment..."
+            value={newComment}
+            onChangeText={setNewComment}
+            placeholderTextColor="#666"
+          />
+          <TouchableOpacity
+            onPress={handleAddComment}
+            disabled={!newComment.trim()}
+            style={[styles.sendCommentButton, !newComment.trim() && styles.sendCommentButtonDisabled]}
+          >
+            <MaterialIcons name="send" size={20} color={newComment.trim() ? "gold" : "#ccc"} />
+          </TouchableOpacity>
+        </View>
+      </AppModal>
 
       {/* Share Modal */}
-      <Modal visible={showShareModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowShareModal(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Share Post</Text>
-            <View style={{ width: 60 }} />
-          </View>
-
-          <FlatList
-            data={buddyList}
-            renderItem={renderBuddyItem}
-            keyExtractor={(item) => item.id}
-            style={styles.buddyList}
-            ListEmptyComponent={
-              <View style={styles.noBuddies}>
-                <MaterialIcons name="people" size={64} color="#ccc" />
-                <Text style={styles.noBuddiesText}>No contacts found</Text>
-                <Text style={styles.noBuddiesSubtext}>Connect with people to share posts</Text>
-              </View>
-            }
-          />
-        </SafeAreaView>
-      </Modal>
+      <AppModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        title="Share Post"
+        leftAction={{ label: "Cancel", onPress: () => setShowShareModal(false) }}
+        variant="sheet"
+      >
+        <FlatList
+          data={buddyList}
+          renderItem={renderBuddyItem}
+          keyExtractor={(item) => item.id}
+          style={styles.buddyList}
+          ListEmptyComponent={
+            <View style={styles.noBuddies}>
+              <MaterialIcons name="people" size={64} color="#ccc" />
+              <Text style={styles.noBuddiesText}>No contacts found</Text>
+              <Text style={styles.noBuddiesSubtext}>Connect with people to share posts</Text>
+            </View>
+          }
+        />
+      </AppModal>
     </SafeAreaView>
   )
 }
