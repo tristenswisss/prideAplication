@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, TextInput, KeyboardAvoidingView, Platform } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, TextInput, KeyboardAvoidingView, Platform, Alert, Modal } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { Linking } from "react-native"
 import { messagingService } from "../../services/messagingService"

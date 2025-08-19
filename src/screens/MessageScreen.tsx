@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, TextInput } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, TextInput, Alert } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { messagingService } from "../../services/messagingService"
