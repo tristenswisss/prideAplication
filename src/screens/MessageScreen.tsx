@@ -37,12 +37,25 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   }, [])
 
   useEffect(() => {
-    if (searchQuery.trim()) {
-      searchUsers()
-    } else {
-      setSearchResults([])
-    }
-  }, [searchQuery])
+    const t = setTimeout(async () => {
+      if (!user || !searchQuery.trim()) {
+        setSearchResults([])
+        return
+      }
+      try {
+        setSearchLoading(true)
+        const results = await profileService.searchUsers(searchQuery.trim(), user.id)
+        if (results.success && results.data) {
+          setSearchResults(results.data)
+        }
+      } catch (error) {
+        console.error("Error searching users:", error)
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [searchQuery, user?.id])
 
   const loadConversations = async () => {
     if (!user) return
@@ -76,21 +89,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     }
   }
 
-  const searchUsers = async () => {
-    if (!user) return
-
-    try {
-      setSearchLoading(true)
-      const results = await profileService.searchUsers(searchQuery, user.id)
-      if (results.success && results.data) {
-        setSearchResults(results.data)
-      }
-    } catch (error) {
-      console.error("Error searching users:", error)
-    } finally {
-      setSearchLoading(false)
-    }
-  }
+  
 
   const handleStartConversation = async (targetUser: UserProfile) => {
     if (!user) return
@@ -295,7 +294,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
             <MaterialIcons name="search" size={20} color="#666" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search for people..."
+              placeholder="Search by name or @username"
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor="#666"

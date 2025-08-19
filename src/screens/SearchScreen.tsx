@@ -15,6 +15,8 @@ import {
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { searchService, type SearchFilters } from "../../lib/search"
+import { businessService, type BusinessSearchParams } from "../../services/businessService"
+import { eventService } from "../../services/eventService"
 import { useOffline } from "../../Contexts/OfflineContext"
 import type { Business, Event } from "../../types"
 import AppModal from "../../components/AppModal"
@@ -67,6 +69,14 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
     return () => clearTimeout(t)
   }, [query])
 
+  // Debounced live search when the query changes, similar to Home
+  useEffect(() => {
+    const t = setTimeout(() => {
+      performSearch()
+    }, 300)
+    return () => clearTimeout(t)
+  }, [query])
+
   useEffect(() => {
     const t = setTimeout(() => {
       // Always perform search when category selection or filters change
@@ -103,11 +113,54 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
         ...filters,
         category: filters.category || (selectedCategory !== "all" ? selectedCategory : undefined),
       }
-      const searchResults = await searchService.search(searchQuery, effectiveFilters)
-      setResults({
-        businesses: searchResults.businesses,
-        events: searchResults.events,
+
+      if (isOffline) {
+        // Fallback to cached search in offline mode
+        const offlineResults = await searchService.search(searchQuery, effectiveFilters)
+        setResults({
+          businesses: offlineResults.businesses,
+          events: offlineResults.events,
+        })
+        setSuggestions([])
+        await loadSearchHistory()
+        return
+      }
+
+      // Online: Use the same business search logic as Home (Supabase-backed)
+      const businessParams: BusinessSearchParams = {
+        query: searchQuery.trim() || undefined,
+        category: effectiveFilters.category,
+        filters: {
+          lgbtq_friendly: effectiveFilters.lgbtqFriendly,
+          trans_friendly: effectiveFilters.transFriendly,
+          wheelchair_accessible: effectiveFilters.wheelchairAccessible,
+          verified: effectiveFilters.verified,
+          rating_min: effectiveFilters.rating,
+        },
+      }
+
+      const [bizResp, allEvents] = await Promise.all([
+        businessService.searchBusinesses(businessParams),
+        eventService.getAllEvents(),
+      ])
+
+      const businesses = bizResp.success && bizResp.businesses ? bizResp.businesses : []
+
+      // Filter events locally for query and category
+      const lower = (searchQuery || "").toLowerCase()
+      const events = (allEvents || []).filter((ev) => {
+        const matchesQuery = !lower ||
+          ev.title.toLowerCase().includes(lower) ||
+          ev.description.toLowerCase().includes(lower) ||
+          ev.location.toLowerCase().includes(lower) ||
+          (Array.isArray(ev.tags) && ev.tags.some((t: string) => t.toLowerCase().includes(lower)))
+
+        if (!matchesQuery) return false
+        if (effectiveFilters.category && ev.category.toLowerCase() !== effectiveFilters.category.toLowerCase()) return false
+        return true
       })
+
+      setResults({ businesses, events })
       setSuggestions([])
       await loadSearchHistory() // Refresh history
     } catch (error) {
@@ -485,11 +538,10 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
             <FlatList
               data={getResultsToShow()}
               renderItem={({ item }) => {
-                if ("category" in item && typeof item.category === "string") {
-                  return renderBusinessResult({ item: item as Business })
-                } else {
+                if ("title" in item) {
                   return renderEventResult({ item: item as Event })
                 }
+                return renderBusinessResult({ item: item as Business })
               }}
               keyExtractor={(item) => item.id}
               style={styles.resultsList}
