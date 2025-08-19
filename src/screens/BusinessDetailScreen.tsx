@@ -1,24 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Alert,
-  SafeAreaView,
-  Linking,
-  FlatList,
-} from "react-native"
+import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, SafeAreaView, Linking, FlatList } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Review } from "../../types"
 import type { BusinessDetailScreenProps } from "../../types/navigation"
+import AppModal from "../../components/AppModal"
 
 export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailScreenProps) {
   const { business } = route.params
@@ -34,6 +24,9 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   })
   const [loading, setLoading] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [modal, setModal] = useState<{ visible: boolean; title?: string; message?: string }>(
+    { visible: false },
+  )
 
   useEffect(() => {
     loadReviews()
@@ -65,7 +58,7 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
     if (business.phone) {
       Linking.openURL(`tel:${business.phone}`)
     } else {
-      Alert.alert("No Phone Number", "This business hasn't provided a phone number")
+      setModal({ visible: true, title: "No Phone Number", message: "This business hasn't provided a phone number" })
     }
   }
 
@@ -73,7 +66,7 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
     if (business.website) {
       Linking.openURL(business.website)
     } else {
-      Alert.alert("No Website", "This business hasn't provided a website")
+      setModal({ visible: true, title: "No Website", message: "This business hasn't provided a website" })
     }
   }
 
@@ -83,12 +76,12 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   }
 
   const handleShare = () => {
-    Alert.alert("Share Business", "Share functionality would be implemented here")
+    setModal({ visible: true, title: "Share Business", message: "Share functionality would be implemented here" })
   }
 
   const handleWriteReview = () => {
     if (!user) {
-      Alert.alert("Sign In Required", "Please sign in to write a review")
+      setModal({ visible: true, title: "Sign In Required", message: "Please sign in to write a review" })
       return
     }
     navigation.navigate("WriteReview", { business })
@@ -99,7 +92,7 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
       await reviewService.markReviewHelpful(reviewId)
       loadReviews() // Refresh reviews to show updated helpful count
     } catch (error) {
-      Alert.alert("Error", "Failed to mark review as helpful")
+      setModal({ visible: true, title: "Error", message: "Failed to mark review as helpful" })
     }
   }
 
@@ -316,6 +309,15 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+    <AppModal
+      visible={modal.visible}
+      onClose={() => setModal({ visible: false })}
+      title={modal.title}
+      variant="center"
+      rightAction={{ label: "OK", onPress: () => setModal({ visible: false }) }}
+    >
+      <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+    </AppModal>
   )
 }
 
