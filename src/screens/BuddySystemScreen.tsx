@@ -42,6 +42,11 @@ export default function BuddySystemScreen({ navigation }: any) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<UserProfile[]>([])
   const [searching, setSearching] = useState(false)
+  const [modal, setModal] = useState<
+    | { type: "none" }
+    | { type: "info"; title: string; message: string }
+    | { type: "confirm"; title: string; message: string; onConfirm: () => void }
+  >({ type: "none" })
 
   useEffect(() => {
     if (user) {
@@ -91,19 +96,19 @@ export default function BuddySystemScreen({ navigation }: any) {
 
   const handleSendRequest = async () => {
     if (!user || !selectedBuddy || !requestMessage.trim()) {
-      Alert.alert("Error", "Please enter a message")
+      setModal({ type: "info", title: "Error", message: "Please enter a message" })
       return
     }
 
     try {
       await buddySystemService.sendBuddyRequest(user.id, selectedBuddy.id, requestMessage)
-      Alert.alert("Request Sent", "Your buddy request has been sent!")
+      setModal({ type: "info", title: "Request Sent", message: "Your buddy request has been sent!" })
       setShowRequestModal(false)
       setRequestMessage("")
       setSelectedBuddy(null)
       loadBuddyData()
     } catch (error) {
-      Alert.alert("Error", "Failed to send buddy request")
+      setModal({ type: "info", title: "Error", message: "Failed to send buddy request" })
     }
   }
 
@@ -115,14 +120,14 @@ export default function BuddySystemScreen({ navigation }: any) {
       // Navigate to Chat inside the Community tab's stack
       navigation.navigate("Community", { screen: "Chat", params: { conversation } })
     } catch (e) {
-      Alert.alert("Error", "Failed to start chat")
+      setModal({ type: "info", title: "Error", message: "Failed to start chat" })
     }
   }
 
   const handleBlockUser = async (target: UserProfile) => {
     if (!user) return
     const ok = await messagingService.blockUser(user.id, target.id)
-    Alert.alert(ok ? "Blocked" : "Error", ok ? "User has been blocked" : "Failed to block user")
+    setModal({ type: "info", title: ok ? "Blocked" : "Error", message: ok ? "User has been blocked" : "Failed to block user" })
   }
 
   const handleReportUser = async (target: UserProfile) => {
@@ -132,7 +137,7 @@ export default function BuddySystemScreen({ navigation }: any) {
       reported_user_id: target.id,
       reason: "abuse",
     })
-    Alert.alert(res.success ? "Reported" : "Error", res.success ? "Report submitted" : res.error || "Failed")
+    setModal({ type: "info", title: res.success ? "Reported" : "Error", message: res.success ? "Report submitted" : res.error || "Failed" })
   }
 
   const handleUnfriend = async (targetUserId: string) => {
@@ -140,22 +145,29 @@ export default function BuddySystemScreen({ navigation }: any) {
     const res = await buddySystemService.unfriendBuddy(user.id, targetUserId)
     if (res.success) {
       setBuddies((prev) => prev.filter((m) => !(m.user1_id === targetUserId || m.user2_id === targetUserId)))
-      Alert.alert("Removed", "User has been removed from your buddies")
+      setModal({ type: "info", title: "Removed", message: "User has been removed from your buddies" })
     } else {
-      Alert.alert("Error", res.error || "Failed to remove buddy")
+      setModal({ type: "info", title: "Error", message: res.error || "Failed to remove buddy" })
     }
   }
 
   const handleRespondToRequest = async (requestId: string, response: "accepted" | "rejected") => {
     try {
       await buddySystemService.respondToBuddyRequest(requestId, response)
-      Alert.alert(
-        response === "accepted" ? "Request Accepted" : "Request Declined",
-        response === "accepted" ? "You now have a new buddy!" : "Request has been declined",
-      )
+      if (response === "accepted") {
+        setRequests((prev) => prev.filter((r) => r.id !== requestId))
+        setModal({ type: "info", title: "Request Accepted", message: "You now have a new buddy!" })
+      } else {
+        setModal({
+          type: "confirm",
+          title: "Request Declined",
+          message: "Request has been declined",
+          onConfirm: () => setRequests((prev) => prev.filter((r) => r.id !== requestId)),
+        })
+      }
       loadBuddyData()
     } catch (error) {
-      Alert.alert("Error", "Failed to respond to request")
+      setModal({ type: "info", title: "Error", message: "Failed to respond to request" })
     }
   }
 
@@ -235,9 +247,23 @@ export default function BuddySystemScreen({ navigation }: any) {
 
   const renderRequest = ({ item }: { item: BuddyRequest }) => (
     <View style={styles.requestCard}>
-      <Image source={{ uri: "/placeholder.svg?height=60&width=60&text=User" }} style={styles.requestAvatar} />
+      <TouchableOpacity
+        onPress={() => {
+          const profileId = item.from_user_id === user?.id ? item.to_user_id : item.from_user_id
+          navigation.navigate("UserProfile", { userId: profileId })
+        }}
+      >
+        <Image source={{ uri: "/placeholder.svg?height=60&width=60&text=User" }} style={styles.requestAvatar} />
+      </TouchableOpacity>
       <View style={styles.requestInfo}>
-        <Text style={styles.requestName}>Buddy Request</Text>
+        <TouchableOpacity
+          onPress={() => {
+            const profileId = item.from_user_id === user?.id ? item.to_user_id : item.from_user_id
+            navigation.navigate("UserProfile", { userId: profileId })
+          }}
+        >
+          <Text style={styles.requestName}>Buddy Request</Text>
+        </TouchableOpacity>
         <Text style={styles.requestMessage}>{item.message}</Text>
         <Text style={styles.requestTime}>{new Date(item.created_at).toLocaleDateString()}</Text>
       </View>
@@ -512,6 +538,28 @@ export default function BuddySystemScreen({ navigation }: any) {
     </View>
   )}
 </AppModal>
+
+      {/* Global Modal */}
+      <AppModal
+        visible={modal.type !== "none"}
+        onClose={() => {
+          const current = modal
+          setModal({ type: "none" })
+          if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+        }}
+        title={modal.type === "none" ? undefined : modal.title}
+        variant="center"
+        rightAction={{
+          label: modal.type === "confirm" ? "OK" : "Close",
+          onPress: () => {
+            const current = modal
+            setModal({ type: "none" })
+            if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+          },
+        }}
+      >
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
+      </AppModal>
 
     </SafeAreaView>
   )

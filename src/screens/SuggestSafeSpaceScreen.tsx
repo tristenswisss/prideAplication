@@ -1,10 +1,11 @@
 "use client"
 import { useState } from "react"
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from "react-native"
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { safeSpacesService } from "../../services/safeSpacesService"
+import AppModal from "../../components/AppModal"
 
 export default function SuggestSafeSpaceScreen({ navigation }: any) {
   const { user } = useAuth()
@@ -18,14 +19,17 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
   const [email, setEmail] = useState("")
   const [website, setWebsite] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [modal, setModal] = useState<{ visible: boolean; title?: string; message?: string; onClose?: () => void }>({
+    visible: false,
+  })
 
   const submit = async () => {
     if (!user?.id) {
-      Alert.alert("Sign in required", "Please sign in to recommend a location.")
+      setModal({ visible: true, title: "Sign in required", message: "Please sign in to recommend a location." })
       return
     }
     if (!name.trim() || !category || !address.trim()) {
-      Alert.alert("Missing info", "Name, category and address are required.")
+      setModal({ visible: true, title: "Missing info", message: "Name, category and address are required." })
       return
     }
     setSubmitting(true)
@@ -47,10 +51,14 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
         wheelchair_accessible: false,
       } as any)
       if (result.success) {
-        Alert.alert("Submitted", "Thank you! We'll review your suggestion.")
-        navigation.goBack()
+        setModal({
+          visible: true,
+          title: "Submitted",
+          message: "Thank you! We'll review your suggestion.",
+          onClose: () => navigation.goBack(),
+        })
       } else {
-        Alert.alert("Error", result.error || "Failed to submit suggestion")
+        setModal({ visible: true, title: "Error", message: result.error || "Failed to submit suggestion" })
       }
     } finally {
       setSubmitting(false)
@@ -124,6 +132,26 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
           <Text style={styles.submitText}>{submitting ? "Submitting..." : "Submit Recommendation"}</Text>
         </TouchableOpacity>
       </ScrollView>
+      <AppModal
+        visible={modal.visible}
+        onClose={() => {
+          const next = modal.onClose
+          setModal({ visible: false })
+          if (next) next()
+        }}
+        title={modal.title}
+        variant="center"
+        rightAction={{
+          label: "OK",
+          onPress: () => {
+            const next = modal.onClose
+            setModal({ visible: false })
+            if (next) next()
+          },
+        }}
+      >
+        <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+      </AppModal>
     </SafeAreaView>
   )
 }

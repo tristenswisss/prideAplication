@@ -507,21 +507,29 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     <View style={styles.postCard}>
       {/* Post Header */}
       <View style={styles.postHeader}>
-        {item.user?.avatar_url ? (
-          <Image source={{ uri: item.user?.avatar_url }} style={styles.userAvatar} />
-        ) : (
-          <View style={[styles.userAvatar, { alignItems: "center", justifyContent: "center", backgroundColor: "#eee" }]}>
-            <MaterialIcons name="person" size={24} color="#ccc" />
-          </View>
-        )}
+        <TouchableOpacity
+          onPress={() => item.user?.id && navigation.navigate("UserProfile", { userId: item.user.id })}
+        >
+          {item.user?.avatar_url ? (
+            <Image source={{ uri: item.user?.avatar_url }} style={styles.userAvatar} />
+          ) : (
+            <View style={[styles.userAvatar, { alignItems: "center", justifyContent: "center", backgroundColor: "#eee" }]}>
+              <MaterialIcons name="person" size={24} color="#ccc" />
+            </View>
+          )}
+        </TouchableOpacity>
         <View style={styles.userInfo}>
-          <View style={styles.userNameRow}>
-            <Text style={styles.userName}>{item.user?.name}</Text>
-            {item.user?.verified && <MaterialIcons name="verified" size={16} color="#4CAF50" />}
-          </View>
-          <Text style={styles.userHandle}>
-            @{item.user?.username || item.user?.name.toLowerCase().replace(/\s+/g, "")}
-          </Text>
+          <TouchableOpacity
+            onPress={() => item.user?.id && navigation.navigate("UserProfile", { userId: item.user.id })}
+          >
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{item.user?.name}</Text>
+              {item.user?.verified && <MaterialIcons name="verified" size={16} color="#4CAF50" />}
+            </View>
+            <Text style={styles.userHandle}>
+              @{item.user?.username || item.user?.name.toLowerCase().replace(/\s+/g, "")}
+            </Text>
+          </TouchableOpacity>
           <Text style={styles.postTime}>{formatTimeAgo(item.created_at)}</Text>
         </View>
         <TouchableOpacity

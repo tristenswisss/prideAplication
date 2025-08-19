@@ -1,17 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  FlatList,
-  Image,
-  Alert,
-  TextInput,
-} from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, TextInput } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { messagingService } from "../../services/messagingService"
@@ -36,6 +26,11 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
 
   const { user } = useAuth()
+  const [modal, setModal] = useState<
+    | { type: "none" }
+    | { type: "info"; title: string; message: string }
+    | { type: "confirm"; title: string; message: string; onConfirm: () => void }
+  >({ type: "none" })
 
   useEffect(() => {
     loadConversations()
@@ -174,16 +169,17 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     if (ok) {
       setConversations((prev) => prev.filter((c) => c.id !== conversationId))
     } else {
-      Alert.alert("Error", "Failed to delete conversation")
+      setModal({ type: "info", title: "Error", message: "Failed to delete conversation" })
     }
   }
 
   const openConversationMenu = (item: Conversation) => {
-    Alert.alert(getConversationName(item), undefined, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Open", onPress: () => navigation.navigate("Chat", { conversation: item }) },
-      { text: "Delete conversation", style: "destructive", onPress: () => handleDeleteConversation(item.id) },
-    ])
+    setModal({
+      type: "confirm",
+      title: getConversationName(item),
+      message: "Delete conversation?",
+      onConfirm: () => handleDeleteConversation(item.id),
+    })
   }
 
   const renderConversation = ({ item }: { item: Conversation }) => (
@@ -326,6 +322,26 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
             )
           }
         />
+      </AppModal>
+      <AppModal
+        visible={modal.type !== "none"}
+        onClose={() => {
+          const current = modal
+          setModal({ type: "none" })
+          if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+        }}
+        title={modal.type === "none" ? undefined : modal.title}
+        variant="center"
+        rightAction={{
+          label: modal.type === "confirm" ? "OK" : "Close",
+          onPress: () => {
+            const current = modal
+            setModal({ type: "none" })
+            if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+          },
+        }}
+      >
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
       </AppModal>
     </SafeAreaView>
   )

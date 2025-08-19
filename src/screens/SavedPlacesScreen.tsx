@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { businessService } from "../../services/businessService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Business } from "../../types"
 import type { SavedPlacesScreenProps } from "../../types/navigation"
+import AppModal from "../../components/AppModal"
 
 interface SavedPlace extends Business {
   savedAt?: string
@@ -18,6 +19,11 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "visited" | "wishlist">("all")
+  const [modal, setModal] = useState<
+    | { type: "none" }
+    | { type: "info"; title: string; message: string }
+    | { type: "confirm"; title: string; message: string; onConfirm: () => void }
+  >({ type: "none" })
 
   const { user } = useAuth()
 
@@ -36,36 +42,33 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
             setSavedPlaces(result.businesses)
           } else {
             console.error("Error loading saved places:", result.error)
-            Alert.alert("Error", "Failed to load saved places")
+            setModal({ type: "info", title: "Error", message: "Failed to load saved places" })
           }
 } catch (error) {
       console.error("Error loading saved places:", error)
-      Alert.alert("Error", "Failed to load saved places")
+      setModal({ type: "info", title: "Error", message: "Failed to load saved places" })
     } finally {
       setLoading(false)
     }
   }
 
   const removeSavedPlace = (placeId: string) => {
-    Alert.alert("Remove Place", "Are you sure you want to remove this place from your saved list?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          if (!user) return
-
-          try {
-            await businessService.saveBusiness(placeId, user.id)
-            setSavedPlaces((prev) => prev.filter((place) => place.id !== placeId))
-            Alert.alert("Success", "Place removed from saved list")
-          } catch (error) {
-            console.error("Error removing saved place:", error)
-            Alert.alert("Error", "Failed to remove place")
-          }
-        },
+    setModal({
+      type: "confirm",
+      title: "Remove Place",
+      message: "Are you sure you want to remove this place from your saved list?",
+      onConfirm: async () => {
+        if (!user) return
+        try {
+          await businessService.saveBusiness(placeId, user.id)
+          setSavedPlaces((prev) => prev.filter((place) => place.id !== placeId))
+          setModal({ type: "info", title: "Success", message: "Place removed from saved list" })
+        } catch (error) {
+          console.error("Error removing saved place:", error)
+          setModal({ type: "info", title: "Error", message: "Failed to remove place" })
+        }
       },
-    ])
+    })
   }
 
   const renderSavedPlace = ({ item }: { item: SavedPlace }) => (
@@ -192,6 +195,26 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
           showsVerticalScrollIndicator={false}
         />
       )}
+      <AppModal
+        visible={modal.type !== "none"}
+        onClose={() => {
+          const current = modal
+          setModal({ type: "none" })
+          if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+        }}
+        title={modal.type === "none" ? undefined : modal.title}
+        variant="center"
+        rightAction={{
+          label: modal.type === "confirm" ? "OK" : "Close",
+          onPress: () => {
+            const current = modal
+            setModal({ type: "none" })
+            if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+          },
+        }}
+      >
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
+      </AppModal>
     </SafeAreaView>
   )
 }

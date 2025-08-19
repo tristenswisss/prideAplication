@@ -1,22 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  FlatList,
-  Image,
-  Alert,
-  ScrollView,
-} from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, ScrollView } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { socialService } from "../../services/socialService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, UserProfile } from "../../types/social"
+import AppModal from "../../components/AppModal"
 
 export default function UserProfileScreen({ navigation, route }: any) {
   const { userId } = route.params
@@ -25,6 +16,9 @@ export default function UserProfileScreen({ navigation, route }: any) {
   const [activeTab, setActiveTab] = useState<"posts" | "media" | "likes">("posts")
   const [isFollowing, setIsFollowing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [modal, setModal] = useState<{ visible: boolean; title?: string; message?: string }>(
+    { visible: false },
+  )
 
   const { user: currentUser } = useAuth()
   const isOwnProfile = currentUser?.id === userId
@@ -42,7 +36,15 @@ export default function UserProfileScreen({ navigation, route }: any) {
       setPosts(userPosts)
       const first = userPosts[0]?.user
       if (first) {
-        setProfile(first)
+        // Honor privacy: if show_profile is false and not own profile, block view
+        const canView = isOwnProfile || (first as any).show_profile !== false
+        setProfile(canView ? first : {
+          ...first,
+          name: "Private Profile",
+          bio: "This profile is private",
+          interests: [],
+          avatar_url: first?.avatar_url,
+        } as any)
       } else {
         setProfile({
           id: userId,
@@ -59,7 +61,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
       }
     } catch (error) {
       console.error("Error loading profile:", error)
-      Alert.alert("Error", "Failed to load profile")
+      setModal({ visible: true, title: "Error", message: "Failed to load profile" })
     } finally {
       setLoading(false)
     }
@@ -82,15 +84,15 @@ export default function UserProfileScreen({ navigation, route }: any) {
       if (isFollowing) {
         setIsFollowing(false)
         if (profile) setProfile({ ...profile, follower_count: Math.max(0, profile.follower_count - 1) })
-        Alert.alert("Unfollowed", "You have unfollowed this user")
+        setModal({ visible: true, title: "Unfollowed", message: "You have unfollowed this user" })
       } else {
         setIsFollowing(true)
         if (profile) setProfile({ ...profile, follower_count: profile.follower_count + 1 })
-        Alert.alert("Followed", "You are now following this user")
+        setModal({ visible: true, title: "Followed", message: "You are now following this user" })
       }
     } catch (error) {
       console.error("Error following/unfollowing user:", error)
-      Alert.alert("Error", "Failed to update follow status")
+      setModal({ visible: true, title: "Error", message: "Failed to update follow status" })
     }
   }
 
@@ -266,6 +268,15 @@ export default function UserProfileScreen({ navigation, route }: any) {
           contentContainerStyle={styles.postsGrid}
         />
       </ScrollView>
+      <AppModal
+        visible={modal.visible}
+        onClose={() => setModal({ visible: false })}
+        title={modal.title}
+        variant="center"
+        rightAction={{ label: "OK", onPress: () => setModal({ visible: false }) }}
+      >
+        <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+      </AppModal>
     </SafeAreaView>
   )
 }

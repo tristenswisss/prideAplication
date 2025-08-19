@@ -1,20 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  FlatList,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  Modal,
-} from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, TextInput, KeyboardAvoidingView, Platform } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { Linking } from "react-native"
 import { messagingService } from "../../services/messagingService"
@@ -56,6 +43,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
   const [showAttachModal, setShowAttachModal] = useState(false)
   const [showVoiceCall, setShowVoiceCall] = useState(false)
+  const [modal, setModal] = useState<
+    | { type: "none" }
+    | { type: "info"; title: string; message: string }
+    | { type: "confirm"; title: string; message: string; onConfirm: () => void }
+  >({ type: "none" })
 
   useEffect(() => {
     loadMessages()
@@ -64,15 +56,25 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     navigation.setOptions({
       headerShown: true,
       headerTitle: () => (
-        <View style={styles.headerTitle}>
-          <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
-          <View>
-            <Text style={styles.headerName}>{getConversationName()}</Text>
-            {!conversation.is_group && conversation.participant_profiles?.[0]?.is_online && (
-              <Text style={styles.headerStatus}>Online</Text>
-            )}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            if (!conversation.is_group) {
+              const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+              if (other?.id) navigation.navigate("UserProfile", { userId: other.id })
+            }
+          }}
+        >
+          <View style={styles.headerTitle}>
+            <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
+            <View>
+              <Text style={styles.headerName}>{getConversationName()}</Text>
+              {!conversation.is_group && conversation.participant_profiles?.[0]?.is_online && (
+                <Text style={styles.headerStatus}>Online</Text>
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       ),
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -117,7 +119,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       }
     } catch (error) {
       console.error("Error loading messages:", error)
-      Alert.alert("Error", "Failed to load messages")
+      setModal({ type: "info", title: "Error", message: "Failed to load messages" })
     } finally {
       setLoading(false)
     }
@@ -181,7 +183,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       setShowEmojiPicker(false)
     } catch (error) {
       console.error("Error sending message:", error)
-      Alert.alert("Error", "Failed to send message")
+      setModal({ type: "info", title: "Error", message: "Failed to send message" })
     } finally {
       setSending(false)
     }
@@ -222,40 +224,36 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
   const handleDeleteSelectedMessages = async () => {
     if (selectedMessageIds.length === 0) return
-    Alert.alert("Delete messages", `Delete ${selectedMessageIds.length} selected message(s)?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          const ok = await messagingService.deleteMessages(conversation.id, selectedMessageIds)
-          if (ok) {
-            setMessages((prev) => prev.filter((m) => !selectedMessageIds.includes(m.id)))
-            setSelectedMessageIds([])
-          } else {
-            Alert.alert("Error", "Failed to delete messages")
-          }
-        },
+    setModal({
+      type: "confirm",
+      title: "Delete messages",
+      message: `Delete ${selectedMessageIds.length} selected message(s)?`,
+      onConfirm: async () => {
+        const ok = await messagingService.deleteMessages(conversation.id, selectedMessageIds)
+        if (ok) {
+          setMessages((prev) => prev.filter((m) => !selectedMessageIds.includes(m.id)))
+          setSelectedMessageIds([])
+        } else {
+          setModal({ type: "info", title: "Error", message: "Failed to delete messages" })
+        }
       },
-    ])
+    })
   }
 
   const handleMoreActions = () => {
-    Alert.alert("Conversation options", undefined, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete conversation",
-        style: "destructive",
-        onPress: async () => {
-          const ok = await messagingService.deleteConversation(conversation.id)
-          if (ok) {
-            navigation.goBack()
-          } else {
-            Alert.alert("Error", "Failed to delete conversation")
-          }
-        },
+    setModal({
+      type: "confirm",
+      title: "Conversation options",
+      message: "Delete conversation?",
+      onConfirm: async () => {
+        const ok = await messagingService.deleteConversation(conversation.id)
+        if (ok) {
+          navigation.goBack()
+        } else {
+          setModal({ type: "info", title: "Error", message: "Failed to delete conversation" })
+        }
       },
-    ])
+    })
   }
 
   const renderHeaderActions = () => {
@@ -512,6 +510,26 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppModal
+        visible={modal.type !== "none"}
+        onClose={() => {
+          const current = modal
+          setModal({ type: "none" })
+          if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+        }}
+        title={modal.type === "none" ? undefined : modal.title}
+        variant="center"
+        rightAction={{
+          label: modal.type === "confirm" ? "OK" : "Close",
+          onPress: () => {
+            const current = modal
+            setModal({ type: "none" })
+            if (current.type === "confirm" && current.onConfirm) current.onConfirm()
+          },
+        }}
+      >
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
+      </AppModal>
       <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}>
         {/* Messages List */}
         <FlatList

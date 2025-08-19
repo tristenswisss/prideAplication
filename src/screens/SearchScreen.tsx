@@ -11,13 +11,13 @@ import {
   FlatList,
   ScrollView,
   Switch,
-  Alert,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { searchService, type SearchFilters } from "../../lib/search"
 import { useOffline } from "../../Contexts/OfflineContext"
 import type { Business, Event } from "../../types"
+import AppModal from "../../components/AppModal"
 
 interface SearchScreenProps {
   navigation: any
@@ -36,6 +36,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<"all" | "businesses" | "events">("all")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [modal, setModal] = useState<{ visible: boolean; title?: string; message?: string }>({ visible: false })
   
   const categories = [
     { id: "all", name: "All", icon: "apps", color: "black" },
@@ -107,7 +108,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
       await loadSearchHistory() // Refresh history
     } catch (error) {
       console.error("Error performing search:", error)
-      Alert.alert("Search Error", "Failed to perform search. Please try again.")
+      setModal({ visible: true, title: "Search Error", message: "Failed to perform search. Please try again." })
     } finally {
       setLoading(false)
     }
@@ -117,9 +118,9 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
     try {
       await searchService.clearSearchHistory()
       setSearchHistory([])
-      Alert.alert("History Cleared", "Your search history has been cleared.")
+      setModal({ visible: true, title: "History Cleared", message: "Your search history has been cleared." })
     } catch (error) {
-      Alert.alert("Error", "Failed to clear search history.")
+      setModal({ visible: true, title: "Error", message: "Failed to clear search history." })
     }
   }
 
@@ -506,6 +507,15 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
           </View>
         )}
       </View>
+      <AppModal
+        visible={modal.visible}
+        onClose={() => setModal({ visible: false })}
+        title={modal.title}
+        variant="center"
+        rightAction={{ label: "OK", onPress: () => setModal({ visible: false }) }}
+      >
+        <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+      </AppModal>
     </SafeAreaView>
   )
 }
