@@ -56,8 +56,8 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps<"Load
           // Navigate to the main app through the root navigator
           navigation.getParent()?.navigate("Main")
         } else {
-          // If user is not authenticated, navigate to auth screen
-          navigation.navigate("Auth")
+          // If user is not authenticated, navigate to sign-in screen within the Auth stack
+          navigation.navigate("SignIn")
         }
       }
     };
