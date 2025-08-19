@@ -1,5 +1,7 @@
 import { storage, STORAGE_KEYS } from "./storage"
 import type { Business, Event } from "../types"
+import { businessService } from "../services/businessService"
+import { eventService } from "../services/eventService"
 
 export interface SearchFilters {
   category?: string
@@ -23,9 +25,24 @@ export const searchService = {
   // Advanced search with filters
   search: async (query: string, filters: SearchFilters = {}): Promise<SearchResult> => {
     try {
-      // Get cached data for offline search
-      const businesses = (await storage.getCacheItem<Business[]>(STORAGE_KEYS.BUSINESSES)) || []
-      const events = (await storage.getCacheItem<Event[]>(STORAGE_KEYS.EVENTS)) || []
+      // Get cached data first
+      let businesses = (await storage.getCacheItem<Business[]>(STORAGE_KEYS.BUSINESSES)) || []
+      let events = (await storage.getCacheItem<Event[]>(STORAGE_KEYS.EVENTS)) || []
+
+      // Fallback to live fetch if cache is empty or stale
+      if (!businesses.length) {
+        const resp = await businessService.getBusinessesFresh()
+        if (resp.success && resp.businesses) {
+          businesses = resp.businesses
+          // cache is set inside businessService.getBusinessesFresh
+        }
+      }
+
+      if (!events.length) {
+        const list = await eventService.getAllEvents()
+        events = list || []
+        // no explicit caching for events here; SearchScreen is primarily online for events
+      }
 
       // Search businesses
       let filteredBusinesses = businesses.filter((business) => {
@@ -34,13 +51,17 @@ export const searchService = {
           !query ||
           business.name.toLowerCase().includes(query.toLowerCase()) ||
           business.description.toLowerCase().includes(query.toLowerCase()) ||
-          business.category.toLowerCase().includes(query.toLowerCase()) ||
+          (business.category || "").toLowerCase().includes(query.toLowerCase()) ||
           business.address.toLowerCase().includes(query.toLowerCase())
 
         if (!matchesQuery) return false
 
         // Apply filters
-        if (filters.category && business.category !== filters.category) return false
+        if (
+          filters.category &&
+          (business.category || "").toLowerCase() !== filters.category.toLowerCase()
+        )
+          return false
         if (filters.lgbtqFriendly !== undefined && business.lgbtq_friendly !== filters.lgbtqFriendly) return false
         if (filters.transFriendly !== undefined && business.trans_friendly !== filters.transFriendly) return false
         if (
@@ -67,7 +88,7 @@ export const searchService = {
         if (!matchesQuery) return false
 
         // Apply filters
-        if (filters.category && event.category !== filters.category) return false
+        if (filters.category && event.category.toLowerCase() !== filters.category.toLowerCase()) return false
 
         return true
       })

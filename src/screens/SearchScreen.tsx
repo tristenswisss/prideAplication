@@ -69,9 +69,8 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (selectedCategory !== "all" || filters.category) {
-        performSearch()
-      }
+      // Always perform search when category selection or filters change
+      performSearch()
     }, 200)
     return () => clearTimeout(t)
   }, [selectedCategory, filters.category])
@@ -95,11 +94,16 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   }
 
   const performSearch = async (searchQuery: string = query) => {
-    if (!searchQuery.trim() && !filters.category) return
+    if (!searchQuery.trim() && !filters.category && selectedCategory === "all") return
 
     try {
       setLoading(true)
-      const searchResults = await searchService.search(searchQuery, filters)
+      // Merge selectedCategory into filters for consistency
+      const effectiveFilters: SearchFilters = {
+        ...filters,
+        category: filters.category || (selectedCategory !== "all" ? selectedCategory : undefined),
+      }
+      const searchResults = await searchService.search(searchQuery, effectiveFilters)
       setResults({
         businesses: searchResults.businesses,
         events: searchResults.events,
