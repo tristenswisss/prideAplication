@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { WebView } from "react-native-webview"
+import { supabaseUrl, supabaseAnonKey } from "../lib/supabase"
 
 interface VoiceCallWebViewProps {
   roomId: string
@@ -11,7 +12,7 @@ interface VoiceCallWebViewProps {
   onClose: () => void
 }
 
-const buildHtml = (roomId: string, isHost: boolean) => `<!doctype html>
+const buildHtml = (roomId: string, isHost: boolean, url: string, anon: string) => `<!doctype html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
@@ -23,7 +24,7 @@ const buildHtml = (roomId: string, isHost: boolean) => `<!doctype html>
       .dot { width: 12px; height: 12px; border-radius: 6px; margin-right: 8px; display: inline-block; }
       .row { display: flex; align-items: center; }
     </style>
-    <script src="https://unpkg.com/@peerjs/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
     <div class="wrap">
@@ -36,6 +37,8 @@ const buildHtml = (roomId: string, isHost: boolean) => `<!doctype html>
       (async function() {
         const roomId = ${JSON.stringify(roomId)}
         const isHost = ${JSON.stringify(isHost)}
+        const supabaseUrl = ${JSON.stringify(url)}
+        const supabaseAnonKey = ${JSON.stringify(anon)}
         const hostId = roomId + '-host'
         const callerId = roomId + '-caller'
 
@@ -45,50 +48,72 @@ const buildHtml = (roomId: string, isHost: boolean) => `<!doctype html>
           document.getElementById('label').innerText = text
         }
 
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-          const peer = new Peer(isHost ? hostId : callerId, { debug: 0 })
+        // Supabase Realtime signaling with native WebRTC in browser
+        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+        const supa = window.supabase.createClient(supabaseUrl, supabaseAnonKey)
+        const channel = supa.channel('webrtc_' + roomId)
 
-          peer.on('open', (id) => {
-            setStatus(isHost ? 'Waiting for caller…' : 'Dialing…', isHost ? '#f90' : '#09f')
-            if (!isHost) {
-              const call = peer.call(hostId, stream)
-              call.on('stream', (remoteStream) => {
-                const audio = new Audio()
-                audio.srcObject = remoteStream
-                audio.autoplay = true
-                setStatus('Connected', '#0f0')
-              })
-              call.on('close', () => setStatus('Call ended', '#999'))
-              call.on('error', () => setStatus('Call error', '#f33'))
-            }
-          })
-
-          peer.on('call', (call) => {
-            call.answer(stream)
-            call.on('stream', (remoteStream) => {
-              const audio = new Audio()
-              audio.srcObject = remoteStream
-              audio.autoplay = true
-              setStatus('Connected', '#0f0')
-            })
-            call.on('close', () => setStatus('Call ended', '#999'))
-            call.on('error', () => setStatus('Call error', '#f33'))
-          })
-
-          peer.on('error', (err) => {
-            setStatus('Peer error: ' + (err && err.type ? err.type : 'unknown'), '#f33')
-          })
-        } catch (e) {
-          setStatus('Microphone permission required', '#f33')
+        function setStatus(text, color) {
+          document.getElementById('status').innerText = text
+          if (color) document.getElementById('dot').style.background = color
+          document.getElementById('label').innerText = text
         }
+
+        const localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }).catch(() => null)
+        if (!localStream) {
+          setStatus('Microphone permission required', '#f33')
+          return
+        }
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream))
+        pc.ontrack = (e) => {
+          const audio = new Audio()
+          audio.srcObject = e.streams[0]
+          audio.autoplay = true
+          setStatus('Connected', '#0f0')
+        }
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            channel.send({ type: 'broadcast', event: 'ice', payload: { from: isHost ? hostId : callerId, candidate: event.candidate } })
+          }
+        }
+
+        await channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            setStatus(isHost ? 'Waiting for caller…' : 'Dialing…', isHost ? '#f90' : '#09f')
+            if (isHost) {
+              const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false })
+              await pc.setLocalDescription(offer)
+              channel.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer } })
+            } else {
+              channel.send({ type: 'broadcast', event: 'join', payload: { callerId } })
+            }
+          }
+        })
+
+        channel.on('broadcast', { event: 'offer' }, async (payload) => {
+          if (isHost) return
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+          const answer = await pc.createAnswer()
+          await pc.setLocalDescription(answer)
+          channel.send({ type: 'broadcast', event: 'answer', payload: { sdp: answer } })
+        })
+
+        channel.on('broadcast', { event: 'answer' }, async (payload) => {
+          if (!isHost) return
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+        })
+
+        channel.on('broadcast', { event: 'ice' }, async (payload) => {
+          if (!payload || !payload.candidate) return
+          try { await pc.addIceCandidate(payload.candidate) } catch {}
+        })
       })();
     </script>
   </body>
   </html>`
 
 export default function VoiceCallWebView({ roomId, isHost, onClose }: VoiceCallWebViewProps) {
-  const html = useMemo(() => buildHtml(roomId, isHost), [roomId, isHost])
+  const html = useMemo(() => buildHtml(roomId, isHost, supabaseUrl, supabaseAnonKey), [roomId, isHost])
   return (
     <View style={styles.container}>
       <View style={styles.header}>
