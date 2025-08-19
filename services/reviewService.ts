@@ -44,7 +44,6 @@ export const reviewService = {
       accessibility_rating,
       would_recommend,
       visit_date,
-      // @ts-expect-error ensure no stray `user` sneaks through
       user: _ignoredUser,
       ...rest
     } = review as any
