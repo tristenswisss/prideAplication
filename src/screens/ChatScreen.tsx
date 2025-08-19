@@ -509,6 +509,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   }
 
   return (
+    <SafeAreaView style={styles.container}>
       <AppModal
         visible={modal.type !== "none"}
         onClose={() => {
@@ -529,7 +530,6 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       >
         {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
       </AppModal>
-    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}>
         {/* Messages List */}
         <FlatList
