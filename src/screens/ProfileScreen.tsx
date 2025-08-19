@@ -1,20 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Image } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { ProfileScreenProps } from "../../types/navigation"
 import React from "react"
+import { businessService } from "../../services/businessService"
+import { reviewService } from "../../services/reviewService"
+import { buddySystemService } from "../../services/buddySystemService"
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   const { user, signOut, refreshUser } = useAuth()
   const [stats, setStats] = useState({
-    savedPlaces: 12,
-    eventsAttended: 8,
-    reviewsWritten: 15,
-    buddyConnections: 3,
+    savedPlaces: 0,
+    eventsAttended: 0,
+    reviewsWritten: 0,
+    buddyConnections: 0,
   })
 
   // Refresh user when returning to this screen
@@ -22,9 +25,33 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   React.useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       refreshUser()
+      loadStats()
     })
     return unsubscribe
   }, [navigation])
+
+  useEffect(() => {
+    loadStats()
+  }, [user?.id])
+
+  const loadStats = async () => {
+    if (!user?.id) return
+    try {
+      const [saved, userReviews, matches] = await Promise.all([
+        businessService.getSavedBusinesses(user.id),
+        reviewService.getUserReviews(user.id),
+        buddySystemService.getBuddyMatches(user.id),
+      ])
+      setStats({
+        savedPlaces: saved.success ? (saved.businesses?.length || 0) : 0,
+        eventsAttended: 0, // TODO: connect to events attendance when available
+        reviewsWritten: userReviews.length,
+        buddyConnections: matches.length,
+      })
+    } catch (e) {
+      // keep defaults
+    }
+  }
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [

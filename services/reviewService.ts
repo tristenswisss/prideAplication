@@ -1,9 +1,19 @@
 import { supabase } from "../lib/supabase"
 import type { Review } from "../types"
+import { mockReviews } from "../data/mockReviews"
+
+const isUuid = (value: string): boolean => {
+  // Basic UUID v4 pattern check; prevents Postgres 22P02 errors on non-uuid ids like "1"
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(value)
+}
 
 export const reviewService = {
   // Get reviews for a business
   getBusinessReviews: async (businessId: string): Promise<Review[]> => {
+    // If we are in mock mode (non-UUID ids), avoid hitting Supabase and use local mock data to prevent 22P02
+    if (!isUuid(businessId)) {
+      return mockReviews.filter((r) => r.business_id === businessId)
+    }
     const { data, error } = await supabase
       .from("reviews")
       .select("*, user:users!reviews_user_id_fkey ( id, name, avatar_url, verified, created_at, updated_at )")
@@ -76,17 +86,29 @@ export const reviewService = {
 
   // Calculate average ratings for a business
   getBusinessRatings: async (businessId: string) => {
-    const { data, error } = await supabase
-      .from("reviews")
-      .select("rating, safety_rating, inclusivity_rating, staff_friendliness, accessibility_rating")
-      .eq("business_id", businessId)
-
-    if (error) {
-      console.error("Error calculating business ratings:", error)
-      return { overall: 0, safety: 0, inclusivity: 0, staff: 0, accessibility: 0, count: 0 }
+    // Guard against non-UUID ids which cause Postgres 22P02 when filtering UUID columns
+    let reviews: any[] = []
+    if (!isUuid(businessId)) {
+      reviews = mockReviews.filter((r) => r.business_id === businessId)
+        .map((r) => ({
+          rating: r.rating,
+          safety_rating: r.safety_rating,
+          inclusivity_rating: r.inclusivity_rating,
+          staff_friendliness: r.staff_friendliness,
+          accessibility_rating: r.accessibility_rating,
+        }))
+    } else {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("rating, safety_rating, inclusivity_rating, staff_friendliness, accessibility_rating")
+        .eq("business_id", businessId)
+      if (error) {
+        console.error("Error calculating business ratings:", error)
+        return { overall: 0, safety: 0, inclusivity: 0, staff: 0, accessibility: 0, count: 0 }
+      }
+      reviews = data || []
     }
 
-    const reviews = data || []
     const count = reviews.length
     if (count === 0) {
       return { overall: 0, safety: 0, inclusivity: 0, staff: 0, accessibility: 0, count: 0 }

@@ -24,8 +24,7 @@ import { useAuth } from "../../Contexts/AuthContexts"
 import type { Message, Conversation } from "../../types/messaging"
 import MessageReactions from "../../components/MessageReactions"
 import MessageThreads from "../../components/MessageThreads"
-import CallInterface from "../../components/CallInterface"
-import { callingService, type CallSession } from "../../services/callingService"
+import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
 
 interface ChatScreenProps {
@@ -52,9 +51,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
   const [showThreads, setShowThreads] = useState(false)
   const [selectedThreadMessage, setSelectedThreadMessage] = useState<Message | null>(null)
-  const [activeCall, setActiveCall] = useState<CallSession | null>(null)
   const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: any[] }>({})
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
+  const [showAttachModal, setShowAttachModal] = useState(false)
 
   useEffect(() => {
     loadMessages()
@@ -273,11 +272,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     }
     return (
       <View style={styles.headerActions}>
-        <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("voice")}>
-          <MaterialIcons name="call" size={24} color="#4ECDC4" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.headerAction} onPress={() => handleStartCall("video")}>
-          <MaterialIcons name="videocam" size={24} color="#4ECDC4" />
+        {/* Open meeting options (Zoom/Meet) via attach modal */}
+        <TouchableOpacity style={styles.headerAction} onPress={() => setShowAttachModal(true)}>
+          <MaterialIcons name="video-call" size={24} color="#4ECDC4" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerAction} onPress={handleMoreActions}>
           <MaterialIcons name="more-vert" size={24} color="#333" />
@@ -306,15 +303,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     })
   }
 
-  const handleStartCall = async (type: "voice" | "video") => {
-    if (!user || !conversation.participant_profiles?.[0]) return
-
-    try {
-      const callSession = await callingService.initiateCall(user.id, conversation.participant_profiles[0].id, type)
-      setActiveCall(callSession)
-    } catch (error) {
-      Alert.alert("Error", "Failed to start call")
-    }
+  const handleStartCall = async (_type: "voice" | "video") => {
+    // Deprecated: open meeting options instead
+    setShowAttachModal(true)
   }
 
   const handleOpenThread = (message: Message) => {
@@ -516,7 +507,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}>
         {/* Messages List */}
         <FlatList
           ref={flatListRef}
@@ -525,6 +516,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           keyExtractor={(item) => item.id}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
+          keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           ListEmptyComponent={
             <View style={styles.emptyMessages}>
@@ -546,18 +538,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           </View>
         )}
 
-        {/* Message Input */}
+        {/* Message Input - full width with + to open modal */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
-            <MaterialIcons name="image" size={22} color="#4ECDC4" />
+          <TouchableOpacity style={styles.plusButton} onPress={() => setShowAttachModal(true)}>
+            <MaterialIcons name="add" size={24} color="#333" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.attachButton} onPress={handlePickDocument}>
-            <MaterialIcons name="attach-file" size={22} color="#4ECDC4" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.attachButton} onPress={toggleEmojiPicker}>
-            <MaterialIcons name="emoji-emotions" size={22} color="#4ECDC4" />
-          </TouchableOpacity>
-
           <View style={styles.textInputContainer}>
             {selectedImage || selectedFile ? (
               renderAttachmentPreview()
@@ -573,7 +558,6 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               />
             )}
           </View>
-
           <TouchableOpacity
             style={[
               styles.sendButton,
@@ -601,12 +585,41 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         />
       )}
 
-      {/* Call Interface */}
-      {activeCall && (
-        <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-          <CallInterface callSession={activeCall} onEndCall={() => setActiveCall(null)} />
-        </Modal>
-      )}
+      {/* Attachments Modal */}
+      <AppModal
+        visible={showAttachModal}
+        onClose={() => setShowAttachModal(false)}
+        title="Add to message"
+        leftAction={{ label: "Close", onPress: () => setShowAttachModal(false) }}
+        variant="center"
+      >
+        <View style={{ flexDirection: "column" }}>
+          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); toggleEmojiPicker() }}>
+            <MaterialIcons name="emoji-emotions" size={24} color="#4ECDC4" />
+            <Text style={styles.optionText}>Emoji</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); handlePickImage() }}>
+            <MaterialIcons name="image" size={24} color="#4ECDC4" />
+            <Text style={styles.optionText}>Gallery</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); handleTakePhoto() }}>
+            <MaterialIcons name="photo-camera" size={24} color="#4ECDC4" />
+            <Text style={styles.optionText}>Camera</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); handlePickDocument() }}>
+            <MaterialIcons name="attach-file" size={24} color="#4ECDC4" />
+            <Text style={styles.optionText}>Document</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); Linking.openURL('https://meet.google.com') }}>
+            <MaterialIcons name="video-call" size={24} color="#4ECDC4" />
+            <Text style={styles.optionText}>Open Google Meet</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); Linking.openURL('https://zoom.us') }}>
+            <MaterialIcons name="videocam" size={24} color="#4ECDC4" />
+            <Text style={styles.optionText}>Open Zoom</Text>
+          </TouchableOpacity>
+        </View>
+      </AppModal>
     </SafeAreaView>
   )
 }
@@ -765,6 +778,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
   },
+  plusButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
   attachButton: {
     width: 40,
     height: 40,
@@ -823,6 +845,17 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: "#f0f0f0",
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    gap: 12,
+  },
+  optionText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
   },
   threadButton: {
     flexDirection: "row",

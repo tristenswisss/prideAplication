@@ -6,6 +6,7 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { callingService, type CallSession } from "../services/callingService"
 import { WebView } from "react-native-webview"
+import * as Clipboard from "expo-clipboard"
 
 interface CallInterfaceProps {
   callSession: CallSession
@@ -69,6 +70,13 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
     } catch (error) {
       Alert.alert("Error", "Failed to end call")
     }
+  }
+
+  const handleCopyLink = async () => {
+    const url = callSession.jitsi_url || ""
+    if (!url) return
+    await Clipboard.setStringAsync(url)
+    Alert.alert("Copied", "Meeting link copied. Share it in chat or open it in Zoom/Google Meet.")
   }
 
   return (
@@ -139,9 +147,14 @@ export default function CallInterface({ callSession, onEndCall, isIncoming = fal
               </TouchableOpacity>
             </>
           ) : (
-            <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall}>
-              <MaterialIcons name="call-end" size={32} color="white" />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall}>
+                <MaterialIcons name="call-end" size={32} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.endCallButton, { backgroundColor: "#2196F3", marginLeft: 16 }]} onPress={handleCopyLink}>
+                <MaterialIcons name="content-copy" size={28} color="white" />
+              </TouchableOpacity>
+            </>
           )}
         </View>
       </View>
