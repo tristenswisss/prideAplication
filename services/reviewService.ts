@@ -30,11 +30,42 @@ export const reviewService = {
 
   // Add a new review
   addReview: async (
-    review: Omit<Review, "id" | "created_at" | "updated_at" | "helpful_count">,
+    review: Omit<Review, "id" | "created_at" | "updated_at" | "helpful_count" | "user">,
   ): Promise<Review> => {
+    // Guard against stray properties like `user` which are not columns in `reviews`
+    const {
+      business_id,
+      user_id,
+      rating,
+      comment,
+      safety_rating,
+      inclusivity_rating,
+      staff_friendliness,
+      accessibility_rating,
+      would_recommend,
+      visit_date,
+      // @ts-expect-error ensure no stray `user` sneaks through
+      user: _ignoredUser,
+      ...rest
+    } = review as any
+
+    const payload = {
+      business_id,
+      user_id,
+      rating,
+      comment,
+      safety_rating,
+      inclusivity_rating,
+      staff_friendliness,
+      accessibility_rating,
+      would_recommend,
+      visit_date,
+    }
+
+    // Ignore any additional unexpected fields to avoid PostgREST 204 errors
     const { data, error } = await supabase
       .from("reviews")
-      .insert({ ...review })
+      .insert({ ...payload })
       .select("*")
       .single()
 

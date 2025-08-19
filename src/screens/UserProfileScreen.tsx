@@ -42,7 +42,15 @@ export default function UserProfileScreen({ navigation, route }: any) {
       setPosts(userPosts)
       const first = userPosts[0]?.user
       if (first) {
-        setProfile(first)
+        // Honor privacy: if show_profile is false and not own profile, block view
+        const canView = isOwnProfile || (first as any).show_profile !== false
+        setProfile(canView ? first : {
+          ...first,
+          name: "Private Profile",
+          bio: "This profile is private",
+          interests: [],
+          avatar_url: first?.avatar_url,
+        } as any)
       } else {
         setProfile({
           id: userId,

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from "react-native"
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from "react-native"
+import AppModal from "../../components/AppModal"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { reviewService } from "../../services/reviewService"
@@ -20,20 +21,27 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
   const [comment, setComment] = useState("")
   const [wouldRecommend, setWouldRecommend] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [modal, setModal] = useState<{ visible: boolean; title?: string; message?: string; onClose?: () => void }>(
+    { visible: false },
+  )
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert("Rating Required", "Please provide an overall rating")
+      setModal({ visible: true, title: "Rating Required", message: "Please provide an overall rating" })
       return
     }
 
     if (safetyRating === 0 || inclusivityRating === 0 || staffRating === 0) {
-      Alert.alert("All Ratings Required", "Please rate safety, inclusivity, and staff friendliness")
+      setModal({
+        visible: true,
+        title: "All Ratings Required",
+        message: "Please rate safety, inclusivity, and staff friendliness",
+      })
       return
     }
 
     if (!user) {
-      Alert.alert("Error", "You must be signed in to write a review")
+      setModal({ visible: true, title: "Error", message: "You must be signed in to write a review" })
       return
     }
 
@@ -42,14 +50,6 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
       await reviewService.addReview({
         business_id: business.id,
         user_id: user.id,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email || "",
-          verified: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
         rating,
         comment: comment.trim() || undefined,
         safety_rating: safetyRating,
@@ -60,10 +60,15 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
         visit_date: new Date().toISOString().split("T")[0],
       })
 
-      Alert.alert("Success", "Your review has been submitted!", [{ text: "OK", onPress: () => navigation.goBack() }])
+      setModal({
+        visible: true,
+        title: "Success",
+        message: "Your review has been submitted!",
+        onClose: () => navigation.goBack(),
+      })
     } catch (error) {
       console.error("Error submitting review:", error)
-      Alert.alert("Error", "Failed to submit review. Please try again.")
+      setModal({ visible: true, title: "Error", message: "Failed to submit review. Please try again." })
     } finally {
       setLoading(false)
     }
@@ -173,6 +178,26 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      <AppModal
+        visible={modal.visible}
+        onClose={() => {
+          const next = modal.onClose
+          setModal({ visible: false })
+          if (next) next()
+        }}
+        title={modal.title}
+        variant="center"
+        rightAction={{
+          label: "OK",
+          onPress: () => {
+            const next = modal.onClose
+            setModal({ visible: false })
+            if (next) next()
+          },
+        }}
+      >
+        <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+      </AppModal>
     </SafeAreaView>
   )
 }

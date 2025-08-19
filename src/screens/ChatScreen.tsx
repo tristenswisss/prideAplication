@@ -64,15 +64,25 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     navigation.setOptions({
       headerShown: true,
       headerTitle: () => (
-        <View style={styles.headerTitle}>
-          <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
-          <View>
-            <Text style={styles.headerName}>{getConversationName()}</Text>
-            {!conversation.is_group && conversation.participant_profiles?.[0]?.is_online && (
-              <Text style={styles.headerStatus}>Online</Text>
-            )}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            if (!conversation.is_group) {
+              const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+              if (other?.id) navigation.navigate("UserProfile", { userId: other.id })
+            }
+          }}
+        >
+          <View style={styles.headerTitle}>
+            <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
+            <View>
+              <Text style={styles.headerName}>{getConversationName()}</Text>
+              {!conversation.is_group && conversation.participant_profiles?.[0]?.is_online && (
+                <Text style={styles.headerStatus}>Online</Text>
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       ),
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
