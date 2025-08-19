@@ -115,12 +115,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         if (response.success && response.businesses) {
           filtered = response.businesses
         }
-      } else if (selectedCategory === "all") {
-        filtered = businesses
       } else {
-        const response = await businessService.getBusinessesByCategory(selectedCategory)
-        if (response.success && response.businesses) {
-          filtered = response.businesses
+        // Filter from already loaded list for snappy UX
+        if (selectedCategory === "all") {
+          filtered = businesses
+        } else {
+          const selectedLower = selectedCategory.toLowerCase()
+          filtered = businesses.filter(
+            (b) => (b.category || "").toLowerCase() === selectedLower
+          )
         }
       }
 
