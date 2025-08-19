@@ -470,49 +470,49 @@ export default function BuddySystemScreen({ navigation }: any) {
       </TouchableOpacity>
 
       {/* Request Modal */}
-      <AppModal
-        visible={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
-        title="Send Buddy Request"
-        leftAction={{ label: "Cancel", onPress: () => setShowRequestModal(false) }}
-        rightAction={{ label: "Send", onPress: handleSendRequest, disabled: !requestMessage.trim() || !selectedBuddy }}
-        variant="center"
-      >
-        {selectedBuddy && (
-          <View style={styles.modalContent}>
-            <View style={styles.buddyPreview}>
-              <Image
-                source={{ uri: selectedBuddy.avatar_url || "/placeholder.svg?height=80&width=80&text=User" }}
-                style={styles.buddyAvatar}
-              />
-              <View style={styles.buddyInfo}>
-                <Text style={styles.buddyName}>{selectedBuddy.name}</Text>
-                <Text style={styles.buddyBio}>{selectedBuddy.bio}</Text>
-                <View style={styles.buddyStats}>
-                  <Text style={styles.buddyStat}>⭐ {selectedBuddy.safetyRating}</Text>
-                  <Text style={styles.buddyStat}>📍 {selectedBuddy.location?.city}</Text>
-                  <Text style={styles.buddyStat}>🤝 {selectedBuddy.meetupCount} meetups</Text>
-                </View>
-              </View>
-            </View>
-
-            <Text style={styles.messageLabel}>Message</Text>
-            <TextInput
-              style={styles.messageInput}
-              placeholder="Hi! I'd love to be your buddy and explore safe spaces together..."
-              multiline
-              numberOfLines={4}
-              value={requestMessage}
-              onChangeText={setRequestMessage}
-              textAlignVertical="top"
-            />
-
-            <Text style={styles.safetyNote}>
-              💡 Remember: Always meet in public places and let someone know your plans
-            </Text>
+<AppModal
+  visible={showRequestModal}
+  onClose={() => setShowRequestModal(false)}
+  title="Send Buddy Request"
+  leftAction={{ label: "Cancel", onPress: () => setShowRequestModal(false) }}
+  rightAction={{ label: "Send", onPress: handleSendRequest, disabled: !requestMessage.trim() || !selectedBuddy }}
+  variant="center"
+>
+  {selectedBuddy && (
+    <View style={{ maxHeight: "80%" }}>
+      <View style={styles.buddyPreview}>
+        <Image
+          source={{ uri: selectedBuddy.avatar_url || "/placeholder.svg?height=80&width=80&text=User" }}
+          style={styles.buddyAvatar}
+        />
+        <View style={styles.buddyInfo}>
+          <Text style={styles.buddyName}>{selectedBuddy.name}</Text>
+          <Text style={styles.buddyBio} numberOfLines={2}>{selectedBuddy.bio}</Text>
+          <View style={styles.buddyStats}>
+            <Text style={styles.buddyStat}>⭐ {selectedBuddy.safetyRating}</Text>
+            <Text style={styles.buddyStat}>🤝 {selectedBuddy.meetupCount} meetups</Text>
           </View>
-        )}
-      </AppModal>
+        </View>
+      </View>
+
+      <Text style={styles.messageLabel}>Your Message</Text>
+      <TextInput
+        style={styles.messageInput}
+        placeholder="Hi! I'd love to be your buddy and explore safe spaces together..."
+        multiline
+        numberOfLines={4}
+        value={requestMessage}
+        onChangeText={setRequestMessage}
+        textAlignVertical="top"
+      />
+
+      <Text style={styles.safetyNote}>
+        💡 Remember: Always meet in public places and let someone know your plans
+      </Text>
+    </View>
+  )}
+</AppModal>
+
     </SafeAreaView>
   )
 }
@@ -816,7 +816,7 @@ const styles = StyleSheet.create({
   messageLabel: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
+    color: "green",
     marginBottom: 10,
   },
   messageInput: {
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   },
   safetyNote: {
     fontSize: 14,
-    color: "#666",
+    color: "red",
     backgroundColor: "#FFF3E0",
     padding: 15,
     borderRadius: 12,
