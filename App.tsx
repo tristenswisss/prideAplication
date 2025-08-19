@@ -68,7 +68,7 @@ function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="Loading" component={LoadingScreen} />
-      <AuthStack.Screen name="Auth" component={AuthScreen} />
+      <AuthStack.Screen name="SignIn" component={AuthScreen} />
     </AuthStack.Navigator>
   )
 }
@@ -217,7 +217,7 @@ function AppContent() {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {loading ? (
-          <RootStack.Screen name="Auth" component={AuthNavigator} />
+          <RootStack.Screen name="Loading" component={LoadingScreen} />
         ) : user ? (
           <RootStack.Screen name="Main" component={TabNavigator} />
         ) : (
