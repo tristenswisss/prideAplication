@@ -23,7 +23,14 @@ export const messagingService = {
       return [];
     }
 
-    const conversations = (data as any[]) || []
+    // Deduplicate by id in case of duplicate rows from sync or view materialization
+    const seenIds = new Set<string>()
+    const conversations = ((data as any[]) || []).filter((row) => {
+      const id = row?.id
+      if (!id || seenIds.has(id)) return false
+      seenIds.add(id)
+      return true
+    })
     if (conversations.length === 0) return []
 
     // Collect all unique participant user IDs across conversations
@@ -93,7 +100,9 @@ export const messagingService = {
       return { ...(conv as any), participant_profiles: ordered }
     })
 
-    return withProfiles as any
+    // Sort again by updated_at descending to ensure order after dedupe
+    const sorted = withProfiles.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    return sorted as any
   },
 
   // Check whether a user can DM another user:

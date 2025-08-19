@@ -55,7 +55,23 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     try {
       setLoading(true)
       const data = await messagingService.getConversations(user.id)
-      setConversations(data)
+      // Ensure no duplicate conversations with the same id or same 1:1 participant
+      const byId = new Map<string, Conversation>()
+      const seenPairs = new Set<string>()
+      for (const conv of data) {
+        if (!conv) continue
+        if (byId.has(conv.id)) continue
+        if (!conv.is_group) {
+          const otherId = conv.participant_profiles?.find((p) => p.id !== user.id)?.id
+          const key = otherId ? [user.id, otherId].sort().join(":") : undefined
+          if (key) {
+            if (seenPairs.has(key)) continue
+            seenPairs.add(key)
+          }
+        }
+        byId.set(conv.id, conv)
+      }
+      setConversations(Array.from(byId.values()))
     } catch (error) {
       console.error("Error loading conversations:", error)
       Alert.alert("Error", "Failed to load conversations")

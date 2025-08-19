@@ -107,7 +107,7 @@ export default function AppModal({
               <View style={{ width: 48 }} />
             )}
           </View>
-          <View style={styles.content}>{children}</View>
+          <View style={styles.contentColumn}>{children}</View>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -171,6 +171,12 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingVertical: 16,
+  },
+  contentColumn: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: "column",
+    gap: 12,
   },
   fullContainer: {
     flex: 1,
