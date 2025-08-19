@@ -26,6 +26,7 @@ import MessageReactions from "../../components/MessageReactions"
 import MessageThreads from "../../components/MessageThreads"
 import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
+import VoiceCallWebView from "../../components/VoiceCallWebView"
 
 interface ChatScreenProps {
   navigation: any
@@ -54,6 +55,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: any[] }>({})
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
   const [showAttachModal, setShowAttachModal] = useState(false)
+  const [showVoiceCall, setShowVoiceCall] = useState(false)
 
   useEffect(() => {
     loadMessages()
@@ -273,6 +275,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     return (
       <View style={styles.headerActions}>
         {/* Open meeting options (Zoom/Meet) via attach modal */}
+        <TouchableOpacity style={styles.headerAction} onPress={() => setShowVoiceCall(true)}>
+          <MaterialIcons name="call" size={24} color="#4ECDC4" />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.headerAction} onPress={() => setShowAttachModal(true)}>
           <MaterialIcons name="video-call" size={24} color="#4ECDC4" />
         </TouchableOpacity>
@@ -620,6 +625,17 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           </TouchableOpacity>
         </View>
       </AppModal>
+
+      {/* Voice Call Modal (WebView Peer P2P) */}
+      {showVoiceCall && (
+        <Modal visible animationType="slide" presentationStyle="fullScreen">
+          <VoiceCallWebView
+            roomId={`conv_${conversation.id}`}
+            isHost={(user?.id || "") < (conversation.participant_profiles?.[0]?.id || "z")}
+            onClose={() => setShowVoiceCall(false)}
+          />
+        </Modal>
+      )}
     </SafeAreaView>
   )
 }
