@@ -530,7 +530,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       >
         {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
       </AppModal>
-      <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}>
+      <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.OS === "ios" ? "padding" : "padding"} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 80}>
         {/* Messages List */}
         <FlatList
           ref={flatListRef}
@@ -540,6 +540,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           ListEmptyComponent={
             <View style={styles.emptyMessages}>
@@ -578,6 +579,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
                 multiline
                 maxLength={1000}
                 placeholderTextColor="#666"
+                onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)}
               />
             )}
           </View>
@@ -837,14 +839,14 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
     borderRadius: 20,
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: "#f8f9fa",
   },
   textInput: {
     fontSize: 16,
     color: "#333",
-    textAlignVertical: "center",
-    minHeight: 24,
+    textAlignVertical: "top",
+    minHeight: 36,
   },
   imagePreviewContainer: {
     position: "relative",
