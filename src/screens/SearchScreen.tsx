@@ -104,7 +104,6 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   }
 
   const performSearch = async (searchQuery: string = query) => {
-    if (!searchQuery.trim() && !filters.category && selectedCategory === "all") return
 
     try {
       setLoading(true)

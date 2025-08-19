@@ -296,7 +296,7 @@ class ProfileService {
         email,
         created_at,
         updated_at,
-        profiles!inner(
+        profiles(
           username,
           show_profile,
           appear_in_search,
@@ -309,15 +309,12 @@ class ProfileService {
         .from("users")
         .select(baseSelect)
         .or(`name.ilike.%${trimmedQuery}%,bio.ilike.%${trimmedQuery}%`)
-        .eq("profiles.appear_in_search", true)
         .eq("profiles.show_profile", true)
 
       // Query B: search users by username via profiles relationship
       let usersByUsername = supabase
         .from("users")
         .select(baseSelect)
-        // Join profiles to make sure we can filter it
-        .eq("profiles.appear_in_search", true)
         .eq("profiles.show_profile", true)
         .ilike("profiles.username", `%${trimmedQuery}%`)
 

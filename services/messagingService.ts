@@ -416,21 +416,18 @@ export const messagingService = {
       .select(baseSelect)
       .ilike('name', `%${trimmedQuery}%`)
       .neq('id', currentUserId)
-      .eq('profiles.appear_in_search', true)
       .eq('profiles.show_profile', true)
-      .eq('profiles.allow_direct_messages', true);
+      ;
 
     // Query B: by username in profiles
     let byUsername = supabase
       .from('users')
       .select(baseSelect)
       .neq('id', currentUserId)
-      .eq('profiles.appear_in_search', true)
       .eq('profiles.show_profile', true)
-      .eq('profiles.allow_direct_messages', true)
       .ilike('profiles.username', `%${trimmedQuery}%`);
 
-    // Buddy queries: include buddies regardless of allow_direct_messages or appear_in_search
+    // Buddy queries: include buddies regardless of DM/search settings
     let buddiesByName = supabase
       .from('users')
       .select(baseSelect)
