@@ -1,11 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, ScrollView } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, ScrollView, Alert, Share } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { socialService } from "../../services/socialService"
 import { useAuth } from "../../Contexts/AuthContexts"
+import { eventService } from "../../services/eventService"
+import { messagingService } from "../../services/messagingService"
+import { supabase } from "../../lib/supabase"
 import type { Post, UserProfile } from "../../types/social"
 import AppModal from "../../components/AppModal"
 
@@ -13,12 +16,14 @@ export default function UserProfileScreen({ navigation, route }: any) {
   const { userId } = route.params
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
-  const [activeTab, setActiveTab] = useState<"posts" | "media" | "likes">("posts")
+  const [activeTab, setActiveTab] = useState<"posts" | "events">("posts")
   const [isFollowing, setIsFollowing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState<{ visible: boolean; title?: string; message?: string }>(
     { visible: false },
   )
+  const [userEvents, setUserEvents] = useState<any[]>([])
+  const [showMoreOptions, setShowMoreOptions] = useState(false)
 
   const { user: currentUser } = useAuth()
   const isOwnProfile = currentUser?.id === userId
@@ -26,6 +31,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
   useEffect(() => {
     loadProfile()
     loadUserPosts()
+    loadUserEvents()
   }, [userId])
 
   const loadProfile = async () => {
@@ -76,6 +82,15 @@ export default function UserProfileScreen({ navigation, route }: any) {
     }
   }
 
+  const loadUserEvents = async () => {
+    try {
+      const events = await eventService.getEventsByOrganizer(userId)
+      setUserEvents(events)
+    } catch (e) {
+      // ignore
+    }
+  }
+
   const handleFollow = async () => {
     if (!currentUser) return
 
@@ -120,6 +135,63 @@ export default function UserProfileScreen({ navigation, route }: any) {
     </TouchableOpacity>
   )
 
+  const renderEvent = ({ item }: { item: any }) => (
+    <TouchableOpacity style={styles.eventItem}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <MaterialIcons name="event" size={20} color="#666" />
+        <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
+      </View>
+      <View style={{ flexDirection: "row", marginTop: 6, alignItems: "center" }}>
+        <MaterialIcons name="location-on" size={16} color="#999" />
+        <Text style={styles.eventMeta} numberOfLines={1}>{item.location} • {new Date(item.date).toLocaleDateString()}</Text>
+      </View>
+    </TouchableOpacity>
+  )
+
+  const handleMessage = async () => {
+    if (!currentUser) return
+    try {
+      const conv = await messagingService.getOrCreateDirectConversation(currentUser.id, userId)
+      navigation.navigate("Community", { screen: "Chat", params: { conversation: conv } })
+    } catch (e: any) {
+      const reason = e?.message || "not_allowed"
+      let msg = "Unable to start conversation."
+      if (reason === "blocked") msg = "You cannot message this user."
+      if (reason === "dms_disabled") msg = "This user has disabled direct messages."
+      setModal({ visible: true, title: "Message", message: msg })
+    }
+  }
+
+  const handleAddBuddy = async () => {
+    if (!currentUser) return
+    try {
+      // Send a default buddy request message
+      await supabase.from("buddy_requests").insert({ from_user_id: currentUser.id, to_user_id: userId, message: "Let's be buddies!" })
+      setModal({ visible: true, title: "Buddy Request", message: "Buddy request sent." })
+    } catch (e: any) {
+      setModal({ visible: true, title: "Error", message: e.message || "Failed to send buddy request" })
+    }
+  }
+
+  const handleBlockUser = async () => {
+    if (!currentUser) return
+    try {
+      await supabase.from("blocked_users").insert({ user_id: currentUser.id, blocked_user_id: userId })
+      setModal({ visible: true, title: "User Blocked", message: "You will no longer see messages or requests from this user." })
+    } catch (e: any) {
+      setModal({ visible: true, title: "Error", message: e.message || "Failed to block user" })
+    }
+  }
+
+  const handleShareProfile = async () => {
+    try {
+      const link = `https://mirae.app/user/${userId}`
+      await Share.share({ message: `Check out this profile: ${link}` })
+    } catch (e) {
+      // ignore
+    }
+  }
+
   if (!profile) {
     return (
       <SafeAreaView style={styles.container}>
@@ -138,7 +210,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
           <MaterialIcons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{profile.name}</Text>
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity style={styles.moreButton} onPress={() => setShowMoreOptions(true)}>
           <MaterialIcons name="more-vert" size={24} color="#333" />
         </TouchableOpacity>
       </View>
@@ -224,7 +296,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
                       {isFollowing ? "Following" : "Follow"}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.messageButton}>
+                  <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
                     <MaterialIcons name="message" size={20} color="#4ECDC4" />
                   </TouchableOpacity>
                 </>
@@ -243,30 +315,32 @@ export default function UserProfileScreen({ navigation, route }: any) {
             <Text style={[styles.tabText, activeTab === "posts" && styles.activeTabText]}>Posts</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === "media" && styles.activeTab]}
-            onPress={() => setActiveTab("media")}
+            style={[styles.tab, activeTab === "events" && styles.activeTab]}
+            onPress={() => setActiveTab("events")}
           >
-            <MaterialIcons name="photo" size={20} color={activeTab === "media" ? "#FF6B6B" : "#666"} />
-            <Text style={[styles.tabText, activeTab === "media" && styles.activeTabText]}>Media</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "likes" && styles.activeTab]}
-            onPress={() => setActiveTab("likes")}
-          >
-            <MaterialIcons name="favorite" size={20} color={activeTab === "likes" ? "#FF6B6B" : "#666"} />
-            <Text style={[styles.tabText, activeTab === "likes" && styles.activeTabText]}>Likes</Text>
+            <MaterialIcons name="event" size={20} color={activeTab === "events" ? "#FF6B6B" : "#666"} />
+            <Text style={[styles.tabText, activeTab === "events" && styles.activeTabText]}>Events</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Posts Grid */}
-        <FlatList
-          data={posts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          scrollEnabled={false}
-          contentContainerStyle={styles.postsGrid}
-        />
+        {activeTab === "posts" ? (
+          <FlatList
+            data={posts}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            scrollEnabled={false}
+            contentContainerStyle={styles.postsGrid}
+          />
+        ) : (
+          <FlatList
+            data={userEvents}
+            renderItem={renderEvent}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+          />
+        )}
       </ScrollView>
       <AppModal
         visible={modal.visible}
@@ -276,6 +350,33 @@ export default function UserProfileScreen({ navigation, route }: any) {
         rightAction={{ label: "OK", onPress: () => setModal({ visible: false }) }}
       >
         <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+      </AppModal>
+
+      <AppModal
+        visible={showMoreOptions}
+        onClose={() => setShowMoreOptions(false)}
+        title="More Options"
+        variant="center"
+        leftAction={{ label: "Close", onPress: () => setShowMoreOptions(false) }}
+      >
+        <View style={{ gap: 12 }}>
+          {!isOwnProfile && (
+            <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleAddBuddy() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="person-add" size={22} color="#333" />
+              <Text style={{ fontSize: 16, color: "#333" }}>Add as Buddy</Text>
+            </TouchableOpacity>
+          )}
+          {!isOwnProfile && (
+            <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleBlockUser() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="block" size={22} color="#F44336" />
+              <Text style={{ fontSize: 16, color: "#F44336" }}>Block User</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleShareProfile() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <MaterialIcons name="share" size={22} color="#333" />
+            <Text style={{ fontSize: 16, color: "#333" }}>Share Profile</Text>
+          </TouchableOpacity>
+        </View>
       </AppModal>
     </SafeAreaView>
   )
@@ -490,6 +591,24 @@ const styles = StyleSheet.create({
   },
   postsGrid: {
     padding: 2,
+  },
+  eventItem: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  eventTitle: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "600",
+    flex: 1,
+  },
+  eventMeta: {
+    marginLeft: 4,
+    fontSize: 13,
+    color: "#666",
   },
   postItem: {
     flex: 1,

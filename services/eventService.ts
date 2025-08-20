@@ -72,6 +72,22 @@ export const eventService = {
     return data || null;
   },
 
+  // Get events created by a specific organizer/user
+  getEventsByOrganizer: async (organizerId: string): Promise<Event[]> => {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('organizer_id', organizerId)
+      .order('date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching events by organizer:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
   // RSVP to event (upsert to avoid needing DELETE policy)
   rsvpToEvent: async (eventId: string, userId: string, status: "going" | "interested" | "not_going"): Promise<void> => {
     const { error } = await supabase

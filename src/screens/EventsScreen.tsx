@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image, TextInput } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { eventService } from "../../services/eventService"
@@ -15,6 +15,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "upcoming" | "today" | "this_week">("all")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const createLiveEventFlow = async () => {
     if (!user) {
@@ -66,6 +67,8 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
+    const lower = searchQuery.trim().toLowerCase()
+
     return events.filter((event) => {
       const eventDate = new Date(event.date)
 
@@ -79,6 +82,20 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         default:
           return true
       }
+    }).filter((ev) => {
+      if (!lower) return true
+      const category = (ev.category || "").toString().toLowerCase()
+      const title = (ev.title || "").toLowerCase()
+      const desc = (ev.description || "").toLowerCase()
+      const location = (ev.location || "").toLowerCase()
+      const tags = Array.isArray(ev.tags) ? ev.tags.join(" ").toLowerCase() : ""
+      return (
+        category.includes(lower) ||
+        title.includes(lower) ||
+        desc.includes(lower) ||
+        location.includes(lower) ||
+        tags.includes(lower)
+      )
     })
   }
 
@@ -171,6 +188,18 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
           <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
         </View>
 
+        <View style={styles.searchBar}>
+          <MaterialIcons name="search" size={20} color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by category, name, or location"
+            placeholderTextColor="#bbb"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
+        </View>
+
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.liveEventButton} onPress={handleLiveEventAction}>
             <MaterialIcons name="videocam" size={24} color="white" />
@@ -250,6 +279,20 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 20,
     paddingHorizontal: 20,
+  },
+  searchBar: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 25,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    color: "white",
   },
   headerContent: {
     marginBottom: 20,
