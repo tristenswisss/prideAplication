@@ -13,6 +13,7 @@ import MessageReactions from "../../components/MessageReactions"
 import MessageThreads from "../../components/MessageThreads"
 import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
+import { useIsFocused } from "@react-navigation/native"
  
 
 interface ChatScreenProps {
@@ -42,6 +43,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: any[] }>({})
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
   const [showAttachModal, setShowAttachModal] = useState(false)
+  const isFocused = useIsFocused()
   
   const [modal, setModal] = useState<
     | { type: "none" }
@@ -69,8 +71,10 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
             <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
             <View>
               <Text style={styles.headerName}>{getConversationName()}</Text>
-              {!conversation.is_group && conversation.participant_profiles?.[0]?.is_online && (
-                <Text style={styles.headerStatus}>Online</Text>
+              {!conversation.is_group && (
+                <Text style={styles.headerStatus}>
+                  {conversation.participant_profiles?.[0]?.is_online ? 'Online' : ''}
+                </Text>
               )}
             </View>
           </View>
@@ -94,17 +98,67 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
   useEffect(() => {
     if (!conversation?.id) return
-    const unsubscribe = realtime.subscribeToMessages(conversation.id, (row: any) => {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === row.id)) return prev
-        return [...prev, row as any]
-      })
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true })
-      }, 100)
+    const unsubscribe = realtime.subscribeToMessageUpdates(conversation.id, {
+      onInsert: async (row: any) => {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === row.id)) return prev
+          return [...prev, row as any]
+        })
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true })
+        }, 100)
+        // Auto-mark as read if viewing this conversation and message is from other user
+        if (isFocused && row.sender_id !== user?.id) {
+          try {
+            await messagingService.markAsRead(conversation.id, [row.id])
+          } catch {}
+        }
+      },
+      onUpdate: (row: any) => {
+        // Update message read status in place
+        setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)))
+      },
     })
     return () => unsubscribe()
-  }, [conversation?.id])
+  }, [conversation?.id, isFocused, user?.id])
+
+  // Subscribe to other participant online status changes in realtime
+  useEffect(() => {
+    if (conversation.is_group) return
+    const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+    if (!other?.id) return
+    const unsubscribe = realtime.subscribeToUserStatus(other.id, (row: any) => {
+      // Update header by mutating participant_profiles is_online
+      conversation.participant_profiles = (conversation.participant_profiles || []).map((p: any) =>
+        p.id === other.id ? { ...p, is_online: !!row.is_online, last_seen: row.last_seen } : p,
+      ) as any
+      // Force re-render header
+      navigation.setOptions({ headerTitle: () => (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            if (!conversation.is_group) {
+              const o = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+              if (o?.id) navigation.navigate("UserProfile", { userId: o.id })
+            }
+          }}
+        >
+          <View style={styles.headerTitle}>
+            <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
+            <View>
+              <Text style={styles.headerName}>{getConversationName()}</Text>
+              {!conversation.is_group && (
+                <Text style={styles.headerStatus}>
+                  {conversation.participant_profiles?.[0]?.is_online ? 'Online' : ''}
+                </Text>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+      )})
+    })
+    return () => unsubscribe()
+  }, [conversation?.id, user?.id])
 
   const loadMessages = async () => {
     try {

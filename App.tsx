@@ -5,6 +5,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { MaterialIcons } from "@expo/vector-icons"
 import { StatusBar } from "expo-status-bar"
 import { View, ActivityIndicator, Image } from "react-native"
+import { useEffect, useMemo, useState } from "react"
+import { realtime } from "./lib/realtime"
+import { messagingService } from "./services/messagingService"
 
 // Contexts
 import { AuthProvider, useAuth } from "./Contexts/AuthContexts"
@@ -148,6 +151,50 @@ function ProfileNavigator() {
 // Main Tab Navigator
 function TabNavigator() {
   const { user } = useAuth()
+  const [unreadTotal, setUnreadTotal] = useState(0)
+  const [convIds, setConvIds] = useState<string[]>([])
+
+  useEffect(() => {
+    let unsubscribers: (() => void)[] = []
+    const load = async () => {
+      if (!user?.id) return
+      const convs = await messagingService.getConversations(user.id)
+      const ids = convs.map((c: any) => c.id)
+      setConvIds(ids)
+      const counts = await messagingService.getConversationUnreadCounts(ids, user.id)
+      const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0)
+      setUnreadTotal(total)
+
+      // Subscribe to message inserts/updates per conversation to keep badge fresh
+      unsubscribers = ids.map((id) =>
+        realtime.subscribeToMessageUpdates(id, {
+          onInsert: async (row: any) => {
+            if (row.sender_id !== user.id) {
+              const c = await messagingService.getUnreadCount(id, user.id)
+              setUnreadTotal((prev) => {
+                // Recompute by summing per conv is safer, but we only know this conv changed.
+                // Trigger a lightweight recompute for robustness.
+                return prev // temporary; recompute below
+              })
+              // Recompute from all known conversation ids
+              const allCounts = await messagingService.getConversationUnreadCounts(ids, user.id)
+              const sum = Object.values(allCounts).reduce((a, b) => a + (b || 0), 0)
+              setUnreadTotal(sum)
+            }
+          },
+          onUpdate: async () => {
+            const allCounts = await messagingService.getConversationUnreadCounts(ids, user.id)
+            const sum = Object.values(allCounts).reduce((a, b) => a + (b || 0), 0)
+            setUnreadTotal(sum)
+          },
+        }),
+      )
+    }
+    load()
+    return () => {
+      unsubscribers.forEach((u) => u())
+    }
+  }, [user?.id])
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -185,7 +232,14 @@ function TabNavigator() {
       <Tab.Screen name="Home" component={HomeNavigator} />
       
       <Tab.Screen name="Events" component={EventsNavigator} />
-      <Tab.Screen name="Community" component={CommunityNavigator} />
+      <Tab.Screen
+        name="Community"
+        component={CommunityNavigator}
+        options={{
+          tabBarBadge: unreadTotal > 0 ? Math.min(unreadTotal, 99) : undefined,
+          tabBarBadgeStyle: { backgroundColor: "#4CAF50", color: "white" },
+        }}
+      />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   )

@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { messagingService } from "../../services/messagingService"
+import { realtime } from "../../lib/realtime"
 import { profileService } from "../../services/profileService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Conversation } from "../../types/messaging"
@@ -35,6 +36,75 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   useEffect(() => {
     loadConversations()
   }, [])
+
+  // Refresh when screen regains focus to reflect read status changes
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadConversations()
+    })
+    return unsubscribe
+  }, [navigation, user?.id])
+
+  // Realtime: new messages update conversations list and unread counts
+  useEffect(() => {
+    if (!user?.id || conversations.length === 0) return
+    const unsubscribers = conversations.map((c) =>
+      realtime.subscribeToMessageUpdates(c.id, {
+        onInsert: async (row: any) => {
+          setConversations((prev) => {
+            const next = prev.map((conv) => (conv.id === c.id ? { ...conv, last_message: row, updated_at: row.sent_at } : conv))
+            return next.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+          })
+          if (row.sender_id !== user.id) {
+            const count = await messagingService.getUnreadCount(c.id, user.id)
+            setConversations((prev) => prev.map((conv) => (conv.id === c.id ? { ...conv, unread_count: count } : conv)))
+          }
+        },
+        onUpdate: async (row: any) => {
+          // When reads happen, refresh unread count for that conversation
+          const count = await messagingService.getUnreadCount(c.id, user.id)
+          setConversations((prev) => prev.map((conv) => (conv.id === c.id ? { ...conv, unread_count: count } : conv)))
+        },
+      }),
+    )
+    return () => {
+      unsubscribers.forEach((u) => u())
+    }
+  }, [conversations.map((c) => c.id).join(':'), user?.id])
+
+  // Realtime: subscribe to presence for other participants and update online dots/last seen
+  useEffect(() => {
+    if (!user?.id || conversations.length === 0) return
+    const otherIds = Array.from(
+      new Set(
+        conversations
+          .filter((c) => !c.is_group)
+          .map((c) => c.participant_profiles?.find((p) => p.id !== user.id)?.id)
+          .filter(Boolean) as string[],
+      ),
+    )
+    if (otherIds.length === 0) return
+
+    const unsubscribers = otherIds.map((oid) =>
+      realtime.subscribeToUserStatus(oid, (row: any) => {
+        setConversations((prev) =>
+          prev.map((conv) => {
+            if (conv.is_group) return conv
+            const other = conv.participant_profiles?.find((p) => p.id !== user.id)
+            if (other?.id !== row.user_id) return conv
+            const updatedProfiles = (conv.participant_profiles || []).map((p) =>
+              p.id === row.user_id ? { ...p, is_online: !!row.is_online, last_seen: row.last_seen } : p,
+            )
+            return { ...conv, participant_profiles: updatedProfiles as any }
+          }),
+        )
+      }),
+    )
+
+    return () => {
+      unsubscribers.forEach((u) => u())
+    }
+  }, [user?.id, conversations.map((c) => (!c.is_group ? c.participant_profiles?.map((p) => p.id).join(':') : c.id)).join('|')])
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -79,7 +149,11 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
         }
         byId.set(conv.id, conv)
       }
-      setConversations(Array.from(byId.values()))
+      const list = Array.from(byId.values())
+      // Fetch initial unread counts for each conversation
+      const counts = await messagingService.getConversationUnreadCounts(list.map((c) => c.id), user.id)
+      const withCounts = list.map((c) => ({ ...c, unread_count: counts[c.id] ?? c.unread_count ?? 0 }))
+      setConversations(withCounts)
     } catch (error) {
       console.error("Error loading conversations:", error)
       Alert.alert("Error", "Failed to load conversations")
@@ -184,7 +258,11 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   const renderConversation = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
       style={styles.conversationItem}
-      onPress={() => navigation.navigate("Chat", { conversation: item })}
+      onPress={() => {
+        // Optimistically clear unread for this conversation
+        setConversations((prev) => prev.map((c) => (c.id === item.id ? { ...c, unread_count: 0 } : c)))
+        navigation.navigate("Chat", { conversation: item })
+      }}
       onLongPress={() => openConversationMenu(item)}
     >
       <View style={styles.avatarContainer}>
@@ -215,7 +293,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
             {item.last_message?.content || "No messages yet"}
           </Text>
           {item.unread_count > 0 && (
-            <View style={styles.unreadBadge}>
+            <View style={styles.unreadBadgeGreen}>
               <Text style={styles.unreadCount}>{item.unread_count > 99 ? "99+" : item.unread_count}</Text>
             </View>
           )}
@@ -441,6 +519,15 @@ const styles = StyleSheet.create({
   },
   unreadBadge: {
     backgroundColor: "#FF6B6B",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  unreadBadgeGreen: {
+    backgroundColor: "#4CAF50",
     borderRadius: 10,
     minWidth: 20,
     height: 20,
