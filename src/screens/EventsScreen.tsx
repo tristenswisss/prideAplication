@@ -277,11 +277,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 40,
-    paddingBottom: 20,
+    paddingBottom: 28,
     paddingHorizontal: 20,
   },
   searchBar: {
-    marginTop: 12,
+    marginTop: 16,
+    marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -315,7 +316,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
-    alignSelf: "flex-start",
+    justifyContent: "center",
+    flex: 1,
+    minWidth: 0,
   },
   createButtonText: {
     marginLeft: 8,
@@ -326,6 +329,9 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginTop: 12,
+    gap: 12,
+    flexWrap: "wrap",
   },
   liveEventButton: {
     flexDirection: "row",
@@ -334,7 +340,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
-    marginRight: 10,
+    justifyContent: "center",
+    flex: 1,
+    minWidth: 0,
   },
   liveEventButtonText: {
     marginLeft: 8,
@@ -346,7 +354,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "white",
     marginHorizontal: 20,
-    marginTop: 10,
+    marginTop: 16,
     borderRadius: 25,
     padding: 4,
   },

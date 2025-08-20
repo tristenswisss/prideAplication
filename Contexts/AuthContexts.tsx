@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
+import { AppState } from "react-native"
 import { auth, supabase } from "../lib/supabase"
 import { profileService } from "../services/profileService"
 import { messagingService } from "../services/messagingService"
@@ -187,6 +188,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       supabase.removeChannel(channel)
+    }
+  }, [user?.id])
+
+  // Keep online status in sync with app foreground/background
+  useEffect(() => {
+    if (!user?.id) return
+    let currentState = AppState.currentState
+    const handleChange = async (nextState: string) => {
+      try {
+        if (currentState.match(/inactive|background/) && nextState === 'active') {
+          await messagingService.updateOnlineStatus(user.id, true)
+        } else if (nextState.match(/inactive|background/)) {
+          await messagingService.updateOnlineStatus(user.id, false)
+        }
+      } catch {}
+      currentState = nextState
+    }
+    const sub = AppState.addEventListener('change', handleChange)
+    return () => {
+      sub.remove()
     }
   }, [user?.id])
 

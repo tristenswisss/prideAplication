@@ -18,6 +18,29 @@ export const realtime = {
     }
   },
 
+  subscribeToMessageUpdates: (
+    conversationId: string,
+    handlers: { onInsert?: (row: any) => void; onUpdate?: (row: any) => void }
+  ): Unsubscribe => {
+    const channel = supabase
+      .channel(`messages:ins-upd:${conversationId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+        (payload) => handlers.onInsert && handlers.onInsert(payload.new),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+        (payload) => handlers.onUpdate && handlers.onUpdate(payload.new),
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  },
+
   subscribeToLiveMessages: (liveEventId: string, onInsert: (row: any) => void): Unsubscribe => {
     const channel = supabase
       .channel(`live_messages:${liveEventId}`)
@@ -68,6 +91,26 @@ export const realtime = {
       .channel("comments:all")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "comments" }, (payload) =>
         onInsert(payload.new),
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  },
+
+  subscribeToUserStatus: (userId: string, onUpdate: (row: any) => void): Unsubscribe => {
+    const channel = supabase
+      .channel(`user_status:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "user_status", filter: `user_id=eq.${userId}` },
+        (payload) => onUpdate(payload.new),
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "user_status", filter: `user_id=eq.${userId}` },
+        (payload) => onUpdate(payload.new),
       )
       .subscribe()
 

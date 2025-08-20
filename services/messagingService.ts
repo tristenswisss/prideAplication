@@ -105,6 +105,28 @@ export const messagingService = {
     return sorted as any
   },
 
+  getUnreadCount: async (conversationId: string, userId: string): Promise<number> => {
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', conversationId)
+      .eq('read', false)
+      .neq('sender_id', userId)
+    if (error) {
+      console.error('Error counting unread messages:', error)
+      return 0
+    }
+    return count || 0
+  },
+
+  getConversationUnreadCounts: async (conversationIds: string[], userId: string): Promise<Record<string, number>> => {
+    const result: Record<string, number> = {}
+    for (const id of conversationIds) {
+      result[id] = await messagingService.getUnreadCount(id, userId)
+    }
+    return result
+  },
+
   // Check whether a user can DM another user:
   // - Not blocked by or blocking the other
   // - Target allows DMs (profiles.allow_direct_messages)
@@ -508,29 +530,19 @@ export const messagingService = {
   },
 
   getUserOnlineStatus: async (userId: string): Promise<{ isOnline: boolean; lastSeen?: string }> => {
-    // In a real app, you would fetch this from a separate "user_status" table or similar
-    // For now, we'll return a default status
-    console.log(`Fetching online status for user ${userId}`);
-    
-    // If you want to fetch this from the database, you could do something like:
-    // const { data, error } = await supabase
-    //   .from('users')
-    //   .select('is_online, last_seen')
-    //   .eq('id', userId)
-    //   .single();
-    
-    // if (error) {
-    //   console.error('Error fetching user status:', error);
-    //   return { isOnline: false };
-    // }
-    
-    // return {
-    //   isOnline: data?.is_online || false,
-    //   lastSeen: data?.last_seen,
-    // };
-    
-    // For now, returning a default response
-    return { isOnline: false };
+    try {
+      const { data, error } = await supabase
+        .from('user_status')
+        .select('is_online, last_seen')
+        .eq('user_id', userId)
+        .single()
+      if (error) {
+        return { isOnline: false }
+      }
+      return { isOnline: !!(data as any)?.is_online, lastSeen: (data as any)?.last_seen || undefined }
+    } catch (e) {
+      return { isOnline: false }
+    }
   },
 
   // Block a user
