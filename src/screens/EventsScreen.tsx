@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image } from "react-native"
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image, TextInput } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { eventService } from "../../services/eventService"
@@ -15,6 +15,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "upcoming" | "today" | "this_week">("all")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const createLiveEventFlow = async () => {
     if (!user) {
@@ -66,6 +67,8 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
+    const lower = searchQuery.trim().toLowerCase()
+
     return events.filter((event) => {
       const eventDate = new Date(event.date)
 
@@ -79,6 +82,14 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         default:
           return true
       }
+    }).filter((ev) => {
+      if (!lower) return true
+      const inTitle = ev.title.toLowerCase().includes(lower)
+      const inDesc = (ev.description || "").toLowerCase().includes(lower)
+      const inLocation = (ev.location || "").toLowerCase().includes(lower)
+      const inTags = Array.isArray(ev.tags) && ev.tags.some((t) => t.toLowerCase().includes(lower))
+      const inCategory = (ev.category || "").toLowerCase().includes(lower)
+      return inTitle || inDesc || inLocation || inTags || inCategory
     })
   }
 
@@ -169,6 +180,19 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Events</Text>
           <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
+        </View>
+
+        {/* Search Input */}
+        <View style={styles.searchContainer}>
+          <MaterialIcons name="search" size={20} color="#fff" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name, category, place or location"
+            placeholderTextColor="#ddd"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
         </View>
 
         <View style={styles.headerButtons}>
@@ -283,6 +307,21 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  searchContainer: {
+    marginTop: 10,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 25,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    color: "white",
   },
   liveEventButton: {
     flexDirection: "row",

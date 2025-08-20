@@ -13,7 +13,7 @@ import MessageReactions from "../../components/MessageReactions"
 import MessageThreads from "../../components/MessageThreads"
 import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
-import VoiceCallWebView from "../../components/VoiceCallWebView"
+// Removed call features
 
 interface ChatScreenProps {
   navigation: any
@@ -42,7 +42,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: any[] }>({})
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
   const [showAttachModal, setShowAttachModal] = useState(false)
-  const [showVoiceCall, setShowVoiceCall] = useState(false)
+  // Removed voice/video call state
   const [modal, setModal] = useState<
     | { type: "none" }
     | { type: "info"; title: string; message: string }
@@ -272,13 +272,6 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     }
     return (
       <View style={styles.headerActions}>
-        {/* Open meeting options (Zoom/Meet) via attach modal */}
-        <TouchableOpacity style={styles.headerAction} onPress={() => setShowVoiceCall(true)}>
-          <MaterialIcons name="call" size={24} color="#4ECDC4" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.headerAction} onPress={() => setShowAttachModal(true)}>
-          <MaterialIcons name="video-call" size={24} color="#4ECDC4" />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.headerAction} onPress={handleMoreActions}>
           <MaterialIcons name="more-vert" size={24} color="#333" />
         </TouchableOpacity>
@@ -306,10 +299,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     })
   }
 
-  const handleStartCall = async (_type: "voice" | "video") => {
-    // Deprecated: open meeting options instead
-    setShowAttachModal(true)
-  }
+  // Removed handleStartCall
 
   const handleOpenThread = (message: Message) => {
     setSelectedThreadMessage(message)
@@ -530,7 +520,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       >
         {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
       </AppModal>
-      <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}>
+      <KeyboardAvoidingView style={styles.keyboardAvoid} behavior={Platform.select({ ios: "padding", android: "padding" }) as any} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}>
         {/* Messages List */}
         <FlatList
           ref={flatListRef}
@@ -633,27 +623,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
             <MaterialIcons name="attach-file" size={24} color="#4ECDC4" />
             <Text style={styles.optionText}>Document</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); Linking.openURL('https://meet.google.com') }}>
-            <MaterialIcons name="video-call" size={24} color="#4ECDC4" />
-            <Text style={styles.optionText}>Open Google Meet</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); Linking.openURL('https://zoom.us') }}>
-            <MaterialIcons name="videocam" size={24} color="#4ECDC4" />
-            <Text style={styles.optionText}>Open Zoom</Text>
-          </TouchableOpacity>
         </View>
       </AppModal>
 
-      {/* Voice Call Modal (WebView Peer P2P) */}
-      {showVoiceCall && (
-        <Modal visible animationType="slide" presentationStyle="fullScreen">
-          <VoiceCallWebView
-            roomId={`conv_${conversation.id}`}
-            isHost={(user?.id || "") < (conversation.participant_profiles?.[0]?.id || "z")}
-            onClose={() => setShowVoiceCall(false)}
-          />
-        </Modal>
-      )}
     </SafeAreaView>
   )
 }
@@ -843,7 +815,7 @@ const styles = StyleSheet.create({
   textInput: {
     fontSize: 16,
     color: "#333",
-    textAlignVertical: "center",
+    textAlignVertical: "top",
     minHeight: 24,
   },
   imagePreviewContainer: {

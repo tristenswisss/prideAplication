@@ -1,24 +1,29 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, ScrollView } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, ScrollView, Share, Alert } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { socialService } from "../../services/socialService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Post, UserProfile } from "../../types/social"
 import AppModal from "../../components/AppModal"
+import { eventService } from "../../services/eventService"
+import { buddySystemService } from "../../services/buddySystemService"
+import { messagingService } from "../../services/messagingService"
+import { supabase } from "../../lib/supabase"
 
 export default function UserProfileScreen({ navigation, route }: any) {
   const { userId } = route.params
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
-  const [activeTab, setActiveTab] = useState<"posts" | "media" | "likes">("posts")
+  const [activeTab, setActiveTab] = useState<"posts" | "events" | "likes">("posts")
   const [isFollowing, setIsFollowing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState<{ visible: boolean; title?: string; message?: string }>(
     { visible: false },
   )
+  const [userEvents, setUserEvents] = useState<any[]>([])
 
   const { user: currentUser } = useAuth()
   const isOwnProfile = currentUser?.id === userId
@@ -26,6 +31,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
   useEffect(() => {
     loadProfile()
     loadUserPosts()
+    loadUserEvents()
   }, [userId])
 
   const loadProfile = async () => {
@@ -76,6 +82,13 @@ export default function UserProfileScreen({ navigation, route }: any) {
     }
   }
 
+  const loadUserEvents = async () => {
+    try {
+      const list = await eventService.getEventsByOrganizer(userId)
+      setUserEvents(list)
+    } catch {}
+  }
+
   const handleFollow = async () => {
     if (!currentUser) return
 
@@ -94,6 +107,35 @@ export default function UserProfileScreen({ navigation, route }: any) {
       console.error("Error following/unfollowing user:", error)
       setModal({ visible: true, title: "Error", message: "Failed to update follow status" })
     }
+  }
+
+  const handleMessage = async () => {
+    try {
+      if (!currentUser || !profile?.id) return
+      const conversation = await messagingService.getOrCreateDirectConversation(currentUser.id, profile.id)
+      navigation.navigate("Chat", { conversation })
+    } catch (e: any) {
+      const reason = e?.message || "not_allowed"
+      if (reason === "blocked") Alert.alert("Cannot message", "You cannot message this user.")
+      else if (reason === "dms_disabled") Alert.alert("Cannot message", "This user has disabled DMs.")
+      else Alert.alert("Error", "Failed to start conversation")
+    }
+  }
+
+  const handleMore = async () => {
+    if (!currentUser || !profile?.id) return
+    Alert.alert("Actions", "Select an action", [
+      { text: "Add as Buddy", onPress: async () => {
+        try { await buddySystemService.sendBuddyRequest(currentUser.id, profile.id, "Let's connect!"); Alert.alert("Request sent") } catch { Alert.alert("Failed to send request") }
+      }},
+      { text: "Block", style: "destructive", onPress: async () => {
+        try { await supabase.from('blocked_users').insert({ user_id: currentUser.id, blocked_user_id: profile.id }); Alert.alert("User blocked") } catch { Alert.alert("Failed to block user") }
+      }},
+      { text: "Share Profile", onPress: async () => {
+        try { await Share.share({ message: `Check out ${profile.name}'s profile` }) } catch {}
+      }},
+      { text: "Cancel", style: "cancel" }
+    ])
   }
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -138,7 +180,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
           <MaterialIcons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{profile.name}</Text>
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity style={styles.moreButton} onPress={handleMore}>
           <MaterialIcons name="more-vert" size={24} color="#333" />
         </TouchableOpacity>
       </View>
@@ -224,7 +266,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
                       {isFollowing ? "Following" : "Follow"}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.messageButton}>
+                  <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
                     <MaterialIcons name="message" size={20} color="#4ECDC4" />
                   </TouchableOpacity>
                 </>
@@ -243,11 +285,11 @@ export default function UserProfileScreen({ navigation, route }: any) {
             <Text style={[styles.tabText, activeTab === "posts" && styles.activeTabText]}>Posts</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === "media" && styles.activeTab]}
-            onPress={() => setActiveTab("media")}
+            style={[styles.tab, activeTab === "events" && styles.activeTab]}
+            onPress={() => setActiveTab("events")}
           >
-            <MaterialIcons name="photo" size={20} color={activeTab === "media" ? "#FF6B6B" : "#666"} />
-            <Text style={[styles.tabText, activeTab === "media" && styles.activeTabText]}>Media</Text>
+            <MaterialIcons name="event" size={20} color={activeTab === "events" ? "#FF6B6B" : "#666"} />
+            <Text style={[styles.tabText, activeTab === "events" && styles.activeTabText]}>Events</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === "likes" && styles.activeTab]}
@@ -258,15 +300,39 @@ export default function UserProfileScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Posts Grid */}
-        <FlatList
-          data={posts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          scrollEnabled={false}
-          contentContainerStyle={styles.postsGrid}
-        />
+        {activeTab === "posts" && (
+          <FlatList
+            data={posts}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            scrollEnabled={false}
+            contentContainerStyle={styles.postsGrid}
+          />
+        )}
+        {activeTab === "events" && (
+          <FlatList
+            data={userEvents}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={styles.eventItem} onPress={() => navigation.navigate("EventDetails", { event: item })}>
+                {item.image_url ? (
+                  <Image source={{ uri: item.image_url }} style={styles.eventImage} />
+                ) : (
+                  <View style={[styles.eventImage, { backgroundColor: "#f0f0f0", alignItems: "center", justifyContent: "center" }]}>
+                    <MaterialIcons name="event" size={28} color="#ccc" />
+                  </View>
+                )}
+                <View style={styles.eventInfoRow}>
+                  <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.eventMeta} numberOfLines={1}>{new Date(item.date).toLocaleDateString()} • {item.location}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            contentContainerStyle={styles.eventsList}
+          />
+        )}
       </ScrollView>
       <AppModal
         visible={modal.visible}
@@ -535,9 +601,48 @@ const styles = StyleSheet.create({
     color: "white",
     marginLeft: 2,
   },
+  eventsList: {
+    paddingHorizontal: 6,
+    paddingTop: 8,
+  },
+  eventItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 10,
+    marginHorizontal: 6,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+  },
+  eventImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  eventInfoRow: {
+    flex: 1,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  eventMeta: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+  },
   loadingContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
 })
+
+"use client"
+
+import { useState, useEffect } from "react"
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, ScrollView, Share, Alert } from "react-native"

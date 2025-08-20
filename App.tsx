@@ -14,7 +14,7 @@ import { OfflineProvider } from "./Contexts/OfflineContext"
 import AuthScreen from "./src/screens/AuthScreen"
 import LoadingScreen from "./src/screens/LoadingScreen"
 import HomeScreen from "./src/screens/HomeScreen"
-import SearchScreen from "./src/screens/SearchScreen"
+// Removed standalone SearchScreen
 import EventsScreen from "./src/screens/EventsScreen"
 import CommunityScreen from "./src/screens/CommunityScreen"
 import ProfileScreen from "./src/screens/ProfileScreen"
@@ -48,7 +48,6 @@ import type {
   AuthStackParamList,
   MainTabParamList,
   HomeStackParamList,
-  SearchStackParamList,
   EventsStackParamList,
   CommunityStackParamList,
   ProfileStackParamList,
@@ -58,7 +57,7 @@ const RootStack = createStackNavigator<RootStackParamList>()
 const AuthStack = createStackNavigator<AuthStackParamList>()
 const Tab = createBottomTabNavigator<MainTabParamList>()
 const HomeStack = createStackNavigator<HomeStackParamList>()
-const SearchStack = createStackNavigator<SearchStackParamList>()
+// Removed Search stack
 const EventsStack = createStackNavigator<EventsStackParamList>()
 const CommunityStack = createStackNavigator<CommunityStackParamList>()
 const ProfileStack = createStackNavigator<ProfileStackParamList>()
@@ -89,20 +88,7 @@ function HomeNavigator() {
   )
 }
 
-// Search Stack Navigator
-function SearchNavigator() {
-  return (
-    <SearchStack.Navigator>
-      <SearchStack.Screen name="SearchMain" component={SearchScreen} options={{ headerShown: false }} />
-      <SearchStack.Screen
-        name="BusinessDetails"
-        component={BusinessDetailScreen}
-        options={{ title: "Business Details" }}
-      />
-      <SearchStack.Screen name="WriteReview" component={WriteReviewScreen} options={{ title: "Write Review" }} />
-    </SearchStack.Navigator>
-  )
-}
+// Removed SearchNavigator
 
 // Events Stack Navigator
 function EventsNavigator() {
@@ -181,9 +167,7 @@ function TabNavigator() {
             case "Home":
               iconName = "home"
               break
-            case "Search":
-              iconName = "search"
-              break
+            
             case "Events":
               iconName = "event"
               break
@@ -201,7 +185,7 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
-      <Tab.Screen name="Search" component={SearchNavigator} />
+      
       <Tab.Screen name="Events" component={EventsNavigator} />
       <Tab.Screen name="Community" component={CommunityNavigator} />
       <Tab.Screen name="Profile" component={ProfileNavigator} />

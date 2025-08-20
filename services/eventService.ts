@@ -18,6 +18,22 @@ export const eventService = {
     return data || [];
   },
 
+  // Get events created by a specific organizer
+  getEventsByOrganizer: async (organizerId: string): Promise<Event[]> => {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('organizer_id', organizerId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching events by organizer:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
   // Get events by category
   getEventsByCategory: async (category: string): Promise<Event[]> => {
     if (category === "all") {

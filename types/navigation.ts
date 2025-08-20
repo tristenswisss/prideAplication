@@ -16,7 +16,7 @@ export type RootStackParamList = {
   LiveEvent: { liveEvent: LiveEvent }
   CreateEvent: undefined
   EditProfile: undefined
-  Search: undefined
+  
   WriteReview: { business: Business }
   HelpSupport: undefined
   PrivacySafety: undefined
@@ -32,7 +32,6 @@ export type AuthStackParamList = {
 // Main Tab Navigator
 export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>
-  Search: NavigatorScreenParams<SearchStackParamList>
   Community: NavigatorScreenParams<CommunityStackParamList>
   Events: NavigatorScreenParams<EventsStackParamList>
   Messages: NavigatorScreenParams<MessagesStackParamList>
@@ -49,12 +48,7 @@ export type HomeStackParamList = {
   SuggestSafeSpace: undefined
 }
 
-// Search Stack
-export type SearchStackParamList = {
-  SearchMain: undefined
-  BusinessDetails: { business: Business }
-  WriteReview: { business: Business }
-}
+// Removed Search Stack
 
 // Community Stack
 export type CommunityStackParamList = {
