@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Animated } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEffect, useRef } from "react"
 import { useAuth } from "../../Contexts/AuthContexts"
+import { storage, STORAGE_KEYS } from "../../lib/storage"
  
 import type { AuthStackScreenProps } from "../../types/navigation"
 import { Image } from 'react-native';
@@ -12,6 +13,15 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps<"Load
   const bounceValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
+    // Clear any cached mock data for businesses and events on startup
+    const clearMockCaches = async () => {
+      try {
+        await storage.removeCacheItem(STORAGE_KEYS.BUSINESSES)
+        await storage.removeCacheItem(STORAGE_KEYS.EVENTS)
+      } catch {}
+    }
+    clearMockCaches()
+
     // Start bouncing animation
     Animated.loop(
       Animated.sequence([

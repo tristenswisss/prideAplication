@@ -74,6 +74,18 @@ export const storage = {
 }
 ,
 
+  // Remove one cache item by key
+  removeCacheItem: async (key: string): Promise<void> =>
+{
+  try {
+    await AsyncStorage.removeItem(`cache_${key}`)
+  } catch (error) {
+    console.error(`Error removing cached ${key}:`, error)
+  }
+  
+}
+,
+
   // Clear all cache
   clearCache: async (): Promise<void> =>
 {
