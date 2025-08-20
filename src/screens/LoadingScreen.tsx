@@ -2,9 +2,7 @@ import { View, Text, StyleSheet, Animated } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEffect, useRef } from "react"
 import { useAuth } from "../../Contexts/AuthContexts"
-import { storage, STORAGE_KEYS } from "../../lib/storage"
-import { mockBusinesses } from "../../data/mockBusinesses"
-import { mockEvents } from "../../data/mockEvents"
+ 
 import type { AuthStackScreenProps } from "../../types/navigation"
 import { Image } from 'react-native';
 
@@ -14,21 +12,6 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps<"Load
   const bounceValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    // Initialize mock data in cache
-    const initializeMockData = async () => {
-      try {
-        // Store mock businesses in cache
-        await storage.setCacheItem(STORAGE_KEYS.BUSINESSES, mockBusinesses, 60);
-        
-        // Store mock events in cache
-        await storage.setCacheItem(STORAGE_KEYS.EVENTS, mockEvents, 60);
-      } catch (error) {
-        console.error("Error initializing mock data:", error);
-      }
-    };
-    
-    initializeMockData();
-
     // Start bouncing animation
     Animated.loop(
       Animated.sequence([
