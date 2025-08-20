@@ -38,6 +38,13 @@ fi
 
 echo "Creating PR from $CURRENT_BRANCH -> $BASE_BRANCH ..."
 
+# Ensure there are changes compared to base
+git fetch origin "$BASE_BRANCH" >/dev/null 2>&1 || true
+if git diff --quiet --exit-code "origin/$BASE_BRANCH"...HEAD; then
+  echo "Error: No changes to open a PR against '$BASE_BRANCH'. Commit your changes and push, then re-run."
+  exit 1
+fi
+
 # Create or reuse existing PR
 set +e
 EXISTING_URL=$(gh pr view --json url --jq .url 2>/dev/null)
