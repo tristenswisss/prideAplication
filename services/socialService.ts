@@ -38,16 +38,16 @@ export interface SocialService {
 
 export const socialService: SocialService = {
   // Get posts for feed
-  getPosts: async (userId?: string): Promise<Post[]> => {
+  getPosts: async (currentUserId?: string): Promise<Post[]> => {
     try {
       // Fetch blocked users and hidden posts for current user (to filter client-side)
       let blockedUserIds: string[] = []
       let hiddenPostIds: string[] = []
 
-      if (userId) {
+      if (currentUserId) {
         const [{ data: blockedData, error: blockedError }, { data: hiddenData, error: hiddenError }] = await Promise.all([
-          supabase.from("blocked_users").select("blocked_user_id").eq("user_id", userId),
-          supabase.from("hidden_posts").select("post_id").eq("user_id", userId),
+          supabase.from("blocked_users").select("blocked_user_id").eq("user_id", currentUserId),
+          supabase.from("hidden_posts").select("post_id").eq("user_id", currentUserId),
         ])
 
         if (!blockedError && Array.isArray(blockedData)) {
@@ -100,8 +100,8 @@ export const socialService: SocialService = {
 
       // Apply client-side filtering for hidden posts and blocked users
       const filtered = mapped.filter((p: Post) => {
-        const isHidden = userId ? hiddenPostIds.includes(p.id) : false
-        const isByBlockedUser = userId ? blockedUserIds.includes(p.user_id) : false
+        const isHidden = currentUserId ? hiddenPostIds.includes(p.id) : false
+        const isByBlockedUser = currentUserId ? blockedUserIds.includes(p.user_id) : false
         return !isHidden && !isByBlockedUser
       })
 

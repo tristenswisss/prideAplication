@@ -9,6 +9,7 @@ import { useAuth } from "../../Contexts/AuthContexts"
 import { eventService } from "../../services/eventService"
 import { messagingService } from "../../services/messagingService"
 import { supabase } from "../../lib/supabase"
+import { profileService } from "../../services/profileService"
 import type { Post, UserProfile } from "../../types/social"
 import AppModal from "../../components/AppModal"
 
@@ -37,21 +38,54 @@ export default function UserProfileScreen({ navigation, route }: any) {
   const loadProfile = async () => {
     try {
       setLoading(true)
-      // Fallback: derive profile from first post author or stub
-      const userPosts = await socialService.getPosts(userId)
-      setPosts(userPosts)
-      const first = userPosts[0]?.user
-      if (first) {
-        // Honor privacy: if show_profile is false and not own profile, block view
-        const canView = isOwnProfile || (first as any).show_profile !== false
-        setProfile(canView ? first : {
-          ...first,
-          name: "Private Profile",
-          bio: "This profile is private",
-          interests: [],
-          avatar_url: first?.avatar_url,
-        } as any)
+      // Fetch canonical profile from DB
+      const result = await profileService.getProfile(userId)
+      if (result.success && result.data) {
+        const dbUser: any = result.data
+        const prof = Array.isArray(dbUser.profiles) ? dbUser.profiles[0] : dbUser.profiles
+        // Fetch presence if available
+        const { data: statusRows } = await supabase
+          .from('user_status')
+          .select('is_online, last_seen')
+          .eq('user_id', userId)
+          .limit(1)
+        const isOnline = Array.isArray(statusRows) && statusRows[0]?.is_online ? true : false
+
+        const full: UserProfile = {
+          id: dbUser.id,
+          email: dbUser.email || "",
+          name: dbUser.name || "User",
+          username: prof?.username,
+          avatar_url: dbUser.avatar_url || undefined,
+          cover_image_url: dbUser.cover_image_url || undefined,
+          bio: dbUser.bio || undefined,
+          pronouns: dbUser.pronouns || undefined,
+          location: dbUser.location || undefined,
+          interests: Array.isArray(dbUser.interests) ? dbUser.interests : [],
+          verified: !!dbUser.verified,
+          follower_count: Number(dbUser.follower_count || 0),
+          following_count: Number(dbUser.following_count || 0),
+          post_count: Number(dbUser.post_count || 0),
+          is_online: isOnline,
+          created_at: dbUser.created_at,
+          show_profile: prof?.show_profile,
+          show_activities: prof?.show_activities,
+          appear_in_search: prof?.appear_in_search,
+          allow_direct_messages: prof?.allow_direct_messages,
+        }
+        // Honor privacy settings if viewing someone else
+        if (!isOwnProfile && full.show_profile === false) {
+          setProfile({
+            ...full,
+            name: "Private Profile",
+            bio: "This profile is private",
+            interests: [],
+          })
+        } else {
+          setProfile(full)
+        }
       } else {
+        // Fallback stub when profile missing
         setProfile({
           id: userId,
           email: "",
@@ -75,8 +109,10 @@ export default function UserProfileScreen({ navigation, route }: any) {
 
   const loadUserPosts = async () => {
     try {
-      const userPosts = await socialService.getPosts(userId)
-      setPosts(userPosts)
+      const userPosts = await socialService.getPosts()
+      // Filter to posts authored by this user
+      const filtered = (userPosts || []).filter((p) => p.user_id === userId)
+      setPosts(filtered)
     } catch (error) {
       console.error("Error loading user posts:", error)
     }
@@ -90,6 +126,27 @@ export default function UserProfileScreen({ navigation, route }: any) {
       // ignore
     }
   }
+
+  // Realtime refresh when the viewed user's profile changes
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel(`user-profile:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${userId}` },
+        () => loadProfile(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        () => loadProfile(),
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
 
   const handleFollow = async () => {
     if (!currentUser) return
