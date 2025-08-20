@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { messagingService } from "../../services/messagingService"
+import { events } from "../../lib/events"
 import { realtime } from "../../lib/realtime"
 import { profileService } from "../../services/profileService"
 import { useAuth } from "../../Contexts/AuthContexts"
@@ -64,6 +65,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           // When reads happen, refresh unread count for that conversation
           const count = await messagingService.getUnreadCount(c.id, user.id)
           setConversations((prev) => prev.map((conv) => (conv.id === c.id ? { ...conv, unread_count: count } : conv)))
+          events.emit('unreadCountsChanged', undefined as any)
         },
       }),
     )
@@ -261,6 +263,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       onPress={() => {
         // Optimistically clear unread for this conversation
         setConversations((prev) => prev.map((c) => (c.id === item.id ? { ...c, unread_count: 0 } : c)))
+        events.emit('conversationOpened', { conversationId: item.id })
         navigation.navigate("Chat", { conversation: item })
       }}
       onLongPress={() => openConversationMenu(item)}

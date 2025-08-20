@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { AppState } from "react-native"
+import { AppState, AppStateStatus } from "react-native"
 import { auth, supabase } from "../lib/supabase"
 import { profileService } from "../services/profileService"
 import { messagingService } from "../services/messagingService"
@@ -194,12 +194,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Keep online status in sync with app foreground/background
   useEffect(() => {
     if (!user?.id) return
-    let currentState = AppState.currentState
-    const handleChange = async (nextState: string) => {
+    let currentState: AppStateStatus = AppState.currentState as AppStateStatus
+    const handleChange = async (nextState: AppStateStatus) => {
       try {
-        if (currentState.match(/inactive|background/) && nextState === 'active') {
+        if ((currentState === 'inactive' || currentState === 'background') && nextState === 'active') {
           await messagingService.updateOnlineStatus(user.id, true)
-        } else if (nextState.match(/inactive|background/)) {
+        } else if (nextState === 'inactive' || nextState === 'background') {
           await messagingService.updateOnlineStatus(user.id, false)
         }
       } catch {}
