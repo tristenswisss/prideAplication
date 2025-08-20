@@ -1,0 +1,45 @@
+name: Auto PR and Squash Merge
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up GitHub CLI
+        uses: cli/gh-actions@v2
+      - name: Create or update PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH=$(echo "${GITHUB_REF#refs/heads/}")
+          if [[ "$BRANCH" == "main" || "$BRANCH" == "master" ]]; then
+            echo "Skipping for base branch"
+            exit 0
+          fi
+          TITLE=$(echo "$BRANCH" | sed -E 's/[-_]+/ /g; s#^.*/##; s/\b([a-z])/\U\1/g')
+          BODY="Automated PR for $BRANCH"
+          set +e
+          URL=$(gh pr view --json url --jq .url 2>/dev/null)
+          set -e
+          if [[ -z "$URL" ]]; then
+            URL=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$BODY" --fill --json url --jq .url)
+            echo "PR created: $URL"
+          else
+            echo "PR exists: $URL"
+          fi
+          echo "Attempting to enable auto-merge (squash)"
+          set +e
+          gh pr merge --squash --auto
+          if [[ $? -ne 0 ]]; then
+            echo "Auto-merge could not be enabled. Ensure repository settings allow it."
+          fi
+
