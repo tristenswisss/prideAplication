@@ -8,6 +8,7 @@ import { View, ActivityIndicator, Image } from "react-native"
 import { useEffect, useMemo, useState } from "react"
 import { realtime } from "./lib/realtime"
 import { messagingService } from "./services/messagingService"
+import { events } from "./lib/events"
 
 // Contexts
 import { AuthProvider, useAuth } from "./Contexts/AuthContexts"
@@ -189,6 +190,25 @@ function TabNavigator() {
           },
         }),
       )
+
+      // Also listen for local app events to refresh badge immediately
+      const offOpen = events.on('conversationOpened', async ({ conversationId }) => {
+        try {
+          // Optimistically zero this conversation and recompute from server to avoid drift
+          const allCounts = await messagingService.getConversationUnreadCounts(ids, user.id)
+          allCounts[conversationId] = 0
+          const sum = Object.values(allCounts).reduce((a, b) => a + (b || 0), 0)
+          setUnreadTotal(sum)
+        } catch {}
+      })
+      const offUnread = events.on('unreadCountsChanged', async () => {
+        try {
+          const allCounts = await messagingService.getConversationUnreadCounts(ids, user.id)
+          const sum = Object.values(allCounts).reduce((a, b) => a + (b || 0), 0)
+          setUnreadTotal(sum)
+        } catch {}
+      })
+      unsubscribers.push(offOpen, offUnread)
     }
     load()
     return () => {

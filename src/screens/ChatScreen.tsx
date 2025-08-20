@@ -14,6 +14,7 @@ import MessageThreads from "../../components/MessageThreads"
 import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
 import { useIsFocused } from "@react-navigation/native"
+import { events } from "../../lib/events"
  
 
 interface ChatScreenProps {
@@ -111,6 +112,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         if (isFocused && row.sender_id !== user?.id) {
           try {
             await messagingService.markAsRead(conversation.id, [row.id])
+            events.emit('unreadCountsChanged', undefined as any)
           } catch {}
         }
       },
@@ -170,6 +172,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       const unreadMessageIds = data.filter((msg) => !msg.read && msg.sender_id !== user?.id).map((msg) => msg.id)
       if (unreadMessageIds.length > 0) {
         await messagingService.markAsRead(conversation.id, unreadMessageIds)
+        events.emit('unreadCountsChanged', undefined as any)
       }
     } catch (error) {
       console.error("Error loading messages:", error)

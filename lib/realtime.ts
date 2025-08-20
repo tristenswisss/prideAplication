@@ -11,6 +11,11 @@ export const realtime = {
         { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
         (payload) => onInsert(payload.new),
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+        (payload) => onInsert(payload.new),
+      )
       .subscribe()
 
     return () => {
