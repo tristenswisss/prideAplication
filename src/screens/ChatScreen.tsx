@@ -124,6 +124,20 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     return () => unsubscribe()
   }, [conversation?.id, isFocused, user?.id])
 
+  // Ensure unread are cleared when leaving the chat (e.g., back navigation)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', async () => {
+      try {
+        const unreadIds = messages.filter((m) => !m.read && m.sender_id !== user?.id).map((m) => m.id)
+        if (unreadIds.length > 0) {
+          await messagingService.markAsRead(conversation.id, unreadIds)
+        }
+        events.emit('unreadCountsChanged', undefined as any)
+      } catch {}
+    })
+    return unsubscribe
+  }, [navigation, messages.map((m) => `${m.id}:${m.read ? '1' : '0'}`).join('|'), user?.id])
+
   // Subscribe to other participant online status changes in realtime
   useEffect(() => {
     if (conversation.is_group) return

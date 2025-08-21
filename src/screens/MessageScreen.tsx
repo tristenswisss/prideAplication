@@ -129,6 +129,14 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     return () => clearTimeout(t)
   }, [searchQuery, user?.id])
 
+  // Refresh conversations when unread counts change elsewhere (e.g., leaving a chat)
+  useEffect(() => {
+    const off = events.on('unreadCountsChanged', () => {
+      loadConversations()
+    })
+    return () => off()
+  }, [user?.id])
+
   const loadConversations = async () => {
     if (!user) return
 
