@@ -62,9 +62,10 @@
         "expo-notifications",
         {
           "icon": "./assets/logoM.png",
-          "color": "#FF6B6B"          
+          "color": "#FF6B6B"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
