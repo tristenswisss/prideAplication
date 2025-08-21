@@ -182,6 +182,22 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     }
   }
 
+  // Mark messages as read when they become viewable
+  const viewabilityConfig = { itemVisiblePercentThreshold: 60 }
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<any> }) => {
+    try {
+      const unreadIds = viewableItems
+        .map((vi) => vi?.item)
+        .filter((m: any) => m && !m.read && m.sender_id !== user?.id)
+        .map((m: any) => m.id)
+      if (unreadIds.length > 0) {
+        messagingService.markAsRead(conversation.id, unreadIds).then(() => {
+          events.emit('unreadCountsChanged', undefined as any)
+        }).catch(() => {})
+      }
+    } catch {}
+  }).current
+
   const handleSendMessage = async () => {
     if ((!newMessage.trim() && !selectedImage && !selectedFile) || !user || sending) return
 
@@ -588,6 +604,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           contentContainerStyle={styles.messagesContent}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
           ListEmptyComponent={
             <View style={styles.emptyMessages}>
               <Image source={{ uri: getConversationAvatar() }} style={styles.emptyAvatar} />

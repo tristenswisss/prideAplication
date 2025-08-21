@@ -80,7 +80,18 @@ export const businessService = {
 
       // Apply category filter
       if (params.category && params.category !== "all") {
-        query = query.eq("category", params.category)
+        // Normalize some UI categories to backend categories
+        const map: Record<string, string> = {
+          finance: "organization",
+          service: "organization",
+          hotel: "other",
+          bar: "restaurant",
+          shopping: "other",
+          education: "organization",
+          entertainment: "other",
+        }
+        const category = map[params.category] || params.category
+        query = query.eq("category", category)
       }
 
       // Apply filters
@@ -149,10 +160,22 @@ export const businessService = {
         return businessService.getBusinesses()
       }
 
+      // Normalize some UI categories to backend categories
+      const map: Record<string, string> = {
+        finance: "organization",
+        service: "organization",
+        hotel: "other",
+        bar: "restaurant",
+        shopping: "other",
+        education: "organization",
+        entertainment: "other",
+      }
+      const normalized = map[category] || category
+
       const { data, error } = await supabase
         .from("businesses")
         .select("*")
-        .eq("category", category)
+        .eq("category", normalized)
         .order("rating", { ascending: false })
 
       if (error) {

@@ -382,6 +382,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
 
         {activeTab === "posts" ? (
           <FlatList
+            key="posts-grid-3"
             data={posts}
             renderItem={renderPost}
             keyExtractor={(item) => item.id}
@@ -391,6 +392,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
           />
         ) : (
           <FlatList
+            key="events-list-1"
             data={userEvents}
             renderItem={renderEvent}
             keyExtractor={(item) => item.id}
