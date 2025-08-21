@@ -1,19 +1,13 @@
 import { View, Text, StyleSheet, Animated } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEffect, useRef } from "react"
-import { useAuth } from "../../Contexts/AuthContexts"
 import { storage, STORAGE_KEYS } from "../../lib/storage"
- 
-import type { AuthStackScreenProps } from "../../types/navigation"
 import { Image } from 'react-native';
 
-
-export default function LoadingScreen({ navigation }: AuthStackScreenProps<"Loading">) {
-  const { user, loading } = useAuth()
+export default function LoadingScreen() {
   const bounceValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    // Clear any cached mock data for businesses and events on startup
     const clearMockCaches = async () => {
       try {
         await storage.removeCacheItem(STORAGE_KEYS.BUSINESSES)
@@ -22,7 +16,6 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps<"Load
     }
     clearMockCaches()
 
-    // Start bouncing animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(bounceValue, {
@@ -37,26 +30,7 @@ export default function LoadingScreen({ navigation }: AuthStackScreenProps<"Load
         }),
       ])
     ).start()
-
-    // Check if user is authenticated
-    const checkAuthAndNavigate = async () => {
-      // Wait for a minimum time to show the animation
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      if (!loading) {
-        // If user is authenticated, navigate to main app
-        if (user) {
-          // Navigate to the main app through the root navigator
-          navigation.getParent()?.navigate("Main")
-        } else {
-          // If user is not authenticated, navigate to sign-in screen within the Auth stack
-          navigation.navigate("SignIn")
-        }
-      }
-    };
-    
-    checkAuthAndNavigate();
-  }, [user, loading, navigation, bounceValue])
+  }, [bounceValue])
 
   const bounce = bounceValue.interpolate({
     inputRange: [0, 1],

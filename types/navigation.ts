@@ -24,7 +24,6 @@ export type RootStackParamList = {
 
 // Auth Stack Navigator (for Loading/Auth flow inside a stack)
 export type AuthStackParamList = {
-  Loading: undefined
   SignIn: undefined
 }
 
