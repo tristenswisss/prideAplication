@@ -3,6 +3,7 @@ type Handler<T = any> = (event: T) => void
 type EventMap = {
   conversationOpened: { conversationId: string }
   unreadCountsChanged: void
+  conversationClosed: { conversationId: string }
 }
 
 class SimpleEventBus {
