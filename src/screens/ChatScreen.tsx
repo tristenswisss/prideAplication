@@ -133,6 +133,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           await messagingService.markAsRead(conversation.id, unreadIds)
         }
         events.emit('unreadCountsChanged', undefined as any)
+        events.emit('conversationClosed', { conversationId: conversation.id })
       } catch {}
     })
     return unsubscribe

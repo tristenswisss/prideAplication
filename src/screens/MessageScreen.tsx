@@ -134,7 +134,14 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     const off = events.on('unreadCountsChanged', () => {
       loadConversations()
     })
-    return () => off()
+    const offClosed = events.on('conversationClosed', ({ conversationId }) => {
+      // Optimistically zero this conversation's unread count in the local list
+      setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
+    })
+    return () => {
+      off()
+      offClosed()
+    }
   }, [user?.id])
 
   const loadConversations = async () => {
