@@ -67,8 +67,7 @@ const ProfileStack = createStackNavigator<ProfileStackParamList>()
 // Auth Stack Navigator
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-      <AuthStack.Screen name="Loading" component={LoadingScreen} />
+    <AuthStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="SignIn">
       <AuthStack.Screen name="SignIn" component={AuthScreen} />
     </AuthStack.Navigator>
   )
