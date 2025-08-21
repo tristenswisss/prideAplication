@@ -4,7 +4,7 @@
     "slug": "Mirae-safeplaces",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logoM.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "platforms": [
       "ios",
@@ -12,7 +12,7 @@
       "web"
     ],
     "splash": {
-      "image": "./assets/logoM.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FF6B6B"
     },
@@ -30,7 +30,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logoM.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FF6B6B"
       },
       "package": "com.mirae.safeplaces",
@@ -48,7 +48,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/logoM.png",
+      "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
