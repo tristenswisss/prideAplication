@@ -255,6 +255,10 @@ function TabNavigator() {
       <Tab.Screen
         name="Community"
         component={CommunityNavigator}
+        options={{
+          tabBarBadge: unreadTotal > 0 ? Math.min(unreadTotal, 99) : undefined,
+          tabBarBadgeStyle: { backgroundColor: "#4CAF50", color: "white" },
+        }}
       />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
