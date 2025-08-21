@@ -53,7 +53,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   ]
 
   useEffect(() => {
-    loadBusinesses()
+    // Fetch fresh first to avoid stale cache hiding DB data
+    loadBusinesses(true)
     getCurrentLocation()
   }, [])
 
@@ -84,10 +85,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     }
   }
 
-  const loadBusinesses = async () => {
+  const loadBusinesses = async (fresh = false) => {
     try {
       setLoading(true)
-      const response = await businessService.getBusinesses()
+      const response = fresh ? await businessService.getBusinessesFresh() : await businessService.getBusinesses()
 
       if (response.success && response.businesses) {
         setBusinesses(response.businesses)
@@ -116,14 +117,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           filtered = response.businesses
         }
       } else {
-        // Filter from already loaded list for snappy UX
         if (selectedCategory === "all") {
           filtered = businesses
         } else {
-          const selectedLower = selectedCategory.toLowerCase()
-          filtered = businesses.filter(
-            (b) => (b.category || "").toLowerCase() === selectedLower
-          )
+          // Use service to map UI category -> backend category and fetch
+          const resp = await businessService.getBusinessesByCategory(selectedCategory)
+          filtered = resp.success && resp.businesses ? resp.businesses : []
         }
       }
 
