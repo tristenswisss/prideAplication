@@ -576,3 +576,96 @@ END $$;
 -- Indexes for hidden_posts
 CREATE INDEX IF NOT EXISTS idx_hidden_posts_user ON hidden_posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_hidden_posts_post ON hidden_posts(post_id);
+
+-- Safe Spaces and Key Contacts (Zimbabwe)
+-- Inserts are idempotent-ish by using ON CONFLICT DO NOTHING patterns via unique names if such constraint exists.
+-- If unique constraints are not present, these may duplicate on re-run; run once in production.
+
+-- GALZ - Association of LGBTI (Membership Subscription)
+INSERT INTO businesses (name, description, category, address, lgbtq_friendly, trans_friendly, verified)
+SELECT 'GALZ - Association of LGBTI (Membership Subscription)',
+       'Key safe space for LGBTI community; membership based.',
+       'service',
+       '35 Colenbrander, Milton Park, Harare',
+       TRUE, TRUE, TRUE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'GALZ - Association of LGBTI (Membership Subscription)'
+);
+
+-- Pakasipiti Zimbabwe LBQ Organisation
+INSERT INTO businesses (name, description, category, address, lgbtq_friendly, trans_friendly, verified)
+SELECT 'Pakasipiti Zimbabwe LBQ Organisation',
+       'Safe space and advocacy organisation for LBQ persons.',
+       'service',
+       '91 McMeekan Road, Belvedere, Harare',
+       TRUE, TRUE, TRUE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'Pakasipiti Zimbabwe LBQ Organisation'
+);
+
+-- Cesshar Drop In Centre (Various Orgs and a clinic)
+INSERT INTO businesses (name, description, category, address, lgbtq_friendly, trans_friendly, verified)
+SELECT 'Cesshar Drop In Centre',
+       'Drop-in centre hosting various organisations and a clinic.',
+       'healthcare',
+       '91 Selous Avenue, Avenues, Harare',
+       TRUE, TRUE, TRUE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'Cesshar Drop In Centre'
+);
+
+-- New Start Center General Clinic
+INSERT INTO businesses (name, description, category, address, lgbtq_friendly, trans_friendly, verified)
+SELECT 'New Start Center General Clinic',
+       'General clinic providing health services.',
+       'healthcare',
+       'New Africa House, 40 Kwame Nkurumah Avenue, Harare CBD',
+       TRUE, TRUE, TRUE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'New Start Center General Clinic'
+);
+
+-- Afrotopia Cafe (National Gallery of Zimbabwe)
+INSERT INTO businesses (name, description, category, address, lgbtq_friendly, trans_friendly, verified)
+SELECT 'Afrotopia Cafe',
+       'Cafe at the National Gallery of Zimbabwe.',
+       'restaurant',
+       'National Gallery of Zimbabwe, 20 Julius Nyerere Way, Parklane, Harare',
+       TRUE, TRUE, FALSE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'Afrotopia Cafe'
+);
+
+-- Crisis numbers (as service entries with phone for quick availability)
+INSERT INTO businesses (name, description, category, address, phone, lgbtq_friendly, trans_friendly, verified)
+SELECT 'Zimbabwe Lawyers for Human Rights - Harare',
+       'Crisis legal support line',
+       'service',
+       'Harare',
+       '077257247',
+       TRUE, TRUE, TRUE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'Zimbabwe Lawyers for Human Rights - Harare'
+);
+
+INSERT INTO businesses (name, description, category, address, phone, lgbtq_friendly, trans_friendly, verified)
+SELECT 'Zimbabwe Lawyers for Human Rights - Mutare',
+       'Crisis legal support line',
+       'service',
+       'Mutare',
+       '0773855718',
+       TRUE, TRUE, TRUE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'Zimbabwe Lawyers for Human Rights - Mutare'
+);
+
+INSERT INTO businesses (name, description, category, address, phone, lgbtq_friendly, trans_friendly, verified)
+SELECT 'Zimbabwe Lawyers for Human Rights - Bulawayo',
+       'Crisis legal support line',
+       'service',
+       'Bulawayo',
+       '0773855635',
+       TRUE, TRUE, TRUE
+WHERE NOT EXISTS (
+  SELECT 1 FROM businesses WHERE name = 'Zimbabwe Lawyers for Human Rights - Bulawayo'
+);
