@@ -55,7 +55,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Pride SafePlaces to use your location to find nearby LGBTQ+ friendly businesses and send event notifications."
+          "locationAlwaysAndWhenInUsePermission": "Allow Mirae SafePlaces to use your location to find nearby LGBTQ+ friendly businesses and send event notifications."
         }
       ],
       [
