@@ -4,12 +4,22 @@ import { useMemo } from "react"
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { WebView } from "react-native-webview"
-import { supabaseUrl, supabaseAnonKey } from "../lib/supabase"
+import Constants from "expo-constants"
 
 interface VoiceCallWebViewProps {
   roomId: string
   isHost: boolean
   onClose: () => void
+}
+
+const readConfigValue = (value?: string) => (typeof value === 'string' ? value.trim() : '')
+const getSupabaseConfig = () => {
+  const envUrl = readConfigValue(process.env.EXPO_PUBLIC_SUPABASE_URL as string)
+  const envKey = readConfigValue(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string)
+  const extra = (Constants?.expoConfig as any)?.extra || (Constants?.manifest as any)?.extra || {}
+  const extraUrl = readConfigValue(extra?.supabaseUrl)
+  const extraKey = readConfigValue(extra?.supabaseAnonKey)
+  return { url: envUrl || extraUrl, anon: envKey || extraKey }
 }
 
 const buildHtml = (roomId: string, isHost: boolean, url: string, anon: string) => `<!doctype html>
@@ -113,7 +123,8 @@ const buildHtml = (roomId: string, isHost: boolean, url: string, anon: string) =
   </html>`
 
 export default function VoiceCallWebView({ roomId, isHost, onClose }: VoiceCallWebViewProps) {
-  const html = useMemo(() => buildHtml(roomId, isHost, supabaseUrl, supabaseAnonKey), [roomId, isHost])
+  const { url, anon } = getSupabaseConfig()
+  const html = useMemo(() => buildHtml(roomId, isHost, url, anon), [roomId, isHost, url, anon])
   return (
     <View style={styles.container}>
       <View style={styles.header}>
