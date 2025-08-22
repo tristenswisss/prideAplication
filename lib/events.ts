@@ -1,9 +1,11 @@
 type Handler<T = any> = (event: T) => void
 
 type EventMap = {
-  conversationOpened: { conversationId: string }
+  conversationOpened: { conversationId: string; previousUnreadCount: number }
   unreadCountsChanged: void
   conversationClosed: { conversationId: string }
+  messageReceived: { conversationId: string; message: any }
+  userStatusChanged: { userId: string; isOnline: boolean }
 }
 
 class SimpleEventBus {
@@ -32,12 +34,22 @@ class SimpleEventBus {
     set.forEach((h) => {
       try {
         ;(h as Handler<EventMap[T]>)(payload)
-      } catch {
-        // ignore
+      } catch (error) {
+        console.warn(`Event handler error for ${key}:`, error)
       }
     })
+  }
+
+  // Utility method to clear all handlers
+  clear() {
+    this.handlers.clear()
+  }
+
+  // Utility method to get handler count for debugging
+  getHandlerCount(event: keyof EventMap): number {
+    const key = String(event)
+    return this.handlers.get(key)?.size || 0
   }
 }
 
 export const events = new SimpleEventBus()
-
