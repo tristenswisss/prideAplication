@@ -1,7 +1,18 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, FlatList, Image, TextInput, KeyboardAvoidingView, Alert } from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  FlatList,
+  Image,
+  TextInput,
+  KeyboardAvoidingView,
+  Alert,
+} from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { Linking } from "react-native"
 import { messagingService } from "../../services/messagingService"
@@ -15,7 +26,6 @@ import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
 import { useIsFocused } from "@react-navigation/native"
 import { events } from "../../lib/events"
- 
 
 interface ChatScreenProps {
   navigation: any
@@ -45,7 +55,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
   const [showAttachModal, setShowAttachModal] = useState(false)
   const isFocused = useIsFocused()
-  
+
   const [modal, setModal] = useState<
     | { type: "none" }
     | { type: "info"; title: string; message: string }
@@ -74,7 +84,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               <Text style={styles.headerName}>{getConversationName()}</Text>
               {!conversation.is_group && (
                 <Text style={styles.headerStatus}>
-                  {conversation.participant_profiles?.[0]?.is_online ? 'Online' : ''}
+                  {conversation.participant_profiles?.[0]?.is_online ? "Online" : ""}
                 </Text>
               )}
             </View>
@@ -112,8 +122,13 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         if (isFocused && row.sender_id !== user?.id) {
           try {
             await messagingService.markAsRead(conversation.id, [row.id])
-            events.emit('unreadCountsChanged', undefined as any)
-          } catch {}
+            // Delay event emission to ensure database update completes
+            setTimeout(() => {
+              events.emit("unreadCountsChanged", undefined as any)
+            }, 100)
+          } catch (err) {
+            console.error("Failed to mark new message as read:", err)
+          }
         }
       },
       onUpdate: (row: any) => {
@@ -124,22 +139,27 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     return () => unsubscribe()
   }, [conversation?.id, isFocused, user?.id])
 
-  // Ensure unread are cleared when leaving the chat (e.g., back navigation)
   useEffect(() => {
-    const unsubscribe = navigation.addListener('blur', async () => {
+    const unsubscribe = navigation.addListener("blur", async () => {
       try {
         const unreadIds = messages.filter((m) => !m.read && m.sender_id !== user?.id).map((m) => m.id)
         if (unreadIds.length > 0) {
           await messagingService.markAsRead(conversation.id, unreadIds)
+          // Delay event emission to ensure database update completes
+          setTimeout(() => {
+            events.emit("unreadCountsChanged", undefined as any)
+            events.emit("conversationClosed", { conversationId: conversation.id })
+          }, 150)
+        } else {
+          events.emit("conversationClosed", { conversationId: conversation.id })
         }
-        events.emit('unreadCountsChanged', undefined as any)
-        events.emit('conversationClosed', { conversationId: conversation.id })
-      } catch {}
+      } catch (err) {
+        console.error("Failed to mark messages as read on blur:", err)
+      }
     })
     return unsubscribe
-  }, [navigation, messages.map((m) => `${m.id}:${m.read ? '1' : '0'}`).join('|'), user?.id])
+  }, [navigation, conversation?.id, user?.id])
 
-  // Subscribe to other participant online status changes in realtime
   useEffect(() => {
     if (conversation.is_group) return
     const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
@@ -150,32 +170,34 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         p.id === other.id ? { ...p, is_online: !!row.is_online, last_seen: row.last_seen } : p,
       ) as any
       // Force re-render header
-      navigation.setOptions({ headerTitle: () => (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => {
-            if (!conversation.is_group) {
-              const o = conversation.participant_profiles?.find((p) => p.id !== user?.id)
-              if (o?.id) navigation.navigate("UserProfile", { userId: o.id })
-            }
-          }}
-        >
-          <View style={styles.headerTitle}>
-            <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
-            <View>
-              <Text style={styles.headerName}>{getConversationName()}</Text>
-              {!conversation.is_group && (
-                <Text style={styles.headerStatus}>
-                  {conversation.participant_profiles?.[0]?.is_online ? 'Online' : ''}
-                </Text>
-              )}
+      navigation.setOptions({
+        headerTitle: () => (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              if (!conversation.is_group) {
+                const o = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+                if (o?.id) navigation.navigate("UserProfile", { userId: o.id })
+              }
+            }}
+          >
+            <View style={styles.headerTitle}>
+              <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
+              <View>
+                <Text style={styles.headerName}>{getConversationName()}</Text>
+                {!conversation.is_group && (
+                  <Text style={styles.headerStatus}>
+                    {conversation.participant_profiles?.[0]?.is_online ? "Online" : ""}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
-      )})
+          </TouchableOpacity>
+        ),
+      })
     })
     return () => unsubscribe()
-  }, [conversation?.id, user?.id])
+  }, [conversation, user?.id, navigation])
 
   const loadMessages = async () => {
     try {
@@ -183,11 +205,13 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       const data = await messagingService.getMessages(conversation.id)
       setMessages(data)
 
-      // Mark messages as read
       const unreadMessageIds = data.filter((msg) => !msg.read && msg.sender_id !== user?.id).map((msg) => msg.id)
       if (unreadMessageIds.length > 0) {
         await messagingService.markAsRead(conversation.id, unreadMessageIds)
-        events.emit('unreadCountsChanged', undefined as any)
+        // Delay event emission to ensure database update completes
+        setTimeout(() => {
+          events.emit("unreadCountsChanged", undefined as any)
+        }, 100)
       }
     } catch (error) {
       console.error("Error loading messages:", error)
@@ -197,7 +221,6 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     }
   }
 
-  // Mark messages as read when they become viewable
   const viewabilityConfig = { itemVisiblePercentThreshold: 60 }
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<any> }) => {
     try {
@@ -206,11 +229,22 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         .filter((m: any) => m && !m.read && m.sender_id !== user?.id)
         .map((m: any) => m.id)
       if (unreadIds.length > 0) {
-        messagingService.markAsRead(conversation.id, unreadIds).then(() => {
-          events.emit('unreadCountsChanged', undefined as any)
-        }).catch(() => {})
+        // Debounce to prevent excessive API calls
+        clearTimeout((onViewableItemsChanged as any).timeout)
+        ;(onViewableItemsChanged as any).timeout = setTimeout(async () => {
+          try {
+            await messagingService.markAsRead(conversation.id, unreadIds)
+            setTimeout(() => {
+              events.emit("unreadCountsChanged", undefined as any)
+            }, 100)
+          } catch (err) {
+            console.error("Failed to mark viewable messages as read:", err)
+          }
+        }, 500)
       }
-    } catch {}
+    } catch (err) {
+      console.error("Error in viewable items changed:", err)
+    }
   }).current
 
   const handleSendMessage = async () => {
@@ -387,8 +421,6 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     })
   }
 
-  
-
   const handleOpenThread = (message: Message) => {
     setSelectedThreadMessage(message)
     setShowThreads(true)
@@ -488,7 +520,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       return (
         <View style={styles.filePreviewContainer}>
           <MaterialIcons name="attach-file" size={18} color="#666" />
-          <Text style={styles.filePreviewName} numberOfLines={1}>{selectedFile.name || "Selected file"}</Text>
+          <Text style={styles.filePreviewName} numberOfLines={1}>
+            {selectedFile.name || "Selected file"}
+          </Text>
           <TouchableOpacity style={styles.removeFileButton} onPress={handleRemoveFile}>
             <MaterialIcons name="close" size={16} color="#fff" />
           </TouchableOpacity>
@@ -498,7 +532,26 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     return null
   }
 
-  const EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🤗","👍","👏","🙏","🔥","💯","🎉","🌈","✨"]
+  const EMOJIS = [
+    "😀",
+    "😁",
+    "😂",
+    "🤣",
+    "😊",
+    "😍",
+    "😘",
+    "😎",
+    "🤩",
+    "🤗",
+    "👍",
+    "👏",
+    "🙏",
+    "🔥",
+    "💯",
+    "🎉",
+    "🌈",
+    "✨",
+  ]
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwnMessage = item.sender_id === user?.id
@@ -514,7 +567,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         onPress={() => {
           if (selectedMessageIds.length > 0) toggleSelectMessage(item.id)
         }}
-        style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer, isMessageSelected(item.id) && styles.selectedMessageContainer]}
+        style={[
+          styles.messageContainer,
+          isOwnMessage && styles.ownMessageContainer,
+          isMessageSelected(item.id) && styles.selectedMessageContainer,
+        ]}
       >
         {showAvatar && (
           <Image
@@ -523,11 +580,13 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           />
         )}
 
-        <View style={[
-          styles.messageBubble,
-          isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble,
-          isMessageSelected(item.id) && styles.selectedMessageBubble,
-        ]}>
+        <View
+          style={[
+            styles.messageBubble,
+            isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble,
+            isMessageSelected(item.id) && styles.selectedMessageBubble,
+          ]}
+        >
           {showName && <Text style={styles.senderName}>{item.sender?.name}</Text>}
           {item.message_type === "image" && item.metadata?.image_url ? (
             <Image source={{ uri: item.metadata.image_url }} style={styles.inlineImage} />
@@ -697,27 +756,48 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         variant="center"
       >
         <View style={{ flexDirection: "column" }}>
-          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); toggleEmojiPicker() }}>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => {
+              setShowAttachModal(false)
+              toggleEmojiPicker()
+            }}
+          >
             <MaterialIcons name="emoji-emotions" size={24} color="#4ECDC4" />
             <Text style={styles.optionText}>Emoji</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); handlePickImage() }}>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => {
+              setShowAttachModal(false)
+              handlePickImage()
+            }}
+          >
             <MaterialIcons name="image" size={24} color="#4ECDC4" />
             <Text style={styles.optionText}>Gallery</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); handleTakePhoto() }}>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => {
+              setShowAttachModal(false)
+              handleTakePhoto()
+            }}
+          >
             <MaterialIcons name="photo-camera" size={24} color="#4ECDC4" />
             <Text style={styles.optionText}>Camera</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.optionRow} onPress={() => { setShowAttachModal(false); handlePickDocument() }}>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => {
+              setShowAttachModal(false)
+              handlePickDocument()
+            }}
+          >
             <MaterialIcons name="attach-file" size={24} color="#4ECDC4" />
             <Text style={styles.optionText}>Document</Text>
           </TouchableOpacity>
-          
         </View>
       </AppModal>
-
-      
     </SafeAreaView>
   )
 }

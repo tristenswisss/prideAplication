@@ -40,11 +40,11 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
 
   // Refresh when screen regains focus to reflect read status changes
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener("focus", () => {
       loadConversations()
     })
     return unsubscribe
-  }, [navigation, user?.id])
+  }, [navigation])
 
   // Realtime: new messages update conversations list and unread counts
   useEffect(() => {
@@ -53,7 +53,9 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       realtime.subscribeToMessageUpdates(c.id, {
         onInsert: async (row: any) => {
           setConversations((prev) => {
-            const next = prev.map((conv) => (conv.id === c.id ? { ...conv, last_message: row, updated_at: row.sent_at } : conv))
+            const next = prev.map((conv) =>
+              conv.id === c.id ? { ...conv, last_message: row, updated_at: row.sent_at } : conv,
+            )
             return next.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
           })
           if (row.sender_id !== user.id) {
@@ -65,14 +67,14 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           // When reads happen, refresh unread count for that conversation
           const count = await messagingService.getUnreadCount(c.id, user.id)
           setConversations((prev) => prev.map((conv) => (conv.id === c.id ? { ...conv, unread_count: count } : conv)))
-          events.emit('unreadCountsChanged', undefined as any)
+          events.emit("unreadCountsChanged", undefined as any)
         },
       }),
     )
     return () => {
       unsubscribers.forEach((u) => u())
     }
-  }, [conversations.map((c) => c.id).join(':'), user?.id])
+  }, [conversations])
 
   // Realtime: subscribe to presence for other participants and update online dots/last seen
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     return () => {
       unsubscribers.forEach((u) => u())
     }
-  }, [user?.id, conversations.map((c) => (!c.is_group ? c.participant_profiles?.map((p) => p.id).join(':') : c.id)).join('|')])
+  }, [conversations])
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -127,14 +129,14 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [searchQuery, user?.id])
+  }, [searchQuery, user])
 
   // Refresh conversations when unread counts change elsewhere (e.g., leaving a chat)
   useEffect(() => {
-    const off = events.on('unreadCountsChanged', () => {
+    const off = events.on("unreadCountsChanged", () => {
       loadConversations()
     })
-    const offClosed = events.on('conversationClosed', ({ conversationId }) => {
+    const offClosed = events.on("conversationClosed", ({ conversationId }) => {
       // Optimistically zero this conversation's unread count in the local list
       setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
     })
@@ -168,7 +170,10 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       }
       const list = Array.from(byId.values())
       // Fetch initial unread counts for each conversation
-      const counts = await messagingService.getConversationUnreadCounts(list.map((c) => c.id), user.id)
+      const counts = await messagingService.getConversationUnreadCounts(
+        list.map((c) => c.id),
+        user.id,
+      )
       const withCounts = list.map((c) => ({ ...c, unread_count: counts[c.id] ?? c.unread_count ?? 0 }))
       setConversations(withCounts)
     } catch (error) {
@@ -179,8 +184,6 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       setRefreshing(false)
     }
   }
-
-  
 
   const handleStartConversation = async (targetUser: UserProfile) => {
     if (!user) return
@@ -276,9 +279,10 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     <TouchableOpacity
       style={styles.conversationItem}
       onPress={() => {
-        // Optimistically clear unread for this conversation
+        const currentUnread = item.unread_count || 0
         setConversations((prev) => prev.map((c) => (c.id === item.id ? { ...c, unread_count: 0 } : c)))
-        events.emit('conversationOpened', { conversationId: item.id })
+
+        events.emit("conversationOpened", { conversationId: item.id, previousUnreadCount: currentUnread })
         navigation.navigate("Chat", { conversation: item })
       }}
       onLongPress={() => openConversationMenu(item)}
@@ -298,10 +302,10 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           {(() => {
             const other = item.participant_profiles?.find((p) => p.id !== user?.id)
             if (other?.is_online) {
-              return <Text style={[styles.messageTime, { color: '#4CAF50' }]}>Online</Text>
+              return <Text style={[styles.messageTime, { color: "#4CAF50" }]}>Online</Text>
             }
             const lastSeen = (other as any)?.last_seen || other?.updated_at
-            return <Text style={styles.messageTime}>{lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : ''}</Text>
+            return <Text style={styles.messageTime}>{lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : ""}</Text>
           })()}
         </View>
 
