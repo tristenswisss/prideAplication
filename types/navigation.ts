@@ -89,6 +89,7 @@ export type ProfileStackParamList = {
   PrivacySafety: undefined
   NotificationSettings: undefined
   SuggestionReview: undefined
+  BlockedUsers: undefined
 }
 
 // Screen Props Types
