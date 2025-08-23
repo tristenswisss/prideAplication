@@ -39,7 +39,7 @@ export const businessService = {
       if (cached && cached.length) {
         // Fire-and-forget background refresh
         businessService.getBusinessesFresh().catch(() => {})
-        return { success: true, businesses: cached }
+        return { success: true, businesses: cached.map(normalizeBusiness) }
       }
 
       return await businessService.getBusinessesFresh()
@@ -59,7 +59,7 @@ export const businessService = {
         return { success: false, error: error.message }
       }
 
-      const list = data || []
+      const list = (data || []).map(normalizeBusiness)
       await storage.setCacheItem(STORAGE_KEYS.BUSINESSES, list, 30)
       return { success: true, businesses: list }
     } catch (error: any) {
@@ -146,7 +146,7 @@ export const businessService = {
         return { success: false, error: error.message }
       }
 
-      return { success: true, businesses: data || [], total: count ?? undefined }
+      return { success: true, businesses: (data || []).map(normalizeBusiness), total: count ?? undefined }
     } catch (error: any) {
       console.error("Error in searchBusinesses:", error)
       return { success: false, error: error.message }
@@ -183,7 +183,7 @@ export const businessService = {
         return { success: false, error: error.message }
       }
 
-      return { success: true, businesses: data || [] }
+      return { success: true, businesses: (data || []).map(normalizeBusiness) }
     } catch (error: any) {
       console.error("Error in getBusinessesByCategory:", error)
       return { success: false, error: error.message }
@@ -200,7 +200,7 @@ export const businessService = {
         return null
       }
 
-      return data
+      return data ? normalizeBusiness(data) : null
     } catch (error) {
       console.error("Error in getBusinessById:", error)
       return null
@@ -222,7 +222,7 @@ export const businessService = {
         return { success: false, error: error.message }
       }
 
-      return { success: true, businesses: data || [] }
+      return { success: true, businesses: (data || []).map(normalizeBusiness) }
     } catch (error: any) {
       console.error("Error in getNearbyBusinesses:", error)
       return { success: false, error: error.message }
@@ -270,7 +270,7 @@ export const businessService = {
         return { success: false, error: error.message }
       }
 
-      const businesses = (data || []).map((item) => item.businesses).filter(Boolean)
+      const businesses = (data || []).map((item) => normalizeBusiness(item.businesses)).filter(Boolean)
       return { success: true, businesses }
     } catch (error: any) {
       console.error("Error in getSavedBusinesses:", error)
@@ -296,7 +296,7 @@ export const businessService = {
         throw error
       }
 
-      return data
+      return normalizeBusiness(data)
     } catch (error) {
       console.error("Error in createBusiness:", error)
       throw error
@@ -321,7 +321,7 @@ export const businessService = {
         throw error
       }
 
-      return data
+      return normalizeBusiness(data)
     } catch (error) {
       console.error("Error in updateBusiness:", error)
       throw error
@@ -342,4 +342,20 @@ export const businessService = {
       throw error
     }
   },
+}
+
+function toNumber(value: any): number | undefined {
+  if (value === null || value === undefined) return undefined
+  if (typeof value === "number") return value
+  const parsed = parseFloat(String(value))
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function normalizeBusiness(input: any): Business {
+  return {
+    ...input,
+    latitude: toNumber(input?.latitude),
+    longitude: toNumber(input?.longitude),
+    rating: toNumber(input?.rating),
+  } as Business
 }
