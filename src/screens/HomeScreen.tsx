@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView } from "react-native"
+import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView, Platform } from "react-native"
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
 import * as Location from "expo-location"
 import { LinearGradient } from "expo-linear-gradient"
@@ -253,7 +253,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       {showMap ? (
         <View style={styles.mapContainer}>
           <MapView
-            provider={PROVIDER_GOOGLE}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
             style={styles.map}
             initialRegion={{
               latitude: userLocation?.latitude ?? 37.7749,
