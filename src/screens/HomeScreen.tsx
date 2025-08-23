@@ -271,7 +271,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                     }}
                     pinColor={getMarkerColor(business)}
                     title={business.name}
-                    description={business.description}
+                    description={business.address || business.description}
                     onPress={() => navigation.navigate("BusinessDetails", { business })}
                   />
                 )

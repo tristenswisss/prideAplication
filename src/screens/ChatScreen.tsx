@@ -26,6 +26,7 @@ import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
 import { useIsFocused } from "@react-navigation/native"
 import { events } from "../../lib/events"
+import { storage } from "../../lib/storage"
 
 interface ChatScreenProps {
   navigation: any
@@ -115,6 +116,18 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           if (prev.some((m) => m.id === row.id)) return prev
           return [...prev, row as any]
         })
+        // Cache last message on new insert
+        try { await storage.setItem(`last_msg_${conversation.id}`, row) } catch {}
+
+        // If this is an incoming message, mark as delivered immediately
+        try {
+          if (row.sender_id !== user?.id && !row.delivered_at) {
+            await messagingService.markDelivered([row.id])
+          }
+        } catch (e) {
+          console.error("Failed to mark delivered on insert:", e)
+        }
+
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true })
         }, 100)
@@ -205,6 +218,23 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       const data = await messagingService.getMessages(conversation.id)
       setMessages(data)
 
+      // Cache last message for conversation list previews
+      if (Array.isArray(data) && data.length > 0) {
+        try { await storage.setItem(`last_msg_${conversation.id}`, data[data.length - 1]) } catch {}
+      }
+
+      // Mark undelivered incoming messages as delivered upon opening the conversation
+      try {
+        const toDeliver = data
+          .filter((msg) => msg.sender_id !== user?.id && !msg.delivered_at)
+          .map((msg) => msg.id)
+        if (toDeliver.length > 0) {
+          await messagingService.markDelivered(toDeliver)
+        }
+      } catch (e) {
+        console.error("Failed to mark delivered on load:", e)
+      }
+
       const unreadMessageIds = data.filter((msg) => !msg.read && msg.sender_id !== user?.id).map((msg) => msg.id)
       if (unreadMessageIds.length > 0) {
         await messagingService.markAsRead(conversation.id, unreadMessageIds)
@@ -292,6 +322,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         metadata,
       )
       setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]))
+      // Cache last message after send
+      try { await storage.setItem(`last_msg_${conversation.id}`, message) } catch {}
 
       // Scroll to bottom
       setTimeout(() => {
@@ -616,11 +648,15 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
             {isOwnMessage && (
               <View style={styles.messageStatus}>
-                {item.read ? (
-                  <MaterialIcons name="done-all" size={14} color="#4ECDC4" />
-                ) : (
-                  <MaterialIcons name="done" size={14} color="#ccc" />
-                )}
+                {(() => {
+                  if (item.read) {
+                    return <MaterialIcons name="done-all" size={14} color="#2196F3" />
+                  }
+                  if (item.delivered_at) {
+                    return <MaterialIcons name="done-all" size={14} color="#bbb" />
+                  }
+                  return <MaterialIcons name="done" size={14} color="#bbb" />
+                })()}
               </View>
             )}
           </View>

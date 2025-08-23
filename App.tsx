@@ -314,9 +314,6 @@ function TabNavigator() {
       <Tab.Screen
         name="Community"
         component={CommunityNavigator}
-        options={{
-          tabBarBadge: unreadTotal > 0 ? (unreadTotal > 99 ? "99+" : unreadTotal.toString()) : undefined,
-        }}
       />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>

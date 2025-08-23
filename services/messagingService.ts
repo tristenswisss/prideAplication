@@ -487,6 +487,23 @@ export const messagingService = {
     }
   },
 
+  // Mark messages as delivered (set delivered_at when the recipient client receives them)
+  markDelivered: async (messageIds: string[]): Promise<void> => {
+    try {
+      if (!Array.isArray(messageIds) || messageIds.length === 0) return
+      const { error } = await supabase
+        .from("messages")
+        .update({ delivered_at: new Date().toISOString() })
+        .in("id", messageIds)
+        .is("delivered_at", null as any)
+      if (error) {
+        console.error("Error marking messages delivered:", error)
+      }
+    } catch (err) {
+      console.error("Failed to mark delivered:", err)
+    }
+  },
+
   // Delete a set of messages (for everyone)
   deleteMessages: async (conversationId: string, messageIds: string[]): Promise<boolean> => {
     try {
