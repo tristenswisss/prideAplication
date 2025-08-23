@@ -59,6 +59,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
       setLoading(true)
       // Save to storage and API
       await AsyncStorage.setItem("privacySettings", JSON.stringify(settings))
+      await AsyncStorage.setItem("twoFactorAuthEnabled", settings.twoFactorAuth ? "1" : "0")
 
       // Persist to Supabase profile
       if (user?.id) {
@@ -99,7 +100,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
   }
 
   const handleBlockedUsers = () => {
-    Alert.alert("Blocked Users", "This feature will show your blocked users list")
+    navigation.navigate("BlockedUsers" as any)
   }
 
   const handleDataDownload = () => {
@@ -289,7 +290,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
           {renderToggleOption(
             "twoFactorAuth",
             "Two-Factor Authentication",
-            "Add an extra layer of security to your account",
+            "Add an extra layer of security to your account (uses device biometrics/PIN at next sign-in)",
             "security",
           )}
 

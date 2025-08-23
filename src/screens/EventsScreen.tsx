@@ -69,39 +69,44 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 
     const lower = searchQuery.trim().toLowerCase()
 
-    return events.filter((event) => {
-      const eventDate = new Date(event.date)
-
-      switch (filter) {
-        case "upcoming":
-          return eventDate > now
-        case "today":
-          return eventDate >= today && eventDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)
-        case "this_week":
-          return eventDate > now && eventDate <= weekFromNow
-        default:
-          return true
-      }
-    }).filter((ev) => {
-      if (!lower) return true
-      const category = (ev.category || "").toString().toLowerCase()
-      const title = (ev.title || "").toLowerCase()
-      const desc = (ev.description || "").toLowerCase()
-      const location = (ev.location || "").toLowerCase()
-      const tags = Array.isArray(ev.tags) ? ev.tags.join(" ").toLowerCase() : ""
-      return (
-        category.includes(lower) ||
-        title.includes(lower) ||
-        desc.includes(lower) ||
-        location.includes(lower) ||
-        tags.includes(lower)
-      )
-    })
+    return events
+      .filter((event) => {
+        const eventDate = new Date(event.date)
+        // Exclude past events globally
+        if (eventDate < now) return false
+        switch (filter) {
+          case "upcoming":
+            return eventDate > now
+          case "today":
+            return eventDate >= today && eventDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)
+          case "this_week":
+            return eventDate > now && eventDate <= weekFromNow
+          default:
+            return true
+        }
+      })
+      .filter((ev) => {
+        if (!lower) return true
+        const category = (ev.category || "").toString().toLowerCase()
+        const title = (ev.title || "").toLowerCase()
+        const desc = (ev.description || "").toLowerCase()
+        const location = (ev.location || "").toLowerCase()
+        const tags = Array.isArray(ev.tags) ? ev.tags.join(" ").toLowerCase() : ""
+        return (
+          category.includes(lower) ||
+          title.includes(lower) ||
+          desc.includes(lower) ||
+          location.includes(lower) ||
+          tags.includes(lower)
+        )
+      })
   }
 
   const renderEvent = ({ item }: { item: Event }) => {
     const eventDate = new Date(item.date)
     const isUpcoming = eventDate > new Date()
+
+    const organizerUsername = (item as any)?.organizer?.username
 
     return (
       <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("EventDetails", { event: item })}>
@@ -142,7 +147,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
             </View>
             <View style={styles.metaItem}>
               <MaterialIcons name="person" size={16} color="#666" />
-              <Text style={styles.metaText}>by {item.organizer?.name || "Unknown"}</Text>
+              <Text style={styles.metaText}>by {organizerUsername ? `@${organizerUsername}` : item.organizer?.name || "Unknown"}</Text>
             </View>
           </View>
 
@@ -163,11 +168,23 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 
           {isUpcoming && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.interestedButton}>
+              <TouchableOpacity style={styles.interestedButton} onPress={async () => {
+                if (!user) return
+                try {
+                  await eventService.rsvpToEvent(item.id, user.id, "interested")
+                  loadEvents()
+                } catch {}
+              }}>
                 <MaterialIcons name="star-border" size={16} color="#FF6B6B" />
                 <Text style={styles.interestedButtonText}>Interested</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.goingButton}>
+              <TouchableOpacity style={styles.goingButton} onPress={async () => {
+                if (!user) return
+                try {
+                  await eventService.rsvpToEvent(item.id, user.id, "going")
+                  loadEvents()
+                } catch {}
+              }}>
                 <MaterialIcons name="check" size={16} color="white" />
                 <Text style={styles.goingButtonText}>Going</Text>
               </TouchableOpacity>
@@ -201,11 +218,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         </View>
 
         <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.liveEventButton} onPress={handleLiveEventAction}>
-            <MaterialIcons name="videocam" size={24} color="white" />
-            <Text style={styles.liveEventButtonText}>Live Event</Text>
-          </TouchableOpacity>
-
+          {/* Live events removed */}
           <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent") }>
             <MaterialIcons name="add" size={24} color="white" />
             <Text style={styles.createButtonText}>Create Event</Text>

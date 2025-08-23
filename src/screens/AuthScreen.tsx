@@ -19,6 +19,9 @@ import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { Image } from 'react-native'
+import * as LocalAuthentication from "expo-local-authentication"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { profileService } from "../../services/profileService"
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true)
@@ -99,8 +102,31 @@ export default function AuthScreen() {
           setName("")
         }
       } else if (isLogin && result.data) {
-        // Successful login - the context will handle the user state update
-        console.log('Login successful')
+        // After successful login, if user has 2FA enabled, prompt biometric/PIN
+        try {
+          let twoFactorEnabled = false
+          try {
+            const current = await profileService.getProfile(result.data.user.id)
+            const profile = (current?.data as any)
+            twoFactorEnabled = !!(Array.isArray(profile?.profiles) ? profile.profiles[0]?.two_factor_auth : profile?.profiles?.two_factor_auth)
+          } catch {}
+          if (!twoFactorEnabled) {
+            const flag = await AsyncStorage.getItem("twoFactorAuthEnabled")
+            twoFactorEnabled = flag === "1"
+          }
+          if (twoFactorEnabled) {
+            const hasHardware = await LocalAuthentication.hasHardwareAsync()
+            const supported = await LocalAuthentication.supportedAuthenticationTypesAsync()
+            const canAuth = hasHardware && supported && supported.length > 0
+            if (canAuth) {
+              const attempt = await LocalAuthentication.authenticateAsync({ promptMessage: "Confirm it's you" })
+              if (!attempt.success) {
+                Alert.alert("Verification failed", "Biometric/PIN verification required.")
+                return
+              }
+            }
+          }
+        } catch {}
       }
     } catch (error) {
       console.error('Auth error:', error)

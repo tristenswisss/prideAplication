@@ -38,6 +38,7 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
     virtual_link: "",
     isTicketed: false,
   })
+  const [virtualPlatform, setVirtualPlatform] = useState<"zoom" | "google_meet" | null>(null)
 
   // Date and time state
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -120,6 +121,19 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
       Alert.alert("Error", "Virtual link is required for virtual events")
       return false
     }
+    if (formData.is_virtual) {
+      const link = formData.virtual_link.trim()
+      const isZoom = /https?:\/\/.*zoom\.us\//i.test(link)
+      const isMeet = /https?:\/\/meet\.google\.com\//i.test(link)
+      if (!isZoom && !isMeet) {
+        Alert.alert("Error", "Only Zoom or Google Meet links are allowed")
+        return false
+      }
+      if (!virtualPlatform) {
+        Alert.alert("Error", "Please select Zoom or Google Meet")
+        return false
+      }
+    }
 
     if (!formData.is_free && (!formData.price || formData.price <= 0)) {
       Alert.alert("Error", "Price is required for paid events")
@@ -163,7 +177,7 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
         date: eventDate,
         start_time: startTimeString,
         end_time: endTimeString,
-        location: formData.is_virtual ? "Virtual Event" : formData.location.trim(),
+        location: formData.is_virtual ? `Virtual (${virtualPlatform === "zoom" ? "Zoom" : "Google Meet"})` : formData.location.trim(),
         organizer_id: user.id,
         category: formData.category,
         tags: formData.tags,
@@ -312,23 +326,45 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
             <Text style={styles.switchLabel}>Virtual Event</Text>
             <Switch
               value={formData.is_virtual}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, is_virtual: value }))}
+              onValueChange={(value) => { setFormData((prev) => ({ ...prev, is_virtual: value })); if (!value) { setVirtualPlatform(null) } }}
               trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={formData.is_virtual ? "#f5dd4b" : "#f4f3f4"}
+              thumbColor={formData.is_virtual ? "#f5dd4b" : "#f4f3f4" }
             />
           </View>
 
           {formData.is_virtual ? (
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Virtual Link *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.virtual_link}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, virtual_link: text }))}
-                placeholder="Enter meeting link (Zoom, Teams, etc.)"
-                keyboardType="url"
-              />
-            </View>
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Platform *</Text>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.categoryButton, virtualPlatform === "zoom" && styles.selectedCategory]}
+                    onPress={() => setVirtualPlatform("zoom")}
+                  >
+                    <MaterialIcons name="videocam" size={20} color={virtualPlatform === "zoom" ? "white" : "#666"} />
+                    <Text style={[styles.categoryText, virtualPlatform === "zoom" && styles.selectedCategoryText]}>Zoom</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.categoryButton, virtualPlatform === "google_meet" && styles.selectedCategory]}
+                    onPress={() => setVirtualPlatform("google_meet")}
+                  >
+                    <MaterialIcons name="video-call" size={20} color={virtualPlatform === "google_meet" ? "white" : "#666"} />
+                    <Text style={[styles.categoryText, virtualPlatform === "google_meet" && styles.selectedCategoryText]}>Google Meet</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Meeting Link *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.virtual_link}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, virtual_link: text }))}
+                  placeholder="Paste Zoom or Google Meet link"
+                  keyboardType="url"
+                  autoCapitalize="none"
+                />
+              </View>
+            </>
           ) : (
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Venue Address *</Text>

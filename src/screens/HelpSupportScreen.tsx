@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, Alert, ActivityIndicator } from "react-native"
 import { safeSpacesService, type CrisisContact } from "../../services/safeSpacesService"
 import type { SafeSpace } from "../../types"
@@ -101,17 +101,19 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
     }
   }
 
-     const groupedSafeSpaces = safeSpaces.reduce(
-    (groups, space: SafeSpace) => {
-      const category = space.category
-      if (!groups[category]) {
-        groups[category] = []
-      }
-      groups[category].push(space)
-      return groups
-    },
-    {} as Record<SafeSpace["category"], SafeSpace[]>,
-  )
+  const groupedSafeSpaces = useMemo(() => {
+    return safeSpaces.reduce(
+      (groups, space: SafeSpace) => {
+        const category = space.category
+        if (!groups[category]) {
+          groups[category] = []
+        }
+        groups[category].push(space)
+        return groups
+      },
+      {} as Record<SafeSpace["category"], SafeSpace[]>,
+    )
+  }, [safeSpaces])
 
   if (loading) {
     return (

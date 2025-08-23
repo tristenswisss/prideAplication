@@ -253,7 +253,21 @@ export default function BuddySystemScreen({ navigation }: any) {
           navigation.navigate("UserProfile", { userId: profileId })
         }}
       >
-        <Image source={{ uri: "/placeholder.svg?height=60&width=60&text=User" }} style={styles.requestAvatar} />
+        <View style={styles.avatarWrapper}>
+          {(() => {
+            const isRecipient = item.to_user_id === user?.id
+            const requester = isRecipient ? item.from_user : item.to_user
+            const other = isRecipient ? item.to_user : item.from_user
+            const mainUri = requester?.avatar_url || "/placeholder.svg?height=60&width=60&text=U"
+            const cornerUri = other?.avatar_url || "/placeholder.svg?height=28&width=28&text=U"
+            return (
+              <>
+                <Image source={{ uri: mainUri }} style={styles.requestAvatar} />
+                <Image source={{ uri: cornerUri }} style={styles.cornerBadgeAvatar} />
+              </>
+            )
+          })()}
+        </View>
       </TouchableOpacity>
       <View style={styles.requestInfo}>
         <TouchableOpacity
@@ -703,11 +717,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  avatarWrapper: {
+    position: "relative",
+    marginRight: 15,
+  },
   requestAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    marginRight: 15,
+  },
+  cornerBadgeAvatar: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#fff",
+    backgroundColor: "#fff",
   },
   requestInfo: {
     flex: 1,

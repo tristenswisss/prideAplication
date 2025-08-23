@@ -7,7 +7,10 @@ export const eventService = {
   getAllEvents: async (): Promise<Event[]> => {
     const { data, error } = await supabase
       .from('events')
-      .select('*')
+      .select(`
+        *,
+        organizer:users!events_organizer_id_fkey (id, name, avatar_url, profiles(username))
+      `)
       .order('date', { ascending: true });
 
     if (error) {
@@ -15,7 +18,33 @@ export const eventService = {
       return [];
     }
 
-    return data || [];
+    const events: Event[] = (data || []).map((row: any) => {
+      const organizer = row.organizer || null
+      const profile = Array.isArray(organizer?.profiles) ? organizer.profiles[0] : organizer?.profiles
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        date: row.date,
+        time: row.start_time,
+        start_time: row.start_time,
+        end_time: row.end_time,
+        location: row.location,
+        organizer_id: row.organizer_id,
+        organizer: organizer ? { id: organizer.id, name: organizer.name, avatar_url: organizer.avatar_url, verified: false, created_at: row.created_at, updated_at: row.updated_at, email: "" , username: profile?.username } as any : undefined,
+        category: row.category,
+        tags: row.tags || [],
+        is_free: row.is_free,
+        price: row.price,
+        max_attendees: row.max_attendees,
+        attendee_count: row.attendee_count || 0,
+        current_attendees: row.attendee_count || 0,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      } as Event
+    })
+
+    return events;
   },
 
   // Get events by category
