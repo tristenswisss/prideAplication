@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView } from "react-native"
-import MapView, { Marker } from "react-native-maps"
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
 import * as Location from "expo-location"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
@@ -39,6 +39,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     }
     return groups
   }, [filteredBusinesses])
+
+  const validMarkers = useMemo(() => {
+    return (filteredBusinesses || []).filter(
+      (b) => typeof b.latitude === "number" && Number.isFinite(b.latitude!) && typeof b.longitude === "number" && Number.isFinite(b.longitude!),
+    )
+  }, [filteredBusinesses])
+
+  const initialMarkers = useMemo(() => validMarkers.slice(0, 200), [validMarkers])
 
   const categories: Category[] = [
     { id: "all", name: "All", icon: "apps", color: "black" },
@@ -245,6 +253,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       {showMap ? (
         <View style={styles.mapContainer}>
           <MapView
+            provider={PROVIDER_GOOGLE}
             style={styles.map}
             initialRegion={{
               latitude: userLocation?.latitude ?? 37.7749,
@@ -254,28 +263,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             }}
             showsUserLocation={true}
             showsMyLocationButton={false}
+            liteMode={true}
           >
-            {filteredBusinesses &&
-              filteredBusinesses.length > 0 &&
-              filteredBusinesses.map((business) => {
-                if (!business.latitude || !business.longitude) {
-                  return null
-                }
-
-                return (
-                  <Marker
-                    key={business.id}
-                    coordinate={{
-                      latitude: business.latitude,
-                      longitude: business.longitude,
-                    }}
-                    pinColor={getMarkerColor(business)}
-                    title={business.name}
-                    description={business.address || business.description}
-                    onPress={() => navigation.navigate("BusinessDetails", { business })}
-                  />
-                )
-              })}
+            {initialMarkers.map((business) => (
+              <Marker
+                key={business.id}
+                coordinate={{
+                  latitude: business.latitude as number,
+                  longitude: business.longitude as number,
+                }}
+                pinColor={getMarkerColor(business)}
+                title={business.name}
+                description={business.address || business.description}
+                onPress={() => navigation.navigate("BusinessDetails", { business })}
+              />
+            ))}
           </MapView>
 
           {/* Map Legend */}

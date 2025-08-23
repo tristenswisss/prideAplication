@@ -297,6 +297,7 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
                   latitudeDelta: 0.01,
                   longitudeDelta: 0.01,
                 }}
+                liteMode={true}
               >
                 <Marker
                   coordinate={{ latitude: business.latitude, longitude: business.longitude }}
