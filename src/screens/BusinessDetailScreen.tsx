@@ -293,12 +293,12 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
                   latitudeDelta: 0.01,
                   longitudeDelta: 0.01,
                 }}
-                pointerEvents="none"
               >
                 <Marker
                   coordinate={{ latitude: business.latitude, longitude: business.longitude }}
                   title={business.name}
                   description={business.address}
+                  onPress={handleDirections}
                 />
               </MapView>
             </View>
