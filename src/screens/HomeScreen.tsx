@@ -262,8 +262,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               longitudeDelta: 0.0421,
             }}
             showsUserLocation={true}
-            showsMyLocationButton={false}
-            liteMode={true}
+            showsMyLocationButton={true}
+            showsCompass={true}
+            showsScale={true}
+            zoomEnabled={true}
+            scrollEnabled={true}
+            rotateEnabled={true}
+            pitchEnabled={true}
+            toolbarEnabled={true}
+            mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
             {initialMarkers.map((business) => (
               <Marker
@@ -276,6 +283,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 title={business.name}
                 description={business.address || business.description}
                 onPress={() => navigation.navigate("BusinessDetails", { business })}
+                tracksViewChanges={false}
+                draggable={false}
               />
             ))}
           </MapView>
@@ -402,12 +411,15 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     flexGrow: 1,
-    height: "98%",
+    height: "100%",
     position: "relative",
+    zIndex: 1,
   },
   map: {
     flex: 1,
     height: "100%",
+    width: "100%",
+    zIndex: 1,
   },
   legend: {
     position: "absolute",
@@ -420,6 +432,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    zIndex: 10,
   },
   legendTitle: {
     fontSize: 14,

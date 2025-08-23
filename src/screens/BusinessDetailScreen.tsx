@@ -297,13 +297,24 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
                   latitudeDelta: 0.01,
                   longitudeDelta: 0.01,
                 }}
-                liteMode={true}
+                showsUserLocation={true}
+                showsMyLocationButton={true}
+                showsCompass={true}
+                showsScale={true}
+                zoomEnabled={true}
+                scrollEnabled={true}
+                rotateEnabled={true}
+                pitchEnabled={true}
+                toolbarEnabled={true}
+                mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
               >
                 <Marker
                   coordinate={{ latitude: business.latitude, longitude: business.longitude }}
                   title={business.name}
                   description={business.address}
                   onPress={handleDirections}
+                  tracksViewChanges={false}
+                  draggable={false}
                 />
               </MapView>
             </View>
@@ -540,10 +551,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     marginBottom: 25,
+    zIndex: 1,
   },
   map: {
     width: "100%",
     height: "100%",
+    zIndex: 1,
   },
   reviewsSection: {
     marginBottom: 25,
