@@ -82,13 +82,14 @@ export default function EventDetailsScreen({ route, navigation }: EventDetailScr
   }
 
   const handleGetDirections = () => {
-    if (event.latitude && event.longitude) {
-      const url = `https://maps.google.com/?q=${event.latitude},${event.longitude}`
-      Linking.openURL(url)
-    } else {
-      const url = `https://maps.google.com/?q=${encodeURIComponent(event.location)}`
-      Linking.openURL(url)
-    }
+    const title = event.title || ""
+    const loc = event.location || ""
+    const hasCoords = typeof event.latitude === "number" && typeof event.longitude === "number"
+    const destination = hasCoords
+      ? `${event.latitude},${event.longitude}`
+      : `${title} ${loc}`.trim()
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+    Linking.openURL(url)
   }
 
   const formatDate = (dateString: string) => {

@@ -107,6 +107,104 @@ export const messagingService = {
     return sorted as any
   },
 
+  // Fast: fetch only conversation ids (and updated_at for ordering)
+  getConversationIds: async (userId: string): Promise<string[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("id, updated_at")
+        .contains("participants", [userId])
+        .order("updated_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching conversation ids:", error)
+        return []
+      }
+      return (data || []).map((r: any) => r.id)
+    } catch (err) {
+      console.error("Error in getConversationIds:", err)
+      return []
+    }
+  },
+
+  // Paged conversations for large lists
+  getConversationsPaged: async (userId: string, limit: number, offset: number): Promise<Conversation[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .contains("participants", [userId])
+        .order("updated_at", { ascending: false })
+        .range(offset, Math.max(offset + limit - 1, offset))
+
+      if (error) {
+        console.error("Error fetching conversations paged:", error)
+        return []
+      }
+
+      const conversations = (data as any[]) || []
+      if (conversations.length === 0) return []
+
+      // Collect all unique participants across this page
+      const participantIdSet = new Set<string>()
+      for (const conv of conversations) {
+        const ids: string[] = Array.isArray(conv.participants) ? conv.participants : []
+        ids.forEach((id) => participantIdSet.add(id))
+      }
+      const allParticipantIds = Array.from(participantIdSet)
+
+      // Fetch profiles for participants
+      const { data: userRows } = await supabase
+        .from("users")
+        .select(`id, email, name, avatar_url, verified, created_at, updated_at, profiles(username)`) // minimal fields
+        .in("id", allParticipantIds)
+
+      const idToUser: Record<string, any> = {}
+      for (const u of userRows || []) idToUser[u.id] = u
+
+      // Presence/last seen
+      const { data: statusRows } = await supabase
+        .from("user_status")
+        .select("user_id, is_online, last_seen")
+        .in("user_id", allParticipantIds)
+
+      const idToStatus: Record<string, { is_online: boolean; last_seen: string | null }> = {}
+      for (const s of statusRows || []) {
+        idToStatus[(s as any).user_id] = { is_online: !!(s as any).is_online, last_seen: (s as any).last_seen || null }
+      }
+
+      const withProfiles = conversations.map((conv) => {
+        const ids: string[] = Array.isArray(conv.participants) ? conv.participants : []
+        const profiles = ids
+          .map((id) => idToUser[id])
+          .filter(Boolean)
+          .map((u: any) => {
+            const status = idToStatus[u.id]
+            const updatedAt = (status?.last_seen || u.updated_at || new Date().toISOString()) as string
+            return {
+              id: u.id,
+              email: u.email,
+              name: u.name,
+              username: Array.isArray(u.profiles) ? u.profiles[0]?.username : u.profiles?.username,
+              avatar_url: u.avatar_url,
+              verified: !!u.verified,
+              is_online: status ? status.is_online : false,
+              last_seen: status?.last_seen || undefined,
+              created_at: u.created_at,
+              updated_at: updatedAt,
+            } as any
+          })
+        const ordered = profiles.sort((a: any) => (a.id === userId ? 1 : -1))
+        return { ...(conv as any), participant_profiles: ordered }
+      })
+
+      return withProfiles as any
+    } catch (err) {
+      console.error("Error in getConversationsPaged:", err)
+      return []
+    }
+  },
+
   getUnreadCount: async (conversationId: string, userId: string): Promise<number> => {
     const { count, error } = await supabase
       .from("messages")

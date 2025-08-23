@@ -145,11 +145,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         const unreadIds = messages.filter((m) => !m.read && m.sender_id !== user?.id).map((m) => m.id)
         if (unreadIds.length > 0) {
           await messagingService.markAsRead(conversation.id, unreadIds)
-          // Delay event emission to ensure database update completes
+          // Emit immediately so UI clears instantly
+          events.emit("conversationClosed", { conversationId: conversation.id })
           setTimeout(() => {
             events.emit("unreadCountsChanged", undefined as any)
-            events.emit("conversationClosed", { conversationId: conversation.id })
-          }, 150)
+          }, 100)
         } else {
           events.emit("conversationClosed", { conversationId: conversation.id })
         }
@@ -676,6 +676,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           keyExtractor={(item) => item.id}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
+          initialNumToRender={20}
+          windowSize={7}
+          maxToRenderPerBatch={30}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           viewabilityConfig={viewabilityConfig}

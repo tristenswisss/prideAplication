@@ -5,10 +5,11 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { MaterialIcons } from "@expo/vector-icons"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "react-native"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { realtime } from "./lib/realtime"
 import { messagingService } from "./services/messagingService"
 import { events } from "./lib/events"
+import { storage } from "./lib/storage"
 
 // Contexts
 import { AuthProvider, useAuth } from "./Contexts/AuthContexts"
@@ -162,29 +163,56 @@ function TabNavigator() {
   const [unreadTotal, setUnreadTotal] = useState(0)
   const [convIds, setConvIds] = useState<string[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const lastRefreshRef = useRef<number>(0)
+
+  const THROTTLE_MS = 1500
 
   const refreshUnreadCounts = useMemo(() => {
     return async (immediate = false) => {
+      const now = Date.now()
+      if (!immediate && now - lastRefreshRef.current < THROTTLE_MS) return
       if (isRefreshing && !immediate) return
 
-      if (!user?.id || convIds.length === 0) {
+      if (!user?.id) {
         setUnreadTotal(0)
+        setConvIds([])
         return
       }
 
       setIsRefreshing(true)
       try {
-        const counts = await messagingService.getConversationUnreadCounts(convIds, user.id)
+        // Use cached ids first for a fast initial total
+        const cachedIds = (await storage.getCacheItem<string[]>(`conv_ids_${user.id}`)) || []
+        if (cachedIds.length > 0) {
+          try {
+            const counts = await messagingService.getConversationUnreadCounts(cachedIds, user.id)
+            const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0)
+            setUnreadTotal(total)
+            setConvIds(cachedIds)
+          } catch {}
+        }
+
+        // Always refresh conversation ids to avoid stale subscriptions
+        const ids = await messagingService.getConversationIds(user.id)
+        setConvIds(ids)
+        await storage.setCacheItem(`conv_ids_${user.id}`, ids, 10) // cache for 10 minutes
+
+        if (ids.length === 0) {
+          setUnreadTotal(0)
+          return
+        }
+
+        const counts = await messagingService.getConversationUnreadCounts(ids, user.id)
         const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0)
         setUnreadTotal(total)
+        lastRefreshRef.current = Date.now()
       } catch (err) {
         console.error("Failed to refresh unread counts:", err)
-        // Don't reset to 0 on error, keep current count
       } finally {
         setIsRefreshing(false)
       }
     }
-  }, [user?.id, convIds, isRefreshing])
+  }, [user?.id, isRefreshing])
 
   useEffect(() => {
     let unsubscribers: (() => void)[] = []
@@ -192,9 +220,14 @@ function TabNavigator() {
       if (!user?.id) return
 
       try {
+        // Load cached ids instantly if present
+        const cachedIds = (await storage.getCacheItem<string[]>(`conv_ids_${user.id}`)) || []
+        if (cachedIds.length > 0) setConvIds(cachedIds)
+
         const convs = await messagingService.getConversations(user.id)
         const ids = convs.map((c: any) => c.id)
         setConvIds(ids)
+        await storage.setCacheItem(`conv_ids_${user.id}`, ids, 10)
 
         await refreshUnreadCounts(true)
 
@@ -202,33 +235,32 @@ function TabNavigator() {
           realtime.subscribeToMessageUpdates(id, {
             onInsert: async (row: any) => {
               if (row.sender_id !== user.id) {
-                await refreshUnreadCounts(true)
+                await refreshUnreadCounts(false)
               }
             },
             onUpdate: async () => {
-              await refreshUnreadCounts(true)
+              await refreshUnreadCounts(false)
             },
           }),
         )
 
-        const offOpen = events.on("conversationOpened", async ({ conversationId }) => {
+        const offOpen = events.on("conversationOpened", async ({ conversationId, previousUnreadCount }) => {
           try {
-            const currentCount = await messagingService.getUnreadCount(conversationId, user.id)
-            setUnreadTotal((prev) => Math.max(0, prev - currentCount))
-            setTimeout(() => refreshUnreadCounts(true), 50)
+            const delta = typeof previousUnreadCount === "number" ? previousUnreadCount : 0
+            if (delta > 0) setUnreadTotal((prev) => Math.max(0, prev - delta))
+            setTimeout(() => refreshUnreadCounts(false), 50)
           } catch (err) {
             console.error("Error updating unread count on conversation open:", err)
-            // Fallback to immediate refresh
             refreshUnreadCounts(true)
           }
         })
 
         const offUnread = events.on("unreadCountsChanged", () => {
-          refreshUnreadCounts(true)
+          refreshUnreadCounts(false)
         })
 
         const offClosed = events.on("conversationClosed", () => {
-          refreshUnreadCounts(true)
+          refreshUnreadCounts(false)
         })
 
         unsubscribers.push(offOpen, offUnread, offClosed)

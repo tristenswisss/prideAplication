@@ -27,6 +27,7 @@ import type { CommunityScreenProps } from "../../types/navigation"
 import { messagingService } from "../../services/messagingService"
 import { buddySystemService } from "../../services/buddySystemService"
 import AppModal from "../../components/AppModal"
+import { notificationService } from "../../services/notificationService"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -242,6 +243,9 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     if (!user) return
 
     try {
+      const targetPost = posts.find((p) => p.id === postId)
+      const wasLiked = !!targetPost?.is_liked
+
       await socialService.likePost(postId, user.id)
       setPosts(
         posts.map((post) =>
@@ -255,13 +259,17 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         ),
       )
 
-      // Send notification to post owner
-      const post = posts.find((p) => p.id === postId)
-      if (post && post.user_id !== user.id) {
-        await pushNotificationService.sendSocialNotification(post.user_id, "post_like", {
-          likerName: user.name,
-          postId,
-        })
+      // Notify post owner only when a like is newly added (not on unlike)
+      const post = targetPost
+      if (post && !wasLiked && post.user_id !== user.id) {
+        await notificationService.createNotification({
+          user_id: post.user_id,
+          title: "Post Liked! ❤️",
+          message: `${user.name} liked your post`,
+          type: "general",
+          data: { post_id: postId, actor_id: user.id, action: "post_like" },
+          read: false,
+        } as any)
       }
     } catch (error) {
       console.error("Error liking post:", error)
@@ -370,12 +378,16 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         ),
       )
 
-      // Send notification to post owner
+      // Notify post owner about the new comment
       if (selectedPost.user_id !== user.id) {
-        await pushNotificationService.sendSocialNotification(selectedPost.user_id, "comment", {
-          commenterName: user.name,
-          postId: selectedPost.id,
-        })
+        await notificationService.createNotification({
+          user_id: selectedPost.user_id,
+          title: "New Comment! 💬",
+          message: `${user.name} commented on your post`,
+          type: "general",
+          data: { post_id: selectedPost.id, comment_id: comment.id, actor_id: user.id, action: "comment" },
+          read: false,
+        } as any)
       }
     } catch (error) {
       console.error("Error adding comment:", error)

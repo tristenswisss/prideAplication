@@ -19,6 +19,7 @@ import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Review } from "../../types"
 import type { BusinessDetailScreenProps } from "../../types/navigation"
+import MapView, { Marker } from "react-native-maps"
 
 export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailScreenProps) {
   const { business } = route.params
@@ -78,7 +79,14 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   }
 
   const handleDirections = () => {
-    const url = `https://maps.google.com/?q=${business.latitude},${business.longitude}`
+    const name = business.name || ""
+    const address = business.address || ""
+    const query = `${name} ${address}`.trim()
+    const url = query
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`
+      : business.latitude && business.longitude
+        ? `https://www.google.com/maps/dir/?api=1&destination=${business.latitude},${business.longitude}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
     Linking.openURL(url)
   }
 
@@ -273,6 +281,28 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
               </View>
             )}
           </View>
+
+          {/* Map */}
+          {typeof business.latitude === "number" && typeof business.longitude === "number" && (
+            <View style={styles.mapContainer}>
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: business.latitude,
+                  longitude: business.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+              >
+                <Marker
+                  coordinate={{ latitude: business.latitude, longitude: business.longitude }}
+                  title={business.name}
+                  description={business.address}
+                  onPress={handleDirections}
+                />
+              </MapView>
+            </View>
+          )}
 
           {/* Reviews */}
           <View style={styles.reviewsSection}>
@@ -499,6 +529,16 @@ const styles = StyleSheet.create({
     color: "#666",
     marginLeft: 15,
     flex: 1,
+  },
+  mapContainer: {
+    height: 200,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 25,
+  },
+  map: {
+    width: "100%",
+    height: "100%",
   },
   reviewsSection: {
     marginBottom: 25,
