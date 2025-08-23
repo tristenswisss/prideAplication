@@ -26,6 +26,7 @@ import AppModal from "../../components/AppModal"
 import { realtime } from "../../lib/realtime"
 import { useIsFocused } from "@react-navigation/native"
 import { events } from "../../lib/events"
+import { storage } from "../../lib/storage"
 
 interface ChatScreenProps {
   navigation: any
@@ -115,6 +116,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           if (prev.some((m) => m.id === row.id)) return prev
           return [...prev, row as any]
         })
+        // Cache last message on new insert
+        try { await storage.setItem(`last_msg_${conversation.id}`, row) } catch {}
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true })
         }, 100)
@@ -205,6 +208,11 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       const data = await messagingService.getMessages(conversation.id)
       setMessages(data)
 
+      // Cache last message for conversation list previews
+      if (Array.isArray(data) && data.length > 0) {
+        try { await storage.setItem(`last_msg_${conversation.id}`, data[data.length - 1]) } catch {}
+      }
+
       const unreadMessageIds = data.filter((msg) => !msg.read && msg.sender_id !== user?.id).map((msg) => msg.id)
       if (unreadMessageIds.length > 0) {
         await messagingService.markAsRead(conversation.id, unreadMessageIds)
@@ -292,6 +300,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         metadata,
       )
       setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]))
+      // Cache last message after send
+      try { await storage.setItem(`last_msg_${conversation.id}`, message) } catch {}
 
       // Scroll to bottom
       setTimeout(() => {
@@ -617,11 +627,10 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
             {isOwnMessage && (
               <View style={styles.messageStatus}>
                 {(() => {
-                  const otherIsOnline = !conversation.is_group && !!conversation.participant_profiles?.[0]?.is_online
                   if (item.read) {
                     return <MaterialIcons name="done-all" size={14} color="#2196F3" />
                   }
-                  if (otherIsOnline || !!item.delivered_at) {
+                  if (item.delivered_at) {
                     return <MaterialIcons name="done-all" size={14} color="#bbb" />
                   }
                   return <MaterialIcons name="done" size={14} color="#bbb" />

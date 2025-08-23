@@ -12,6 +12,7 @@ import { useAuth } from "../../Contexts/AuthContexts"
 import type { Conversation } from "../../types/messaging"
 import type { UserProfile } from "../../types"
 import AppModal from "../../components/AppModal"
+import { storage } from "../../lib/storage"
 
 interface MessagesScreenProps {
   navigation: any
@@ -154,6 +155,26 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
 
     try {
       setLoading(true)
+
+      // Hydrate from cached last messages if available (non-blocking network refresh)
+      try {
+        const ids = await messagingService.getConversationIds(user.id)
+        const convs = await messagingService.getConversations(user.id)
+        const byId = new Map<string, Conversation>()
+        for (const c of convs) byId.set(c.id, c)
+        // Attach cached last message to conversations if present
+        const withCachedLast = await Promise.all(
+          Array.from(byId.values()).map(async (c) => {
+            const cached = await storage.getItem<any>(`last_msg_${c.id}`)
+            if (cached) {
+              return { ...c, last_message: { ...(c.last_message || {}), ...cached } } as Conversation
+            }
+            return c
+          }),
+        )
+        setConversations(withCachedLast)
+      } catch {}
+
       const data = await messagingService.getConversations(user.id)
       // Ensure no duplicate conversations with the same id or same 1:1 participant
       const byId = new Map<string, Conversation>()
@@ -178,6 +199,18 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
         user.id,
       )
       const withCounts = list.map((c) => ({ ...c, unread_count: counts[c.id] ?? c.unread_count ?? 0 }))
+
+      // Persist last messages for cache
+      try {
+        await Promise.all(
+          withCounts.map(async (c) => {
+            if (c.last_message) {
+              await storage.setItem(`last_msg_${c.id}`, c.last_message)
+            }
+          }),
+        )
+      } catch {}
+
       setConversations(withCounts)
     } catch (error) {
       console.error("Error loading conversations:", error)
@@ -316,12 +349,10 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
             {item.last_message?.sender_id === user?.id && (
               (() => {
-                const other = item.participant_profiles?.find((p) => p.id !== user?.id)
-                const otherIsOnline = !!other?.is_online
                 if (item.last_message?.read) {
                   return <MaterialIcons name="done-all" size={16} color="#2196F3" style={{ marginRight: 6 }} />
                 }
-                if (otherIsOnline || !!item.last_message?.delivered_at) {
+                if (item.last_message?.delivered_at) {
                   return <MaterialIcons name="done-all" size={16} color="#bbb" style={{ marginRight: 6 }} />
                 }
                 return <MaterialIcons name="done" size={16} color="#bbb" style={{ marginRight: 6 }} />
@@ -333,9 +364,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
             </Text>
           </View>
           {item.unread_count > 0 && (
-            <View style={styles.unreadBadgeGreen}>
-              <Text style={styles.unreadCount}>{item.unread_count > 99 ? "99+" : item.unread_count}</Text>
-            </View>
+            <View style={styles.unreadDot} />
           )}
         </View>
       </View>
@@ -582,6 +611,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "white",
     fontWeight: "bold",
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#4CAF50",
+    marginLeft: 8,
   },
   emptyState: {
     alignItems: "center",
