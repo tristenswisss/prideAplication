@@ -417,7 +417,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           ListEmptyComponent={
             searchQuery.trim() ? (
               <View style={styles.noResults}>
-                <Text style={styles.noResultsText}>{searchLoading ? "Searching..." : "No users found"}</Text>
+                <Text style={styles.noResultsText}>{searchLoading ? "Searching..." : "No users found (users may be hidden based on visibility settings)"}</Text>
               </View>
             ) : (
               <View style={styles.searchPrompt}>

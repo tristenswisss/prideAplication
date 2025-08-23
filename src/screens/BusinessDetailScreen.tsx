@@ -79,14 +79,18 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   }
 
   const handleDirections = () => {
-    const name = business.name || ""
-    const address = business.address || ""
-    const query = `${name} ${address}`.trim()
-    const url = query
-      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`
-      : business.latitude && business.longitude
+    // Prefer using the Information text directly (address) for more accurate directions
+    const address = business.address?.trim()
+    const name = business.name?.trim()
+
+    const url = address && address.length > 0
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
+      : (business.latitude && business.longitude)
         ? `https://www.google.com/maps/dir/?api=1&destination=${business.latitude},${business.longitude}`
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
+        : name && name.length > 0
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
+          : `https://www.google.com/maps`
+
     Linking.openURL(url)
   }
 
