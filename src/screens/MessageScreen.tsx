@@ -367,6 +367,9 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
         renderItem={renderConversation}
         keyExtractor={(item) => item.id}
         style={styles.conversationsList}
+        initialNumToRender={12}
+        windowSize={5}
+        removeClippedSubviews
         refreshing={refreshing}
         onRefresh={() => {
           setRefreshing(true)

@@ -676,6 +676,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           keyExtractor={(item) => item.id}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
+          initialNumToRender={20}
+          windowSize={7}
+          maxToRenderPerBatch={30}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           viewabilityConfig={viewabilityConfig}
