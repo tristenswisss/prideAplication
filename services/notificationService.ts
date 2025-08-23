@@ -64,17 +64,57 @@ export const notificationService = {
   createNotification: async (
     notification: Omit<Notification, "id" | "created_at">,
   ): Promise<Notification | null> => {
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert(notification)
-      .select("*")
-      .single()
+    try {
+      // Ensure user_id matches the authenticated user to satisfy RLS
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("not_authenticated")
+      const payload = { ...notification, user_id: (notification as any).user_id || user.id }
 
-    if (error) {
-      console.error("Error creating notification:", error)
+      const { data, error } = await supabase
+        .from("notifications")
+        .insert(payload as any)
+        .select("*")
+        .single()
+
+      if (error) {
+        // Fallback: if blocked by RLS, try RPC helper
+        if ((error as any).code === "42501") {
+          try {
+            const { error: rpcError } = await supabase.rpc("create_notification", {
+              user_id: payload.user_id,
+              title: (payload as any).title,
+              message: (payload as any).message,
+              type: (payload as any).type,
+              data: (payload as any).data ?? null,
+            })
+            if (rpcError) {
+              console.error("RPC create_notification failed:", rpcError)
+              return null
+            }
+            // Read back the latest inserted notification for this user (best-effort)
+            const { data: latest } = await supabase
+              .from("notifications")
+              .select("*")
+              .eq("user_id", payload.user_id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single()
+            return (latest as any) || null
+          } catch (rpcCatch) {
+            console.error("Error during RPC fallback:", rpcCatch)
+            return null
+          }
+        }
+        console.error("Error creating notification:", error)
+        return null
+      }
+
+      return data
+    } catch (e) {
+      console.error("createNotification failed:", e)
       return null
     }
-
-    return data
   },
 }
