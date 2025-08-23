@@ -41,6 +41,7 @@ import NotificationSettingsScreen from "./src/screens/NotificationSettingsScreen
 import PrivacySafetyScreen from "./src/screens/PrivacySafetyScreen"
 import HelpSupportScreen from "./src/screens/HelpSupportScreen"
 import CreateEventScreen from "./src/screens/CreateEventScreen"
+import BlockedUsersScreen from "./src/screens/BlockedUsersScreen"
 
 // Components
 import OfflineStatus from "./components/OfflineStatus"
@@ -140,6 +141,7 @@ function ProfileNavigator() {
       />
       <ProfileStack.Screen name="PrivacySafety" component={PrivacySafetyScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="HelpSupport" component={HelpSupportScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="BlockedUsers" component={BlockedUsersScreen} options={{ title: "Blocked Users" }} />
       <ProfileStack.Screen
         name="BusinessDetails"
         component={BusinessDetailScreen}
@@ -225,7 +227,11 @@ function TabNavigator() {
           refreshUnreadCounts(true)
         })
 
-        unsubscribers.push(offOpen, offUnread)
+        const offClosed = events.on("conversationClosed", () => {
+          refreshUnreadCounts(true)
+        })
+
+        unsubscribers.push(offOpen, offUnread, offClosed)
       } catch (err) {
         console.error("Error loading conversations:", err)
       }

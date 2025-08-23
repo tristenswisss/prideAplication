@@ -465,7 +465,10 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           const ok = await messagingService.blockUser(user.id, post.user_id)
           if (ok) {
             setPosts((prev) => prev.filter((p) => p.user_id !== post.user_id))
-            Alert.alert("Blocked", "You will no longer see posts from this user.")
+            Alert.alert("Blocked", "You will no longer see posts from this user.", [
+              { text: "Manage", onPress: () => (navigation as any).navigate("BlockedUsers" as any) },
+              { text: "OK" },
+            ])
           } else {
             Alert.alert("Error", "Failed to block user")
           }
