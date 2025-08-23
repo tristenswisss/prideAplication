@@ -138,9 +138,14 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       // Optimistically zero this conversation's unread count in the local list
       setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
     })
+    const offOpened = events.on("conversationOpened", ({ conversationId }) => {
+      // Also zero immediately on open for snappier UI
+      setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
+    })
     return () => {
       off()
       offClosed()
+      offOpened()
     }
   }, [user?.id])
 

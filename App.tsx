@@ -167,14 +167,25 @@ function TabNavigator() {
     return async (immediate = false) => {
       if (isRefreshing && !immediate) return
 
-      if (!user?.id || convIds.length === 0) {
+      if (!user?.id) {
         setUnreadTotal(0)
+        setConvIds([])
         return
       }
 
       setIsRefreshing(true)
       try {
-        const counts = await messagingService.getConversationUnreadCounts(convIds, user.id)
+        // Always refresh conversation ids to avoid stale subscriptions
+        const convs = await messagingService.getConversations(user.id)
+        const ids = convs.map((c: any) => c.id)
+        setConvIds(ids)
+
+        if (ids.length === 0) {
+          setUnreadTotal(0)
+          return
+        }
+
+        const counts = await messagingService.getConversationUnreadCounts(ids, user.id)
         const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0)
         setUnreadTotal(total)
       } catch (err) {
@@ -211,10 +222,14 @@ function TabNavigator() {
           }),
         )
 
-        const offOpen = events.on("conversationOpened", async ({ conversationId }) => {
+        const offOpen = events.on("conversationOpened", async ({ conversationId, previousUnreadCount }) => {
           try {
-            const currentCount = await messagingService.getUnreadCount(conversationId, user.id)
-            setUnreadTotal((prev) => Math.max(0, prev - currentCount))
+            // Optimistically decrement using the count we had when opening
+            const delta = typeof previousUnreadCount === "number" ? previousUnreadCount : 0
+            if (delta > 0) {
+              setUnreadTotal((prev) => Math.max(0, prev - delta))
+            }
+            // Then refresh to reconcile with server state
             setTimeout(() => refreshUnreadCounts(true), 50)
           } catch (err) {
             console.error("Error updating unread count on conversation open:", err)
