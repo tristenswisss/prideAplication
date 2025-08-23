@@ -118,6 +118,16 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         })
         // Cache last message on new insert
         try { await storage.setItem(`last_msg_${conversation.id}`, row) } catch {}
+
+        // If this is an incoming message, mark as delivered immediately
+        try {
+          if (row.sender_id !== user?.id && !row.delivered_at) {
+            await messagingService.markDelivered([row.id])
+          }
+        } catch (e) {
+          console.error("Failed to mark delivered on insert:", e)
+        }
+
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true })
         }, 100)
@@ -211,6 +221,18 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       // Cache last message for conversation list previews
       if (Array.isArray(data) && data.length > 0) {
         try { await storage.setItem(`last_msg_${conversation.id}`, data[data.length - 1]) } catch {}
+      }
+
+      // Mark undelivered incoming messages as delivered upon opening the conversation
+      try {
+        const toDeliver = data
+          .filter((msg) => msg.sender_id !== user?.id && !msg.delivered_at)
+          .map((msg) => msg.id)
+        if (toDeliver.length > 0) {
+          await messagingService.markDelivered(toDeliver)
+        }
+      } catch (e) {
+        console.error("Failed to mark delivered on load:", e)
       }
 
       const unreadMessageIds = data.filter((msg) => !msg.read && msg.sender_id !== user?.id).map((msg) => msg.id)
