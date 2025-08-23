@@ -313,10 +313,25 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
         </View>
 
         <View style={styles.lastMessageContainer}>
-          <Text style={[styles.lastMessage, item.unread_count > 0 && styles.unreadMessage]} numberOfLines={1}>
-            {item.last_message?.sender_id === user?.id ? "You: " : ""}
-            {item.last_message?.content || "No messages yet"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            {item.last_message?.sender_id === user?.id && (
+              (() => {
+                const other = item.participant_profiles?.find((p) => p.id !== user?.id)
+                const otherIsOnline = !!other?.is_online
+                if (item.last_message?.read) {
+                  return <MaterialIcons name="done-all" size={16} color="#2196F3" style={{ marginRight: 6 }} />
+                }
+                if (otherIsOnline || !!item.last_message?.delivered_at) {
+                  return <MaterialIcons name="done-all" size={16} color="#bbb" style={{ marginRight: 6 }} />
+                }
+                return <MaterialIcons name="done" size={16} color="#bbb" style={{ marginRight: 6 }} />
+              })()
+            )}
+            <Text style={[styles.lastMessage, item.unread_count > 0 && styles.unreadMessage]} numberOfLines={1}>
+              {item.last_message?.sender_id === user?.id ? "You: " : ""}
+              {item.last_message?.content || "No messages yet"}
+            </Text>
+          </View>
           {item.unread_count > 0 && (
             <View style={styles.unreadBadgeGreen}>
               <Text style={styles.unreadCount}>{item.unread_count > 99 ? "99+" : item.unread_count}</Text>

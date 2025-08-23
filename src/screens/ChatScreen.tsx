@@ -616,11 +616,16 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
             {isOwnMessage && (
               <View style={styles.messageStatus}>
-                {item.read ? (
-                  <MaterialIcons name="done-all" size={14} color="#4ECDC4" />
-                ) : (
-                  <MaterialIcons name="done" size={14} color="#ccc" />
-                )}
+                {(() => {
+                  const otherIsOnline = !conversation.is_group && !!conversation.participant_profiles?.[0]?.is_online
+                  if (item.read) {
+                    return <MaterialIcons name="done-all" size={14} color="#2196F3" />
+                  }
+                  if (otherIsOnline || !!item.delivered_at) {
+                    return <MaterialIcons name="done-all" size={14} color="#bbb" />
+                  }
+                  return <MaterialIcons name="done" size={14} color="#bbb" />
+                })()}
               </View>
             )}
           </View>
