@@ -59,6 +59,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
             )
             return next.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
           })
+          try { await storage.setItem(`last_msg_${c.id}`, row) } catch {}
           if (row.sender_id !== user.id) {
             const count = await messagingService.getUnreadCount(c.id, user.id)
             setConversations((prev) => prev.map((conv) => (conv.id === c.id ? { ...conv, unread_count: count } : conv)))
@@ -75,7 +76,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     return () => {
       unsubscribers.forEach((u) => u())
     }
-  }, [conversations])
+  }, [conversations, user?.id])
 
   // Realtime: subscribe to presence for other participants and update online dots/last seen
   useEffect(() => {
