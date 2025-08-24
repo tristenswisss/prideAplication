@@ -4,6 +4,7 @@ import { storage } from "../lib/storage"
 import type { PushNotification } from "../types/social"
 import type { Event } from "../types"
 import { supabase } from "../lib/supabase"
+import Constants from "expo-constants"
 
 // Configure notifications
 Notifications.setNotificationHandler({
@@ -63,8 +64,15 @@ export const pushNotificationService = {
         return null
       }
 
+      // Get EAS projectId for push token retrieval (SDK 48+ requirement)
+      const easProjectId = (Constants?.expoConfig as any)?.extra?.eas?.projectId || (Constants as any)?.easConfig?.projectId
+      if (!easProjectId) {
+        console.warn("EAS projectId not found in Constants; skipping push token fetch")
+        return null
+      }
+
       // Get push token
-      const token = (await Notifications.getExpoPushTokenAsync()).data
+      const token = (await Notifications.getExpoPushTokenAsync({ projectId: easProjectId })).data
       console.log("Push token:", token)
 
       // Store token and default settings locally
