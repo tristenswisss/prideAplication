@@ -204,6 +204,7 @@ export const buddySystemService = {
         )
       `)
       .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
+      .eq("status", "pending")
       .order("created_at", { ascending: false })
 
     if (error) {

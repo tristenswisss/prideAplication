@@ -153,9 +153,36 @@ export default function BuddySystemScreen({ navigation }: any) {
 
   const handleRespondToRequest = async (requestId: string, response: "accepted" | "rejected") => {
     try {
+      // Capture the request being responded to for optimistic UI updates
+      const respondingRequest = requests.find((r) => r.id === requestId)
+
       await buddySystemService.respondToBuddyRequest(requestId, response)
       if (response === "accepted") {
         setRequests((prev) => prev.filter((r) => r.id !== requestId))
+        // Optimistically add to buddies list so the UI reflects the new connection immediately
+        if (respondingRequest && user) {
+          const isCurrentUserRequester = respondingRequest.from_user_id === user.id
+          const otherUserId = isCurrentUserRequester ? respondingRequest.to_user_id : respondingRequest.from_user_id
+
+          // Avoid duplicates if already present
+          const alreadyInBuddies = buddies.some(
+            (m) => (m.user1_id === user.id && m.user2_id === otherUserId) || (m.user2_id === user.id && m.user1_id === otherUserId),
+          )
+          if (!alreadyInBuddies) {
+            const optimisticMatch: BuddyMatch = {
+              id: `optimistic-${requestId}`,
+              user1_id: user.id,
+              user2_id: otherUserId,
+              compatibility_score: 0,
+              matched_interests: [],
+              distance: 0,
+              created_at: new Date().toISOString(),
+              user1: isCurrentUserRequester ? respondingRequest.from_user : respondingRequest.to_user,
+              user2: isCurrentUserRequester ? respondingRequest.to_user : respondingRequest.from_user,
+            }
+            setBuddies((prev) => [optimisticMatch, ...prev])
+          }
+        }
         setModal({ type: "info", title: "Request Accepted", message: "You now have a new buddy!" })
       } else {
         setModal({
