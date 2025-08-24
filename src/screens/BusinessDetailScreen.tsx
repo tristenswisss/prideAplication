@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   Linking,
   FlatList,
+  Platform,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -19,7 +20,8 @@ import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Review } from "../../types"
 import type { BusinessDetailScreenProps } from "../../types/navigation"
-import MapView, { Marker } from "react-native-maps"
+import MapView, { Marker, UrlTile } from "react-native-maps"
+import Constants from "expo-constants"
 
 export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailScreenProps) {
   const { business } = route.params
@@ -35,6 +37,19 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   })
   const [loading, setLoading] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
+
+  const isExpoGo = Constants.appOwnership === "expo"
+  const mapProvider = !isExpoGo ? undefined : undefined
+  // In detail screen we can rely on default provider; avoid forcing Google in Expo Go.
+
+  const detailInitialRegion = {
+    latitude: business.latitude ?? 37.7749,
+    longitude: business.longitude ?? -122.4194,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  }
+
+  const detailMapKey = `detail-${detailInitialRegion.latitude}-${detailInitialRegion.longitude}-${Platform.OS}`
 
   useEffect(() => {
     loadReviews()
@@ -290,13 +305,10 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
           {typeof business.latitude === "number" && typeof business.longitude === "number" && (
             <View style={styles.mapContainer}>
               <MapView
+                provider={mapProvider}
+                key={detailMapKey}
                 style={styles.map}
-                initialRegion={{
-                  latitude: business.latitude,
-                  longitude: business.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
+                initialRegion={detailInitialRegion}
                 showsUserLocation={true}
                 showsMyLocationButton={true}
                 showsCompass={true}
@@ -308,6 +320,14 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
                 toolbarEnabled={true}
                 mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
               >
+                {/* OSM fallback tiles for Expo Go on Android */}
+                {isExpoGo && Platform.OS === 'android' && (
+                  <UrlTile
+                    urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    maximumZ={19}
+                    zIndex={-1}
+                  />
+                )}
                 <Marker
                   coordinate={{ latitude: business.latitude, longitude: business.longitude }}
                   title={business.name}

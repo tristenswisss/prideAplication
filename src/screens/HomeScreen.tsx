@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView, Platform } from "react-native"
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
+import MapView, { Marker, PROVIDER_GOOGLE, UrlTile } from "react-native-maps"
 import * as Location from "expo-location"
+import Constants from "expo-constants"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { businessService } from "../../services/businessService"
@@ -29,6 +30,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     longitude: number
   } | null>(null)
   const [isOfflineMode, setIsOfflineMode] = useState(false)
+
+  const isExpoGo = Constants.appOwnership === "expo"
+  const mapProvider = Platform.OS === 'android' && !isExpoGo ? PROVIDER_GOOGLE : undefined
+
+  const initialRegion = useMemo(() => ({
+    latitude: userLocation?.latitude ?? 37.7749,
+    longitude: userLocation?.longitude ?? -122.4194,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  }), [userLocation])
+
+  const mapKey = `${Platform.OS}-${mapProvider ? 'google' : 'default'}-${userLocation ? 'withLoc' : 'noLoc'}`
 
   const groupedByCategory = useMemo(() => {
     const groups: Record<string, Business[]> = {}
@@ -253,14 +266,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       {showMap ? (
         <View style={styles.mapContainer}>
           <MapView
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            provider={mapProvider}
+            key={mapKey}
             style={styles.map}
-            initialRegion={{
-              latitude: userLocation?.latitude ?? 37.7749,
-              longitude: userLocation?.longitude ?? -122.4194,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
+            initialRegion={initialRegion}
             showsUserLocation={true}
             showsMyLocationButton={true}
             showsCompass={true}
@@ -272,6 +281,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             toolbarEnabled={true}
             mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
+            {isExpoGo && Platform.OS === 'android' && (
+              <UrlTile
+                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maximumZ={19}
+                zIndex={-1}
+              />
+            )}
             {initialMarkers.map((business) => (
               <Marker
                 key={business.id}
