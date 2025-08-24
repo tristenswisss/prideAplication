@@ -119,8 +119,8 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       }
       try {
         setSearchLoading(true)
-        const results = await messagingService.searchUsers(searchQuery.trim(), user.id)
-        setSearchResults(results || [])
+        const result = await profileService.searchUsers(searchQuery.trim(), user.id)
+        setSearchResults(result.success && result.data ? result.data : [])
       } catch (error) {
         console.error("Error searching users:", error)
       } finally {
