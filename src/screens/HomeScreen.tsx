@@ -216,6 +216,11 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     <TouchableOpacity
       style={styles.businessCard}
       onPress={() => {
+        // In list view, go to details; in map view, focus the marker
+        if (!showMap) {
+          navigation.navigate("BusinessDetails", { business: item })
+          return
+        }
         if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
           setSelectedBusinessId(item.id)
           setShowMap(true)
@@ -227,6 +232,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
               longitudeDelta: 0.02,
             }, 500)
           }
+        } else {
+          navigation.navigate("BusinessDetails", { business: item })
         }
       }}
     >
