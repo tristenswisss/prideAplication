@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView, Platform } from "react-native"
-import MapView, { Marker, PROVIDER_GOOGLE, UrlTile } from "react-native-maps"
+import MapView, { Marker } from "react-native-maps"
 import * as Location from "expo-location"
 import Constants from "expo-constants"
 import { LinearGradient } from "expo-linear-gradient"
@@ -32,9 +32,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   } | null>(null)
   const [isOfflineMode, setIsOfflineMode] = useState(false)
 
-  const isExpoGo = Constants.appOwnership === "expo"
-  const mapProvider = Platform.OS === 'android' && !isExpoGo ? PROVIDER_GOOGLE : undefined
-
+  // Always use default provider
   const mapRef = React.useRef<MapView | null>(null)
 
   const initialRegion = useMemo(() => ({
@@ -44,7 +42,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     longitudeDelta: 0.0421,
   }), [userLocation])
 
-  const mapKey = `${Platform.OS}-${mapProvider ? 'google' : 'default'}-${userLocation ? 'withLoc' : 'noLoc'}`
+  const mapKey = `${Platform.OS}-${userLocation ? 'withLoc' : 'noLoc'}`
 
   useEffect(() => {
     const lat = route?.params?.focusLat
@@ -283,7 +281,6 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       {showMap ? (
         <View style={styles.mapContainer}>
           <MapView
-            provider={mapProvider}
             key={mapKey}
             ref={(ref) => { mapRef.current = ref }}
             style={styles.map}
@@ -299,13 +296,6 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
             toolbarEnabled={true}
             mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
-            {isExpoGo && Platform.OS === 'android' && (
-              <UrlTile
-                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                maximumZ={19}
-                zIndex={-1}
-              />
-            )}
             {initialMarkers.map((business) => (
               <Marker
                 key={business.id}

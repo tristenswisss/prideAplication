@@ -20,8 +20,7 @@ import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Review } from "../../types"
 import type { BusinessDetailScreenProps } from "../../types/navigation"
-import MapView, { Marker, UrlTile } from "react-native-maps"
-import Constants from "expo-constants"
+// Map removed from this screen; keep navigation to Home for map view
 
 export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailScreenProps) {
   const { business } = route.params
@@ -37,19 +36,6 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   })
   const [loading, setLoading] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
-
-  const isExpoGo = Constants.appOwnership === "expo"
-  const mapProvider = !isExpoGo ? undefined : undefined
-  // In detail screen we can rely on default provider; avoid forcing Google in Expo Go.
-
-  const detailInitialRegion = {
-    latitude: business.latitude ?? 37.7749,
-    longitude: business.longitude ?? -122.4194,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  }
-
-  const detailMapKey = `detail-${detailInitialRegion.latitude}-${detailInitialRegion.longitude}-${Platform.OS}`
 
   useEffect(() => {
     loadReviews()
