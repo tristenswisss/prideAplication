@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView, Platform } from "react-native"
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
+import MapView, { Marker, Callout } from "react-native-maps"
 import * as Location from "expo-location"
+import Constants from "expo-constants"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { businessService } from "../../services/businessService"
 import type { Business } from "../../types"
 import type { HomeScreenProps } from "../../types/navigation"
+import React from "react"
+import Svg, { Path, Circle } from "react-native-svg"
 
 interface Category {
   id: string
@@ -17,7 +20,7 @@ interface Category {
   color: string
 }
 
-export default function HomeScreen({ navigation }: HomeScreenProps) {
+export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -29,6 +32,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     longitude: number
   } | null>(null)
   const [isOfflineMode, setIsOfflineMode] = useState(false)
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null)
+
+  // Always use default provider
+  const mapRef = React.useRef<MapView | null>(null)
+  const markerRefs = React.useRef<Record<string, any>>({})
+
+  const initialRegion = useMemo(() => ({
+    latitude: userLocation?.latitude ?? 37.7749,
+    longitude: userLocation?.longitude ?? -122.4194,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  }), [userLocation])
+
+  const mapKey = `${Platform.OS}-${userLocation ? 'withLoc' : 'noLoc'}`
 
   const groupedByCategory = useMemo(() => {
     const groups: Record<string, Business[]> = {}
@@ -47,6 +64,54 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   }, [filteredBusinesses])
 
   const initialMarkers = useMemo(() => validMarkers.slice(0, 200), [validMarkers])
+
+  useEffect(() => {
+    const lat = route?.params?.focusLat
+    const lng = route?.params?.focusLng
+    const focusId = route?.params?.focusBusinessId
+    if (focusId) setSelectedBusinessId(focusId)
+    if (typeof lat === 'number' && typeof lng === 'number' && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }, 600)
+      setShowMap(true)
+    }
+  }, [route?.params?.focusLat, route?.params?.focusLng, route?.params?.focusBusinessId])
+
+  // Auto-open callout when a selection is set
+  useEffect(() => {
+    if (!selectedBusinessId) return
+    const selected = initialMarkers.find(b => b.id === selectedBusinessId)
+    if (selected && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: selected.latitude as number,
+        longitude: selected.longitude as number,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }, 500)
+      setTimeout(() => {
+        const ref = markerRefs.current[selectedBusinessId]
+        // @ts-ignore: showCallout exists on native marker
+        ref?.showCallout?.()
+      }, 300)
+    }
+  }, [selectedBusinessId, initialMarkers])
+
+  // Persist selection across filter changes
+  useEffect(() => {
+    if (!selectedBusinessId) return
+    const present = initialMarkers.some(b => b.id === selectedBusinessId)
+    if (present) {
+      setTimeout(() => {
+        const ref = markerRefs.current[selectedBusinessId]
+        // @ts-ignore
+        ref?.showCallout?.()
+      }, 200)
+    }
+  }, [initialMarkers])
 
   const categories: Category[] = [
     { id: "all", name: "All", icon: "apps", color: "black" },
@@ -150,7 +215,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const renderBusinessCard = ({ item }: { item: Business }) => (
     <TouchableOpacity
       style={styles.businessCard}
-      onPress={() => navigation.navigate("BusinessDetails", { business: item })}
+      onPress={() => {
+        if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
+          setSelectedBusinessId(item.id)
+          setShowMap(true)
+          if (mapRef.current) {
+            mapRef.current.animateToRegion({
+              latitude: item.latitude as number,
+              longitude: item.longitude as number,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            }, 500)
+          }
+        }
+      }}
     >
       <View style={styles.businessHeader}>
         <Text style={styles.businessName}>{item.name}</Text>
@@ -253,14 +331,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       {showMap ? (
         <View style={styles.mapContainer}>
           <MapView
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            key={mapKey}
+            ref={(ref) => { mapRef.current = ref }}
             style={styles.map}
-            initialRegion={{
-              latitude: userLocation?.latitude ?? 37.7749,
-              longitude: userLocation?.longitude ?? -122.4194,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
+            initialRegion={initialRegion}
             showsUserLocation={true}
             showsMyLocationButton={true}
             showsCompass={true}
@@ -272,21 +346,49 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             toolbarEnabled={true}
             mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
-            {initialMarkers.map((business) => (
-              <Marker
-                key={business.id}
-                coordinate={{
-                  latitude: business.latitude as number,
-                  longitude: business.longitude as number,
-                }}
-                pinColor={getMarkerColor(business)}
-                title={business.name}
-                description={business.address || business.description}
-                onPress={() => navigation.navigate("BusinessDetails", { business })}
-                tracksViewChanges={false}
-                draggable={false}
-              />
-            ))}
+            {initialMarkers.map((business) => {
+              const isSelected = selectedBusinessId === business.id
+              return (
+                <Marker
+                  key={business.id}
+                  ref={(ref) => { markerRefs.current[business.id] = ref }}
+                  coordinate={{
+                    latitude: business.latitude as number,
+                    longitude: business.longitude as number,
+                  }}
+                  pinColor={isSelected ? "#FF6B6B" : getMarkerColor(business)}
+                  title={business.name}
+                  description={business.address || business.description}
+                  onPress={() => {
+                    setSelectedBusinessId(business.id)
+                  }}
+                  tracksViewChanges={false}
+                  draggable={false}
+                  zIndex={isSelected ? 10 : 1}
+                >
+                  {isSelected ? (
+                    <>
+                      <Svg width={32} height={40} viewBox="0 0 24 32">
+                        <Path d="M12 0C5.925 0 1 4.925 1 11c0 7.5 9.5 20 11 21 1.5-1 11-13.5 11-21C23 4.925 18.075 0 12 0z" fill="#FF6B6B" />
+                        <Circle cx={12} cy={11} r={4} fill="#fff" />
+                      </Svg>
+                      <Callout onPress={() => navigation.navigate("BusinessDetails", { business })}>
+                        <View style={{ maxWidth: 220 }}>
+                          <Text style={{ fontWeight: "700", marginBottom: 4 }}>{business.name}</Text>
+                          {business.address ? (
+                            <Text numberOfLines={2} style={{ color: "#555" }}>{business.address}</Text>
+                          ) : null}
+                          <View style={{ marginTop: 6, flexDirection: "row", alignItems: "center" }}>
+                            <MaterialIcons name="info" size={14} color="#333" />
+                            <Text style={{ marginLeft: 6, color: "#333" }}>Tap to view details</Text>
+                          </View>
+                        </View>
+                      </Callout>
+                    </>
+                  ) : null}
+                </Marker>
+              )
+            })}
           </MapView>
 
           {/* Map Legend */}

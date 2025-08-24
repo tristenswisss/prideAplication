@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   Linking,
   FlatList,
+  Platform,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -19,7 +20,7 @@ import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Review } from "../../types"
 import type { BusinessDetailScreenProps } from "../../types/navigation"
-import MapView, { Marker } from "react-native-maps"
+// Map removed from this screen; keep navigation to Home for map view
 
 export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailScreenProps) {
   const { business } = route.params
@@ -288,36 +289,18 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
 
           {/* Map */}
           {typeof business.latitude === "number" && typeof business.longitude === "number" && (
-            <View style={styles.mapContainer}>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: business.latitude,
-                  longitude: business.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-                showsUserLocation={true}
-                showsMyLocationButton={true}
-                showsCompass={true}
-                showsScale={true}
-                zoomEnabled={true}
-                scrollEnabled={true}
-                rotateEnabled={true}
-                pitchEnabled={true}
-                toolbarEnabled={true}
-                mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
-              >
-                <Marker
-                  coordinate={{ latitude: business.latitude, longitude: business.longitude }}
-                  title={business.name}
-                  description={business.address}
-                  onPress={handleDirections}
-                  tracksViewChanges={false}
-                  draggable={false}
-                />
-              </MapView>
-            </View>
+            <TouchableOpacity
+              style={[styles.writeReviewButton, { alignSelf: "flex-start", marginBottom: 20 }]}
+              onPress={() =>
+                (navigation.getParent() as any)?.navigate(
+                  "Home",
+                  { screen: "HomeMain", params: { focusLat: business.latitude, focusLng: business.longitude, focusBusinessId: business.id } }
+                )
+              }
+            >
+              <MaterialIcons name="map" size={16} color="black" />
+              <Text style={styles.writeReviewText}>View on Map</Text>
+            </TouchableOpacity>
           )}
 
           {/* Reviews */}

@@ -38,7 +38,7 @@ export type MainTabParamList = {
 
 // Home Stack
 export type HomeStackParamList = {
-  HomeMain: undefined
+  HomeMain: { focusLat?: number; focusLng?: number; focusBusinessId?: string } | undefined
   BusinessDetails: { business: Business }
   SavedPlaces: undefined
   WriteReview: { business: Business }
