@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView, Platform } from "react-native"
-import MapView, { Marker } from "react-native-maps"
+import MapView, { Marker, Callout } from "react-native-maps"
 import * as Location from "expo-location"
 import Constants from "expo-constants"
 import { LinearGradient } from "expo-linear-gradient"
@@ -181,7 +181,20 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const renderBusinessCard = ({ item }: { item: Business }) => (
     <TouchableOpacity
       style={styles.businessCard}
-      onPress={() => navigation.navigate("BusinessDetails", { business: item })}
+      onPress={() => {
+        if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
+          setSelectedBusinessId(item.id)
+          setShowMap(true)
+          if (mapRef.current) {
+            mapRef.current.animateToRegion({
+              latitude: item.latitude as number,
+              longitude: item.longitude as number,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            }, 500)
+          }
+        }
+      }}
     >
       <View style={styles.businessHeader}>
         <Text style={styles.businessName}>{item.name}</Text>
@@ -309,16 +322,31 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
                     longitude: business.longitude as number,
                   }}
                   pinColor={isSelected ? "#FF6B6B" : getMarkerColor(business)}
+                  image={isSelected ? require("../../assets/icon.png") : undefined}
                   title={business.name}
                   description={business.address || business.description}
                   onPress={() => {
                     setSelectedBusinessId(business.id)
-                    navigation.navigate("BusinessDetails", { business })
                   }}
                   tracksViewChanges={false}
                   draggable={false}
                   zIndex={isSelected ? 10 : 1}
-                />
+                >
+                  {isSelected && (
+                    <Callout onPress={() => navigation.navigate("BusinessDetails", { business })}>
+                      <View style={{ maxWidth: 220 }}>
+                        <Text style={{ fontWeight: "700", marginBottom: 4 }}>{business.name}</Text>
+                        {business.address ? (
+                          <Text numberOfLines={2} style={{ color: "#555" }}>{business.address}</Text>
+                        ) : null}
+                        <View style={{ marginTop: 6, flexDirection: "row", alignItems: "center" }}>
+                          <MaterialIcons name="info" size={14} color="#333" />
+                          <Text style={{ marginLeft: 6, color: "#333" }}>Tap to view details</Text>
+                        </View>
+                      </View>
+                    </Callout>
+                  )}
+                </Marker>
               )
             })}
           </MapView>
