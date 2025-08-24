@@ -31,6 +31,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     longitude: number
   } | null>(null)
   const [isOfflineMode, setIsOfflineMode] = useState(false)
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null)
 
   // Always use default provider
   const mapRef = React.useRef<MapView | null>(null)
@@ -47,6 +48,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   useEffect(() => {
     const lat = route?.params?.focusLat
     const lng = route?.params?.focusLng
+    const focusId = route?.params?.focusBusinessId
+    if (focusId) setSelectedBusinessId(focusId)
     if (typeof lat === 'number' && typeof lng === 'number' && mapRef.current) {
       mapRef.current.animateToRegion({
         latitude: lat,
@@ -56,7 +59,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       }, 600)
       setShowMap(true)
     }
-  }, [route?.params?.focusLat, route?.params?.focusLng])
+  }, [route?.params?.focusLat, route?.params?.focusLng, route?.params?.focusBusinessId])
 
   const groupedByCategory = useMemo(() => {
     const groups: Record<string, Business[]> = {}
@@ -296,21 +299,28 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
             toolbarEnabled={true}
             mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
-            {initialMarkers.map((business) => (
-              <Marker
-                key={business.id}
-                coordinate={{
-                  latitude: business.latitude as number,
-                  longitude: business.longitude as number,
-                }}
-                pinColor={getMarkerColor(business)}
-                title={business.name}
-                description={business.address || business.description}
-                onPress={() => navigation.navigate("BusinessDetails", { business })}
-                tracksViewChanges={false}
-                draggable={false}
-              />
-            ))}
+            {initialMarkers.map((business) => {
+              const isSelected = selectedBusinessId === business.id
+              return (
+                <Marker
+                  key={business.id}
+                  coordinate={{
+                    latitude: business.latitude as number,
+                    longitude: business.longitude as number,
+                  }}
+                  pinColor={isSelected ? "#FF6B6B" : getMarkerColor(business)}
+                  title={business.name}
+                  description={business.address || business.description}
+                  onPress={() => {
+                    setSelectedBusinessId(business.id)
+                    navigation.navigate("BusinessDetails", { business })
+                  }}
+                  tracksViewChanges={false}
+                  draggable={false}
+                  zIndex={isSelected ? 10 : 1}
+                />
+              )
+            })}
           </MapView>
 
           {/* Map Legend */}
