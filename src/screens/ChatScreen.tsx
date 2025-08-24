@@ -85,7 +85,10 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               <Text style={styles.headerName}>{getConversationName()}</Text>
               {!conversation.is_group && (
                 <Text style={styles.headerStatus}>
-                  {conversation.participant_profiles?.[0]?.is_online ? "Online" : ""}
+                  {(() => {
+                    const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+                    return other?.is_online ? "Online" : ""
+                  })()}
                 </Text>
               )}
             </View>
@@ -200,7 +203,10 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
                 <Text style={styles.headerName}>{getConversationName()}</Text>
                 {!conversation.is_group && (
                   <Text style={styles.headerStatus}>
-                    {conversation.participant_profiles?.[0]?.is_online ? "Online" : ""}
+                    {(() => {
+                      const otherP = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+                      return otherP?.is_online ? "Online" : ""
+                    })()}
                   </Text>
                 )}
               </View>
@@ -520,16 +526,16 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     if (conversation.is_group) {
       return conversation.group_name || "Group Chat"
     }
-    const otherParticipant = conversation.participant_profiles?.[0]
-    return otherParticipant?.name || "Unknown User"
+    const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+    return other?.name || "Unknown User"
   }
 
   const getConversationAvatar = (): string => {
     if (conversation.is_group) {
       return conversation.group_avatar || "/placeholder.svg?height=40&width=40&text=GC"
     }
-    const otherParticipant = conversation.participant_profiles?.[0]
-    return otherParticipant?.avatar_url || "/placeholder.svg?height=40&width=40&text=U"
+    const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+    return other?.avatar_url || "/placeholder.svg?height=40&width=40&text=U"
   }
 
   const formatMessageTime = (dateString: string): string => {

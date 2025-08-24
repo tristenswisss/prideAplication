@@ -100,6 +100,35 @@ export const messagingService = {
       return { ...(conv as any), participant_profiles: ordered }
     })
 
+    // Attach last message previews in one batch query
+    try {
+      const conversationIds = withProfiles.map((c: any) => c.id)
+      if (conversationIds.length > 0) {
+        const { data: msgs, error: msgErr } = await supabase
+          .from("messages")
+          .select("id, conversation_id, sender_id, content, message_type, metadata, sent_at, delivered_at, read, read_at")
+          .in("conversation_id", conversationIds)
+          .order("sent_at", { ascending: false })
+
+        if (!msgErr && Array.isArray(msgs)) {
+          const firstByConv = new Map<string, any>()
+          for (const m of msgs) {
+            const cid = (m as any).conversation_id
+            if (!firstByConv.has(cid)) firstByConv.set(cid, m)
+          }
+          for (let i = 0; i < withProfiles.length; i++) {
+            const c = withProfiles[i] as any
+            const lm = firstByConv.get(c.id)
+            if (lm) {
+              withProfiles[i] = { ...c, last_message: lm }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to attach last messages:", e)
+    }
+
     // Sort again by updated_at descending to ensure order after dedupe
     const sorted = withProfiles.sort(
       (a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
@@ -399,7 +428,9 @@ export const messagingService = {
   getMessages: async (conversationId: string): Promise<Message[]> => {
     const { data, error } = await supabase
       .from("messages")
-      .select("*")
+      .select(
+        "id, conversation_id, sender_id, content, message_type, metadata, read, sent_at, delivered_at, read_at, sender:users!messages_sender_id_fkey(id, email, name, avatar_url, verified, updated_at)"
+      )
       .eq("conversation_id", conversationId)
       .order("sent_at", { ascending: true })
 
@@ -408,7 +439,7 @@ export const messagingService = {
       return []
     }
 
-    return data || []
+    return (data as any[]) || []
   },
 
   // Helper function to remove phone numbers from text
