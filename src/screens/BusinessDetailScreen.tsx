@@ -303,41 +303,18 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
 
           {/* Map */}
           {typeof business.latitude === "number" && typeof business.longitude === "number" && (
-            <View style={styles.mapContainer}>
-              <MapView
-                provider={mapProvider}
-                key={detailMapKey}
-                style={styles.map}
-                initialRegion={detailInitialRegion}
-                showsUserLocation={true}
-                showsMyLocationButton={true}
-                showsCompass={true}
-                showsScale={true}
-                zoomEnabled={true}
-                scrollEnabled={true}
-                rotateEnabled={true}
-                pitchEnabled={true}
-                toolbarEnabled={true}
-                mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
-              >
-                {/* OSM fallback tiles for Expo Go on Android */}
-                {isExpoGo && Platform.OS === 'android' && (
-                  <UrlTile
-                    urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    maximumZ={19}
-                    zIndex={-1}
-                  />
-                )}
-                <Marker
-                  coordinate={{ latitude: business.latitude, longitude: business.longitude }}
-                  title={business.name}
-                  description={business.address}
-                  onPress={handleDirections}
-                  tracksViewChanges={false}
-                  draggable={false}
-                />
-              </MapView>
-            </View>
+            <TouchableOpacity
+              style={[styles.writeReviewButton, { alignSelf: "flex-start", marginBottom: 20 }]}
+              onPress={() =>
+                (navigation.getParent() as any)?.navigate(
+                  "Home",
+                  { screen: "HomeMain", params: { focusLat: business.latitude, focusLng: business.longitude, focusBusinessId: business.id } }
+                )
+              }
+            >
+              <MaterialIcons name="map" size={16} color="black" />
+              <Text style={styles.writeReviewText}>View on Map</Text>
+            </TouchableOpacity>
           )}
 
           {/* Reviews */}

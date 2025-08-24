@@ -10,6 +10,7 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { businessService } from "../../services/businessService"
 import type { Business } from "../../types"
 import type { HomeScreenProps } from "../../types/navigation"
+import React from "react"
 
 interface Category {
   id: string
@@ -18,7 +19,7 @@ interface Category {
   color: string
 }
 
-export default function HomeScreen({ navigation }: HomeScreenProps) {
+export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -34,6 +35,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const isExpoGo = Constants.appOwnership === "expo"
   const mapProvider = Platform.OS === 'android' && !isExpoGo ? PROVIDER_GOOGLE : undefined
 
+  const mapRef = React.useRef<MapView | null>(null)
+
   const initialRegion = useMemo(() => ({
     latitude: userLocation?.latitude ?? 37.7749,
     longitude: userLocation?.longitude ?? -122.4194,
@@ -42,6 +45,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   }), [userLocation])
 
   const mapKey = `${Platform.OS}-${mapProvider ? 'google' : 'default'}-${userLocation ? 'withLoc' : 'noLoc'}`
+
+  useEffect(() => {
+    const lat = route?.params?.focusLat
+    const lng = route?.params?.focusLng
+    if (typeof lat === 'number' && typeof lng === 'number' && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }, 600)
+      setShowMap(true)
+    }
+  }, [route?.params?.focusLat, route?.params?.focusLng])
 
   const groupedByCategory = useMemo(() => {
     const groups: Record<string, Business[]> = {}
@@ -268,6 +285,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <MapView
             provider={mapProvider}
             key={mapKey}
+            ref={(ref) => { mapRef.current = ref }}
             style={styles.map}
             initialRegion={initialRegion}
             showsUserLocation={true}
