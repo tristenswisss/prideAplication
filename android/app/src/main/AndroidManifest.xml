@@ -19,7 +19,7 @@
   </queries>
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true">
     <!-- Added Google Maps API key to fix app crashes -->
-    <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyDx3kX1T8SGqV6YN-8vU9ktQYO6z35Q5jc"/>
+    <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyAuhtC3pvwYF4F7ocVhoR6dBypTzCaEp_c"/>
     
     <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_icon_color"/>
     <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/notification_icon"/>
