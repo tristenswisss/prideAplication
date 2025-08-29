@@ -22,6 +22,8 @@ import { Image } from 'react-native'
 import * as LocalAuthentication from "expo-local-authentication"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { profileService } from "../../services/profileService"
+import TermsAndConditionsModal from "../../components/TermsAndConditionsModal"
+import ForgotPasswordModal from "../../components/ForgotPasswordModal"
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true)
@@ -30,6 +32,9 @@ export default function AuthScreen() {
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false)
 
   const { signIn, signUp } = useAuth()
 
@@ -46,6 +51,12 @@ export default function AuthScreen() {
 
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters long")
+      return
+    }
+
+    // Check terms acceptance for signup
+    if (!isLogin && !acceptedTerms) {
+      Alert.alert("Terms Required", "Please read and accept the Terms and Conditions to continue.")
       return
     }
 
@@ -89,6 +100,7 @@ export default function AuthScreen() {
                   setEmail("")
                   setPassword("")
                   setName("")
+                  setAcceptedTerms(false) // Reset terms acceptance
                 }
               }
             ]
@@ -100,6 +112,7 @@ export default function AuthScreen() {
           setEmail("")
           setPassword("")
           setName("")
+          setAcceptedTerms(false) // Reset terms acceptance
         }
       } else if (isLogin && result.data) {
         // After successful login, if user has 2FA enabled, prompt biometric/PIN
@@ -141,11 +154,38 @@ export default function AuthScreen() {
     setPassword("")
     setName("")
     setShowPassword(false)
+    setAcceptedTerms(false)
   }
 
   const switchAuthMode = (loginMode: boolean) => {
     setIsLogin(loginMode)
     resetForm()
+  }
+
+  const handleTermsPress = () => {
+    setShowTermsModal(true)
+  }
+
+  const handleTermsClose = () => {
+    setShowTermsModal(false)
+  }
+
+  const toggleTermsAcceptance = () => {
+    if (!acceptedTerms) {
+      // If they haven't accepted yet, show the terms first
+      setShowTermsModal(true)
+    } else {
+      // If they already accepted, allow them to uncheck
+      setAcceptedTerms(false)
+    }
+  }
+
+  const handleForgotPasswordPress = () => {
+    setShowForgotPasswordModal(true)
+  }
+
+  const handleForgotPasswordClose = () => {
+    setShowForgotPasswordModal(false)
   }
 
   return (
@@ -247,10 +287,49 @@ export default function AuthScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* Terms and Conditions Checkbox for Sign Up */}
+              {!isLogin && (
+                <View style={styles.termsContainer}>
+                  <TouchableOpacity 
+                    style={styles.checkboxContainer} 
+                    onPress={toggleTermsAcceptance}
+                    disabled={loading}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+                      {acceptedTerms && (
+                        <MaterialIcons name="check" size={16} color="white" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.termsTextContainer}>
+                    <Text style={styles.termsTextPrefix}>I agree to the </Text>
+                    <TouchableOpacity onPress={handleTermsPress} disabled={loading}>
+                      <Text style={styles.termsLink}>Terms and Conditions</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Forgot Password Link for Sign In */}
+              {isLogin && (
+                <TouchableOpacity 
+                  onPress={handleForgotPasswordPress} 
+                  style={styles.forgotPasswordContainer}
+                  disabled={loading}
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
-                style={[styles.authButton, loading && styles.disabledButton]}
+                style={[
+                  styles.authButton, 
+                  loading && styles.disabledButton,
+                  !isLogin && !acceptedTerms && styles.disabledButton
+                ]}
                 onPress={handleAuth}
-                disabled={loading}
+                disabled={loading || (!isLogin && !acceptedTerms)}
               >
                 <LinearGradient colors={["#000000", "#DAA520"]} style={styles.authButtonGradient}>
                   {loading ? (
@@ -268,13 +347,25 @@ export default function AuthScreen() {
                 </LinearGradient>
               </TouchableOpacity>
 
-              <Text style={styles.termsText}>
+              <Text style={styles.bottomTermsText}>
                 By continuing, you agree to create a safe and inclusive space for the LGBTQ+ community
               </Text>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      
+      <TermsAndConditionsModal
+        visible={showTermsModal}
+        onClose={handleTermsClose}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        visible={showForgotPasswordModal}
+        onClose={handleForgotPasswordClose}
+      />
     </SafeAreaView>
   )
 }
@@ -398,6 +489,48 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 5,
   },
+  termsContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 25,
+    paddingHorizontal: 5,
+  },
+  checkboxContainer: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#DAA520",
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: "#DAA520",
+    borderColor: "#DAA520",
+  },
+  termsTextContainer: {
+    flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  termsTextPrefix: {
+    fontSize: 14,
+    color: "#ccc",
+    lineHeight: 20,
+  },
+  termsLink: {
+    fontSize: 14,
+    color: "#DAA520",
+    textDecorationLine: "underline",
+    fontWeight: "500",
+    lineHeight: 20,
+  },
   authButton: {
     borderRadius: 15,
     overflow: "hidden",
@@ -410,7 +543,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   disabledButton: {
-    opacity: 0.7,
+    opacity: 0.5,
   },
   authButtonGradient: {
     paddingVertical: 16,
@@ -434,7 +567,17 @@ const styles = StyleSheet.create({
     color: "white",
     marginLeft: 10,
   },
-  termsText: {
+  forgotPasswordContainer: {
+    alignItems: "flex-end",
+    marginBottom: 25,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: "#DAA520",
+    fontWeight: "500",
+    textDecorationLine: "underline",
+  },
+  bottomTermsText: {
     fontSize: 12,
     color: "#888",
     textAlign: "center",

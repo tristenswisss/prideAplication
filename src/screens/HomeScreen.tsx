@@ -11,7 +11,6 @@ import { businessService } from "../../services/businessService"
 import type { Business } from "../../types"
 import type { HomeScreenProps } from "../../types/navigation"
 import React from "react"
-import Svg, { Path, Circle } from "react-native-svg"
 
 interface Category {
   id: string
@@ -20,18 +19,147 @@ interface Category {
   color: string
 }
 
+const CONSTANTS = {
+  MAP_ANIMATION_DURATION: 500,
+  CALLOUT_DELAY: 300,
+  MAX_INITIAL_MARKERS: 200,
+  DEFAULT_REGION: {
+    latitude: 37.7749,
+    longitude: -122.4194,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  }
+}
+
+// Custom Marker Component for better visual representation
+const BusinessMarker = React.memo(({ 
+  business, 
+  isSelected, 
+  onPress,
+  navigation 
+}: { 
+  business: Business
+  isSelected: boolean
+  onPress: () => void
+  navigation: any
+}) => {
+  const getMarkerColor = () => {
+    if (business.lgbtq_friendly && business.trans_friendly) return "#FF6B6B"
+    if (business.lgbtq_friendly) return "#4ECDC4"
+    return "#95E1D3"
+  }
+
+  const getCategoryIcon = () => {
+    switch (business.category?.toLowerCase()) {
+      case 'restaurant': return 'restaurant'
+      case 'healthcare': return 'local-hospital'
+      case 'shopping': return 'shopping-bag'
+      case 'education': return 'school'
+      case 'finance': return 'account-balance'
+      case 'transport': return 'directions-car'
+      case 'hotel': return 'hotel'
+      case 'service': return 'build'
+      default: return 'business'
+    }
+  }
+
+  return (
+    <Marker
+      coordinate={{
+        latitude: business.latitude as number,
+        longitude: business.longitude as number,
+      }}
+      onPress={onPress}
+      tracksViewChanges={false}
+      identifier={business.id}
+    >
+      {/* Custom Marker Pin */}
+      <View style={[
+        styles.markerContainer,
+        { backgroundColor: getMarkerColor() },
+        isSelected && styles.selectedMarkerContainer
+      ]}>
+        <MaterialIcons 
+          name={getCategoryIcon() as any} 
+          size={isSelected ? 24 : 20} 
+          color="white" 
+        />
+        {business.verified && (
+          <View style={styles.verifiedBadge}>
+            <MaterialIcons name="verified" size={12} color="#4CAF50" />
+          </View>
+        )}
+      </View>
+      
+      {/* Callout with business info */}
+      <Callout 
+        tooltip={true}
+        onPress={() => {
+          navigation.navigate("BusinessDetails", { business })
+        }}
+      >
+        <View style={styles.calloutContainer}>
+          <View style={styles.calloutHeader}>
+            <Text style={styles.calloutTitle} numberOfLines={1}>
+              {business.name}
+            </Text>
+            {business.rating && (
+              <View style={styles.calloutRating}>
+                <MaterialIcons name="star" size={14} color="#FFD700" />
+                <Text style={styles.calloutRatingText}>{business.rating}</Text>
+              </View>
+            )}
+          </View>
+          
+          <Text style={styles.calloutCategory}>
+            {business.category.replace('_', ' ').toUpperCase()}
+          </Text>
+          
+          {business.address && (
+            <Text style={styles.calloutAddress} numberOfLines={2}>
+              {business.address}
+            </Text>
+          )}
+          
+          {/* Tags */}
+          <View style={styles.calloutTags}>
+            {business.lgbtq_friendly && (
+              <View style={[styles.calloutTag, { backgroundColor: '#FF6B6B' }]}>
+                <Text style={styles.calloutTagText}>LGBTQ+</Text>
+              </View>
+            )}
+            {business.trans_friendly && (
+              <View style={[styles.calloutTag, { backgroundColor: '#4ECDC4' }]}>
+                <Text style={styles.calloutTagText}>Trans</Text>
+              </View>
+            )}
+            {business.wheelchair_accessible && (
+              <View style={[styles.calloutTag, { backgroundColor: '#FFA726' }]}>
+                <MaterialIcons name="accessible" size={10} color="white" />
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.calloutFooter}>
+            <MaterialIcons name="touch-app" size={12} color="#666" />
+            <Text style={styles.calloutFooterText}>Tap for details</Text>
+          </View>
+        </View>
+      </Callout>
+    </Marker>
+  )
+})
+
 export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
-  const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
   const [showMap, setShowMap] = useState(true)
   const [userLocation, setUserLocation] = useState<{
     latitude: number
     longitude: number
   } | null>(null)
-  const [isOfflineMode, setIsOfflineMode] = useState(false)
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null)
 
   // Always use default provider
@@ -39,10 +167,10 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const markerRefs = React.useRef<Record<string, any>>({})
 
   const initialRegion = useMemo(() => ({
-    latitude: userLocation?.latitude ?? 37.7749,
-    longitude: userLocation?.longitude ?? -122.4194,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
+    latitude: userLocation?.latitude ?? CONSTANTS.DEFAULT_REGION.latitude,
+    longitude: userLocation?.longitude ?? CONSTANTS.DEFAULT_REGION.longitude,
+    latitudeDelta: CONSTANTS.DEFAULT_REGION.latitudeDelta,
+    longitudeDelta: CONSTANTS.DEFAULT_REGION.longitudeDelta,
   }), [userLocation])
 
   const mapKey = `${Platform.OS}-${userLocation ? 'withLoc' : 'noLoc'}`
@@ -59,11 +187,15 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   const validMarkers = useMemo(() => {
     return (filteredBusinesses || []).filter(
-      (b) => typeof b.latitude === "number" && Number.isFinite(b.latitude!) && typeof b.longitude === "number" && Number.isFinite(b.longitude!),
+      (b): b is Business & { latitude: number; longitude: number } => 
+        typeof b.latitude === "number" && 
+        Number.isFinite(b.latitude) && 
+        typeof b.longitude === "number" && 
+        Number.isFinite(b.longitude)
     )
   }, [filteredBusinesses])
 
-  const initialMarkers = useMemo(() => validMarkers.slice(0, 200), [validMarkers])
+  const initialMarkers = useMemo(() => validMarkers.slice(0, CONSTANTS.MAX_INITIAL_MARKERS), [validMarkers])
 
   useEffect(() => {
     const lat = route?.params?.focusLat
@@ -83,21 +215,25 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   // Auto-open callout when a selection is set
   useEffect(() => {
-    if (!selectedBusinessId) return
+    if (!selectedBusinessId || !mapRef.current) return
+    
     const selected = initialMarkers.find(b => b.id === selectedBusinessId)
-    if (selected && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: selected.latitude as number,
-        longitude: selected.longitude as number,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      }, 500)
-      setTimeout(() => {
-        const ref = markerRefs.current[selectedBusinessId]
-        // @ts-ignore: showCallout exists on native marker
-        ref?.showCallout?.()
-      }, 300)
-    }
+    if (!selected) return
+    
+    mapRef.current.animateToRegion({
+      latitude: selected.latitude,
+      longitude: selected.longitude,
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.02,
+    }, CONSTANTS.MAP_ANIMATION_DURATION)
+    
+    const timeoutId = setTimeout(() => {
+      const ref = markerRefs.current[selectedBusinessId]
+      // @ts-ignore: showCallout exists on native marker
+      ref?.showCallout?.()
+    }, CONSTANTS.CALLOUT_DELAY)
+    
+    return () => clearTimeout(timeoutId)
   }, [selectedBusinessId, initialMarkers])
 
   // Persist selection across filter changes
@@ -105,13 +241,14 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     if (!selectedBusinessId) return
     const present = initialMarkers.some(b => b.id === selectedBusinessId)
     if (present) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         const ref = markerRefs.current[selectedBusinessId]
         // @ts-ignore
         ref?.showCallout?.()
       }, 200)
+      return () => clearTimeout(timeoutId)
     }
-  }, [initialMarkers])
+  }, [initialMarkers, selectedBusinessId])
 
   const categories: Category[] = [
     { id: "all", name: "All", icon: "apps", color: "black" },
@@ -133,7 +270,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   useEffect(() => {
     filterBusinesses()
-  }, [selectedCategory, searchQuery, businesses])
+  }, [selectedCategory, businesses])
 
   const getCurrentLocation = async () => {
     try {
@@ -152,8 +289,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       console.error("Error getting location:", error)
       // Default to San Francisco for demo
       setUserLocation({
-        latitude: 37.7749,
-        longitude: -122.4194,
+        latitude: CONSTANTS.DEFAULT_REGION.latitude,
+        longitude: CONSTANTS.DEFAULT_REGION.longitude,
       })
     }
   }
@@ -184,19 +321,12 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     try {
       let filtered: Business[] = []
 
-      if (searchQuery.trim()) {
-        const response = await businessService.searchBusinesses({ query: searchQuery })
-        if (response.success && response.businesses) {
-          filtered = response.businesses
-        }
+      if (selectedCategory === "all") {
+        filtered = businesses
       } else {
-        if (selectedCategory === "all") {
-          filtered = businesses
-        } else {
-          // Use service to map UI category -> backend category and fetch
-          const resp = await businessService.getBusinessesByCategory(selectedCategory)
-          filtered = resp.success && resp.businesses ? resp.businesses : []
-        }
+        // Use service to map UI category -> backend category and fetch
+        const resp = await businessService.getBusinessesByCategory(selectedCategory)
+        filtered = resp.success && resp.businesses ? resp.businesses : []
       }
 
       setFilteredBusinesses(filtered)
@@ -204,12 +334,6 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       console.error("Error filtering businesses:", error)
       setFilteredBusinesses([])
     }
-  }
-
-  const getMarkerColor = (business: Business): string => {
-    if (business.lgbtq_friendly && business.trans_friendly) return "#FF6B6B"
-    if (business.lgbtq_friendly) return "#4ECDC4"
-    return "#95E1D3"
   }
 
   const renderBusinessCard = ({ item }: { item: Business }) => (
@@ -226,16 +350,19 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           setShowMap(true)
           if (mapRef.current) {
             mapRef.current.animateToRegion({
-              latitude: item.latitude as number,
-              longitude: item.longitude as number,
+              latitude: item.latitude,
+              longitude: item.longitude,
               latitudeDelta: 0.02,
               longitudeDelta: 0.02,
-            }, 500)
+            }, CONSTANTS.MAP_ANIMATION_DURATION)
           }
         } else {
           navigation.navigate("BusinessDetails", { business: item })
         }
       }}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ${item.category}`}
+      accessibilityHint="Double tap to view business details"
     >
       <View style={styles.businessHeader}>
         <Text style={styles.businessName}>{item.name}</Text>
@@ -269,6 +396,81 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     </TouchableOpacity>
   )
 
+  const renderMapView = () => {
+    return (
+      <View style={styles.mapContainer}>
+        <MapView
+          key={mapKey}
+          ref={(ref) => { mapRef.current = ref }}
+          style={styles.map}
+          initialRegion={initialRegion}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+          showsCompass={true}
+          showsScale={true}
+          zoomEnabled={true}
+          scrollEnabled={true}
+          rotateEnabled={true}
+          pitchEnabled={true}
+          toolbarEnabled={true}
+          mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          onPress={() => {
+            // Clear selection when map is pressed
+            setSelectedBusinessId(null)
+          }}
+        >
+          {initialMarkers.map((business) => (
+            <BusinessMarker
+              key={business.id}
+              business={business}
+              isSelected={selectedBusinessId === business.id}
+              navigation={navigation}
+              onPress={() => {
+                setSelectedBusinessId(business.id)
+                // Animate to the selected marker
+                if (mapRef.current) {
+                  mapRef.current.animateToRegion({
+                    latitude: business.latitude,
+                    longitude: business.longitude,
+                    latitudeDelta: 0.02,
+                    longitudeDelta: 0.02,
+                  }, CONSTANTS.MAP_ANIMATION_DURATION)
+                }
+              }}
+            />
+          ))}
+        </MapView>
+
+        {/* Enhanced Legend */}
+        <View style={styles.legend}>
+          <Text style={styles.legendTitle}>Legend</Text>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#FF6B6B" }]} />
+            <Text style={styles.legendText}>LGBTQ+ & Trans Friendly</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#4ECDC4" }]} />
+            <Text style={styles.legendText}>LGBTQ+ Friendly</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#95E1D3" }]} />
+            <Text style={styles.legendText}>Other Safe Spaces</Text>
+          </View>
+        </View>
+
+        {/* Floating action button for adding new places */}
+        <TouchableOpacity 
+          style={styles.floatingActionButton}
+          onPress={() => navigation.navigate("SuggestSafeSpace" as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Suggest a new safe space"
+        >
+          <MaterialIcons name="add-location" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -282,6 +484,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
         <TouchableOpacity
           style={[styles.toggleButton, showMap && styles.activeToggle]}
           onPress={() => setShowMap(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Switch to map view"
         >
           <MaterialIcons name="map" size={18} color={showMap ? "white" : "#666"} />
           <Text style={[styles.toggleText, showMap && styles.activeToggleText]}>Map</Text>
@@ -289,6 +493,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
         <TouchableOpacity
           style={[styles.toggleButton, !showMap && styles.activeToggle]}
           onPress={() => setShowMap(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Switch to list view"
         >
           <MaterialIcons name="list" size={18} color={!showMap ? "white" : "#666"} />
           <Text style={[styles.toggleText, !showMap && styles.activeToggleText]}>List</Text>
@@ -307,6 +513,9 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
               key={category.id}
               style={[styles.categoryTab, selectedCategory === category.id && { backgroundColor: category.color }]}
               onPress={() => setSelectedCategory(category.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter by ${category.name}`}
+              accessibilityHint="Double tap to filter businesses by this category"
             >
               <MaterialIcons
                 name={category.icon as any}
@@ -326,8 +535,10 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           ))}
           <TouchableOpacity
             style={[styles.categoryTab, { backgroundColor: "#4CAF50" }]}
-                          onPress={() => navigation.navigate("SuggestSafeSpace" as never)}
->
+            onPress={() => navigation.navigate("SuggestSafeSpace" as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Recommend a safe space"
+          >
             <MaterialIcons name="add-location" size={16} color="white" />
             <Text style={[styles.categoryTabText, { color: "white" }]}>Recommend</Text>
           </TouchableOpacity>
@@ -335,83 +546,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       </View>
 
       {/* Map or List View */}
-      {showMap ? (
-        <View style={styles.mapContainer}>
-          <MapView
-            key={mapKey}
-            ref={(ref) => { mapRef.current = ref }}
-            style={styles.map}
-            initialRegion={initialRegion}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            showsCompass={true}
-            showsScale={true}
-            zoomEnabled={true}
-            scrollEnabled={true}
-            rotateEnabled={true}
-            pitchEnabled={true}
-            toolbarEnabled={true}
-            mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
-          >
-            {initialMarkers.map((business) => {
-              const isSelected = selectedBusinessId === business.id
-              return (
-                <Marker
-                  key={business.id}
-                  ref={(ref) => { markerRefs.current[business.id] = ref }}
-                  coordinate={{
-                    latitude: business.latitude as number,
-                    longitude: business.longitude as number,
-                  }}
-                  pinColor={isSelected ? "#FF6B6B" : getMarkerColor(business)}
-                  title={business.name}
-                  description={business.address || business.description}
-                  onPress={() => {
-                    setSelectedBusinessId(business.id)
-                  }}
-                  tracksViewChanges={false}
-                  draggable={false}
-                  zIndex={isSelected ? 10 : 1}
-                >
-                  {isSelected ? (
-                    <>
-                      <Svg width={32} height={40} viewBox="0 0 24 32">
-                        <Path d="M12 0C5.925 0 1 4.925 1 11c0 7.5 9.5 20 11 21 1.5-1 11-13.5 11-21C23 4.925 18.075 0 12 0z" fill="#FF6B6B" />
-                        <Circle cx={12} cy={11} r={4} fill="#fff" />
-                      </Svg>
-                      <Callout onPress={() => navigation.navigate("BusinessDetails", { business })}>
-                        <View style={{ maxWidth: 220 }}>
-                          <Text style={{ fontWeight: "700", marginBottom: 4 }}>{business.name}</Text>
-                          {business.address ? (
-                            <Text numberOfLines={2} style={{ color: "#555" }}>{business.address}</Text>
-                          ) : null}
-                          <View style={{ marginTop: 6, flexDirection: "row", alignItems: "center" }}>
-                            <MaterialIcons name="info" size={14} color="#333" />
-                            <Text style={{ marginLeft: 6, color: "#333" }}>Tap to view details</Text>
-                          </View>
-                        </View>
-                      </Callout>
-                    </>
-                  ) : null}
-                </Marker>
-              )
-            })}
-          </MapView>
-
-          {/* Map Legend */}
-          <View style={styles.legend}>
-            <Text style={styles.legendTitle}>Legend</Text>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#FF6B6B" }]} />
-              <Text style={styles.legendText}>LGBTQ+ & Trans Friendly</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#4ECDC4" }]} />
-              <Text style={styles.legendText}>LGBTQ+ Friendly</Text>
-            </View>
-          </View>
-        </View>
-      ) : (
+      {showMap ? renderMapView() : (
         <FlatList
           data={Object.keys(groupedByCategory)}
           renderItem={({ item: cat }) => (
@@ -419,8 +554,10 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
               <Text style={{ fontSize: 18, fontWeight: "700", marginHorizontal: 16, marginBottom: 8 }}>
                 {cat.toUpperCase()}
               </Text>
-              {groupedByCategory[cat].map((biz) => (
-                <View key={biz.id} style={{ marginHorizontal: 16, marginBottom: 10 }}>{renderBusinessCard({ item: biz })}</View>
+              {groupedByCategory[cat].map((biz: Business) => (
+                <View key={biz.id} style={{ marginHorizontal: 16, marginBottom: 10 }}>
+                  {renderBusinessCard({ item: biz })}
+                </View>
               ))}
             </View>
           )}
@@ -432,7 +569,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
             <View style={styles.emptyContainer}>
               <MaterialIcons name="business" size={64} color="#ccc" />
               <Text style={styles.emptyText}>{loading ? "Loading businesses..." : "No businesses found"}</Text>
-              <Text style={styles.emptySubtext}>{!loading && "Try adjusting your search or category filter"}</Text>
+              <Text style={styles.emptySubtext}>{!loading && "Try adjusting your category filter"}</Text>
             </View>
           }
         />
@@ -717,4 +854,134 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 40,
   },
+  // New marker styles
+  markerContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  selectedMarkerContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 4,
+    borderColor: '#fff',
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calloutContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 12,
+    minWidth: 200,
+    maxWidth: 250,
+    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  calloutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  calloutTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+    marginRight: 8,
+  },
+  calloutRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calloutRatingText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 2,
+  },
+  calloutCategory: {
+    fontSize: 11,
+    color: '#FF6B6B',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  calloutAddress: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  calloutTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 8,
+  },
+  calloutTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginRight: 4,
+    marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calloutTagText: {
+    fontSize: 9,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  calloutFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  calloutFooterText: {
+    fontSize: 10,
+    color: '#666',
+    marginLeft: 4,
+    fontStyle: 'italic',
+  },
+  floatingActionButton: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  }
 })
