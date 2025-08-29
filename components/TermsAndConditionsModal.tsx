@@ -13,6 +13,7 @@ import { MaterialIcons } from "@expo/vector-icons"
 interface TermsAndConditionsModalProps {
   visible: boolean
   onClose: () => void
+  onAccept: () => void;
 }
 
 export default function TermsAndConditionsModal({ visible, onClose }: TermsAndConditionsModalProps) {

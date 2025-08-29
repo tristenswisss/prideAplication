@@ -170,14 +170,14 @@ export default function AuthScreen() {
     setShowTermsModal(false)
   }
 
-  const toggleTermsAcceptance = () => {
-    if (!acceptedTerms) {
-      // If they haven't accepted yet, show the terms first
-      setShowTermsModal(true)
-    } else {
-      // If they already accepted, allow them to uncheck
-      setAcceptedTerms(false)
-    }
+  const handleTermsAcceptedFromModal = () => {
+    setAcceptedTerms(true)
+    setShowTermsModal(false)
+  }
+
+  // Simple toggle for checkbox - doesn't show modal
+  const toggleCheckbox = () => {
+    setAcceptedTerms(!acceptedTerms)
   }
 
   const handleForgotPasswordPress = () => {
@@ -292,7 +292,7 @@ export default function AuthScreen() {
                 <View style={styles.termsContainer}>
                   <TouchableOpacity 
                     style={styles.checkboxContainer} 
-                    onPress={toggleTermsAcceptance}
+                    onPress={toggleCheckbox}
                     disabled={loading}
                     activeOpacity={0.7}
                   >
@@ -359,6 +359,7 @@ export default function AuthScreen() {
       <TermsAndConditionsModal
         visible={showTermsModal}
         onClose={handleTermsClose}
+        onAccept={handleTermsAcceptedFromModal}
       />
 
       {/* Forgot Password Modal */}
