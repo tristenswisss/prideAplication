@@ -44,7 +44,6 @@ export const businessService = {
 
       return await businessService.getBusinessesFresh()
     } catch (error: any) {
-      console.error("Error in getBusinesses:", error)
       return { success: false, error: error.message }
     }
   },
@@ -52,18 +51,20 @@ export const businessService = {
   // Fetch from Supabase and refresh cache
   getBusinessesFresh: async (): Promise<BusinessResponse> => {
     try {
-      const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("businesses")
+        .select("*")
+        .order("created_at", { ascending: false })
 
       if (error) {
-        console.error("Error fetching businesses:", error)
         return { success: false, error: error.message }
       }
 
       const list = (data || []).map(normalizeBusiness)
+      
       await storage.setCacheItem(STORAGE_KEYS.BUSINESSES, list, 30)
       return { success: true, businesses: list }
     } catch (error: any) {
-      console.error("Error in getBusinessesFresh:", error)
       return { success: false, error: error.message }
     }
   },
@@ -142,13 +143,11 @@ export const businessService = {
       const { data, error, count } = await query
 
       if (error) {
-        console.error("Error searching businesses:", error)
         return { success: false, error: error.message }
       }
 
       return { success: true, businesses: (data || []).map(normalizeBusiness), total: count ?? undefined }
     } catch (error: any) {
-      console.error("Error in searchBusinesses:", error)
       return { success: false, error: error.message }
     }
   },
@@ -179,13 +178,11 @@ export const businessService = {
         .order("rating", { ascending: false })
 
       if (error) {
-        console.error("Error fetching businesses by category:", error)
         return { success: false, error: error.message }
       }
 
       return { success: true, businesses: (data || []).map(normalizeBusiness) }
     } catch (error: any) {
-      console.error("Error in getBusinessesByCategory:", error)
       return { success: false, error: error.message }
     }
   },
@@ -196,13 +193,11 @@ export const businessService = {
       const { data, error } = await supabase.from("businesses").select("*").eq("id", id).single()
 
       if (error) {
-        console.error("Error fetching business by ID:", error)
         return null
       }
 
       return data ? normalizeBusiness(data) : null
     } catch (error) {
-      console.error("Error in getBusinessById:", error)
       return null
     }
   },
@@ -218,13 +213,11 @@ export const businessService = {
         .order("rating", { ascending: false })
 
       if (error) {
-        console.error("Error fetching nearby businesses:", error)
         return { success: false, error: error.message }
       }
 
       return { success: true, businesses: (data || []).map(normalizeBusiness) }
     } catch (error: any) {
-      console.error("Error in getNearbyBusinesses:", error)
       return { success: false, error: error.message }
     }
   },
@@ -248,7 +241,6 @@ export const businessService = {
         await supabase.from("saved_businesses").insert({ business_id: businessId, user_id: userId })
       }
     } catch (error) {
-      console.error("Error saving business:", error)
       throw error
     }
   },
@@ -266,14 +258,12 @@ export const businessService = {
         .order("created_at", { ascending: false })
 
       if (error) {
-        console.error("Error fetching saved businesses:", error)
         return { success: false, error: error.message }
       }
 
       const businesses = (data || []).map((item) => normalizeBusiness(item.businesses)).filter(Boolean)
       return { success: true, businesses }
     } catch (error: any) {
-      console.error("Error in getSavedBusinesses:", error)
       return { success: false, error: error.message }
     }
   },
@@ -292,13 +282,11 @@ export const businessService = {
         .single()
 
       if (error) {
-        console.error("Error creating business:", error)
         throw error
       }
 
       return normalizeBusiness(data)
     } catch (error) {
-      console.error("Error in createBusiness:", error)
       throw error
     }
   },
@@ -317,13 +305,11 @@ export const businessService = {
         .single()
 
       if (error) {
-        console.error("Error updating business:", error)
         throw error
       }
 
       return normalizeBusiness(data)
     } catch (error) {
-      console.error("Error in updateBusiness:", error)
       throw error
     }
   },
@@ -334,28 +320,42 @@ export const businessService = {
       const { error } = await supabase.from("businesses").delete().eq("id", businessId).eq("owner_id", userId)
 
       if (error) {
-        console.error("Error deleting business:", error)
         throw error
       }
     } catch (error) {
-      console.error("Error in deleteBusiness:", error)
       throw error
     }
-  },
+  }
 }
 
+// Enhanced coordinate conversion function
 function toNumber(value: any): number | undefined {
   if (value === null || value === undefined) return undefined
-  if (typeof value === "number") return value
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined
+  
+  // Handle string numbers
+  if (typeof value === "string") {
+    if (value.trim() === "" || value.toLowerCase() === "null") return undefined
+    const parsed = parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+  
+  // Try to convert other types
   const parsed = parseFloat(String(value))
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
 function normalizeBusiness(input: any): Business {
-  return {
+  if (!input) {
+    return input
+  }
+
+  const normalized = {
     ...input,
     latitude: toNumber(input?.latitude),
     longitude: toNumber(input?.longitude),
     rating: toNumber(input?.rating),
   } as Business
+
+  return normalized
 }

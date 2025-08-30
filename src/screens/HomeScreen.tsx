@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { StyleSheet, Text, View, TouchableOpacity, Alert, SafeAreaView, FlatList, ScrollView, Platform } from "react-native"
-import MapView, { Marker, Callout } from "react-native-maps"
+import MapView, { Marker } from "react-native-maps"
 import * as Location from "expo-location"
-import Constants from "expo-constants"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { businessService } from "../../services/businessService"
@@ -21,7 +20,6 @@ interface Category {
 
 const CONSTANTS = {
   MAP_ANIMATION_DURATION: 500,
-  CALLOUT_DELAY: 300,
   MAX_INITIAL_MARKERS: 200,
   DEFAULT_REGION: {
     latitude: 37.7749,
@@ -31,122 +29,27 @@ const CONSTANTS = {
   }
 }
 
-// Custom Marker Component for better visual representation
 const BusinessMarker = React.memo(({ 
   business, 
-  isSelected, 
-  onPress,
   navigation 
 }: { 
   business: Business
-  isSelected: boolean
-  onPress: () => void
   navigation: any
 }) => {
-  const getMarkerColor = () => {
-    if (business.lgbtq_friendly && business.trans_friendly) return "#FF6B6B"
-    if (business.lgbtq_friendly) return "#4ECDC4"
-    return "#95E1D3"
-  }
-
-  const getCategoryIcon = () => {
-    switch (business.category?.toLowerCase()) {
-      case 'restaurant': return 'restaurant'
-      case 'healthcare': return 'local-hospital'
-      case 'shopping': return 'shopping-bag'
-      case 'education': return 'school'
-      case 'finance': return 'account-balance'
-      case 'transport': return 'directions-car'
-      case 'hotel': return 'hotel'
-      case 'service': return 'build'
-      default: return 'business'
-    }
-  }
-
   return (
     <Marker
       coordinate={{
         latitude: business.latitude as number,
         longitude: business.longitude as number,
       }}
-      onPress={onPress}
+      onPress={() => {
+        navigation.navigate("BusinessDetails", { business })
+      }}
       tracksViewChanges={false}
       identifier={business.id}
-    >
-      {/* Custom Marker Pin */}
-      <View style={[
-        styles.markerContainer,
-        { backgroundColor: getMarkerColor() },
-        isSelected && styles.selectedMarkerContainer
-      ]}>
-        <MaterialIcons 
-          name={getCategoryIcon() as any} 
-          size={isSelected ? 24 : 20} 
-          color="white" 
-        />
-        {business.verified && (
-          <View style={styles.verifiedBadge}>
-            <MaterialIcons name="verified" size={12} color="#4CAF50" />
-          </View>
-        )}
-      </View>
-      
-      {/* Callout with business info */}
-      <Callout 
-        tooltip={true}
-        onPress={() => {
-          navigation.navigate("BusinessDetails", { business })
-        }}
-      >
-        <View style={styles.calloutContainer}>
-          <View style={styles.calloutHeader}>
-            <Text style={styles.calloutTitle} numberOfLines={1}>
-              {business.name}
-            </Text>
-            {business.rating && (
-              <View style={styles.calloutRating}>
-                <MaterialIcons name="star" size={14} color="#FFD700" />
-                <Text style={styles.calloutRatingText}>{business.rating}</Text>
-              </View>
-            )}
-          </View>
-          
-          <Text style={styles.calloutCategory}>
-            {business.category.replace('_', ' ').toUpperCase()}
-          </Text>
-          
-          {business.address && (
-            <Text style={styles.calloutAddress} numberOfLines={2}>
-              {business.address}
-            </Text>
-          )}
-          
-          {/* Tags */}
-          <View style={styles.calloutTags}>
-            {business.lgbtq_friendly && (
-              <View style={[styles.calloutTag, { backgroundColor: '#FF6B6B' }]}>
-                <Text style={styles.calloutTagText}>LGBTQ+</Text>
-              </View>
-            )}
-            {business.trans_friendly && (
-              <View style={[styles.calloutTag, { backgroundColor: '#4ECDC4' }]}>
-                <Text style={styles.calloutTagText}>Trans</Text>
-              </View>
-            )}
-            {business.wheelchair_accessible && (
-              <View style={[styles.calloutTag, { backgroundColor: '#FFA726' }]}>
-                <MaterialIcons name="accessible" size={10} color="white" />
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.calloutFooter}>
-            <MaterialIcons name="touch-app" size={12} color="#666" />
-            <Text style={styles.calloutFooterText}>Tap for details</Text>
-          </View>
-        </View>
-      </Callout>
-    </Marker>
+      title={business.name}
+      description={`${business.category} • ${business.rating ? business.rating + ' stars' : 'No rating'}`}
+    />
   )
 })
 
@@ -160,20 +63,65 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     latitude: number
     longitude: number
   } | null>(null)
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null)
 
-  // Always use default provider
   const mapRef = React.useRef<MapView | null>(null)
-  const markerRefs = React.useRef<Record<string, any>>({})
 
-  const initialRegion = useMemo(() => ({
-    latitude: userLocation?.latitude ?? CONSTANTS.DEFAULT_REGION.latitude,
-    longitude: userLocation?.longitude ?? CONSTANTS.DEFAULT_REGION.longitude,
-    latitudeDelta: CONSTANTS.DEFAULT_REGION.latitudeDelta,
-    longitudeDelta: CONSTANTS.DEFAULT_REGION.longitudeDelta,
-  }), [userLocation])
+  const validMarkers = useMemo(() => {
+    return (filteredBusinesses || []).filter(
+      (b): b is Business & { latitude: number; longitude: number } => {
+        return typeof b.latitude === "number" && 
+               Number.isFinite(b.latitude) && 
+               typeof b.longitude === "number" && 
+               Number.isFinite(b.longitude) &&
+               b.latitude !== 0 && 
+               b.longitude !== 0
+      }
+    )
+  }, [filteredBusinesses])
 
-  const mapKey = `${Platform.OS}-${userLocation ? 'withLoc' : 'noLoc'}`
+  const initialMarkers = useMemo(() => validMarkers.slice(0, CONSTANTS.MAX_INITIAL_MARKERS), [validMarkers])
+
+  // Calculate initial region - prioritize user location, fallback to markers, then default
+  const calculateInitialRegion = () => {
+    // Always prefer user location if available
+    if (userLocation) {
+      return {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }
+    }
+
+    // If no user location but have markers, center on markers
+    if (validMarkers.length === 0) {
+      return CONSTANTS.DEFAULT_REGION
+    }
+
+    const lats = validMarkers.map(m => m.latitude)
+    const lngs = validMarkers.map(m => m.longitude)
+    
+    const minLat = Math.min(...lats)
+    const maxLat = Math.max(...lats)
+    const minLng = Math.min(...lngs)
+    const maxLng = Math.max(...lngs)
+    
+    const centerLat = (minLat + maxLat) / 2
+    const centerLng = (minLng + maxLng) / 2
+    const deltaLat = Math.max((maxLat - minLat) * 1.5, 0.01)
+    const deltaLng = Math.max((maxLng - minLng) * 1.5, 0.01)
+    
+    return {
+      latitude: centerLat,
+      longitude: centerLng,
+      latitudeDelta: deltaLat,
+      longitudeDelta: deltaLng,
+    }
+  }
+
+  const initialRegion = useMemo(() => calculateInitialRegion(), [userLocation, validMarkers])
+
+  const mapKey = `${Platform.OS}-${userLocation ? 'withLoc' : 'noLoc'}-${validMarkers.length}`
 
   const groupedByCategory = useMemo(() => {
     const groups: Record<string, Business[]> = {}
@@ -185,23 +133,9 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     return groups
   }, [filteredBusinesses])
 
-  const validMarkers = useMemo(() => {
-    return (filteredBusinesses || []).filter(
-      (b): b is Business & { latitude: number; longitude: number } => 
-        typeof b.latitude === "number" && 
-        Number.isFinite(b.latitude) && 
-        typeof b.longitude === "number" && 
-        Number.isFinite(b.longitude)
-    )
-  }, [filteredBusinesses])
-
-  const initialMarkers = useMemo(() => validMarkers.slice(0, CONSTANTS.MAX_INITIAL_MARKERS), [validMarkers])
-
   useEffect(() => {
     const lat = route?.params?.focusLat
     const lng = route?.params?.focusLng
-    const focusId = route?.params?.focusBusinessId
-    if (focusId) setSelectedBusinessId(focusId)
     if (typeof lat === 'number' && typeof lng === 'number' && mapRef.current) {
       mapRef.current.animateToRegion({
         latitude: lat,
@@ -211,44 +145,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       }, 600)
       setShowMap(true)
     }
-  }, [route?.params?.focusLat, route?.params?.focusLng, route?.params?.focusBusinessId])
-
-  // Auto-open callout when a selection is set
-  useEffect(() => {
-    if (!selectedBusinessId || !mapRef.current) return
-    
-    const selected = initialMarkers.find(b => b.id === selectedBusinessId)
-    if (!selected) return
-    
-    mapRef.current.animateToRegion({
-      latitude: selected.latitude,
-      longitude: selected.longitude,
-      latitudeDelta: 0.02,
-      longitudeDelta: 0.02,
-    }, CONSTANTS.MAP_ANIMATION_DURATION)
-    
-    const timeoutId = setTimeout(() => {
-      const ref = markerRefs.current[selectedBusinessId]
-      // @ts-ignore: showCallout exists on native marker
-      ref?.showCallout?.()
-    }, CONSTANTS.CALLOUT_DELAY)
-    
-    return () => clearTimeout(timeoutId)
-  }, [selectedBusinessId, initialMarkers])
-
-  // Persist selection across filter changes
-  useEffect(() => {
-    if (!selectedBusinessId) return
-    const present = initialMarkers.some(b => b.id === selectedBusinessId)
-    if (present) {
-      const timeoutId = setTimeout(() => {
-        const ref = markerRefs.current[selectedBusinessId]
-        // @ts-ignore
-        ref?.showCallout?.()
-      }, 200)
-      return () => clearTimeout(timeoutId)
-    }
-  }, [initialMarkers, selectedBusinessId])
+  }, [route?.params?.focusLat, route?.params?.focusLng])
 
   const categories: Category[] = [
     { id: "all", name: "All", icon: "apps", color: "black" },
@@ -263,8 +160,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   ]
 
   useEffect(() => {
-    // Fetch fresh first to avoid stale cache hiding DB data
-    loadBusinesses(true)
+    loadBusinesses()
     getCurrentLocation()
   }, [])
 
@@ -281,34 +177,34 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       }
 
       const location = await Location.getCurrentPositionAsync({})
-      setUserLocation({
+      const newLocation = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-      })
+      }
+      setUserLocation(newLocation)
     } catch (error) {
-      console.error("Error getting location:", error)
       // Default to San Francisco for demo
-      setUserLocation({
+      const defaultLocation = {
         latitude: CONSTANTS.DEFAULT_REGION.latitude,
         longitude: CONSTANTS.DEFAULT_REGION.longitude,
-      })
+      }
+      setUserLocation(defaultLocation)
     }
   }
 
-  const loadBusinesses = async (fresh = false) => {
+  const loadBusinesses = async () => {
     try {
       setLoading(true)
-      const response = fresh ? await businessService.getBusinessesFresh() : await businessService.getBusinesses()
+      
+      const response = await businessService.getBusinesses()
 
       if (response.success && response.businesses) {
         setBusinesses(response.businesses)
-        setFilteredBusinesses(response.businesses) // Initialize filtered businesses
+        setFilteredBusinesses(response.businesses)
       } else {
-        console.error("Error loading businesses:", response.error)
         Alert.alert("Error", response.error || "Failed to load businesses")
       }
     } catch (error) {
-      console.error("Error loading businesses:", error)
       Alert.alert("Error", "Failed to load businesses")
       setBusinesses([])
       setFilteredBusinesses([])
@@ -324,14 +220,34 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       if (selectedCategory === "all") {
         filtered = businesses
       } else {
-        // Use service to map UI category -> backend category and fetch
-        const resp = await businessService.getBusinessesByCategory(selectedCategory)
-        filtered = resp.success && resp.businesses ? resp.businesses : []
+        // First try client-side filtering from cached data
+        const categoryMap: Record<string, string[]> = {
+          finance: ["organization", "finance"],
+          service: ["organization", "service"],
+          hotel: ["other", "hotel"],
+          restaurant: ["restaurant", "bar"],
+          shopping: ["other", "shopping"],
+          education: ["organization", "education"],
+          entertainment: ["other", "entertainment"],
+          transport: ["transport"],
+          healthcare: ["healthcare"]
+        }
+        
+        const allowedCategories = categoryMap[selectedCategory] || [selectedCategory]
+        filtered = businesses.filter(b => 
+          allowedCategories.includes(b.category?.toLowerCase()) ||
+          b.category?.toLowerCase() === selectedCategory
+        )
+        
+        // If client-side filtering gives no results, try server-side
+        if (filtered.length === 0) {
+          const resp = await businessService.getBusinessesByCategory(selectedCategory)
+          filtered = resp.success && resp.businesses ? resp.businesses : []
+        }
       }
 
       setFilteredBusinesses(filtered)
     } catch (error) {
-      console.error("Error filtering businesses:", error)
       setFilteredBusinesses([])
     }
   }
@@ -340,25 +256,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     <TouchableOpacity
       style={styles.businessCard}
       onPress={() => {
-        // In list view, go to details; in map view, focus the marker
-        if (!showMap) {
-          navigation.navigate("BusinessDetails", { business: item })
-          return
-        }
-        if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
-          setSelectedBusinessId(item.id)
-          setShowMap(true)
-          if (mapRef.current) {
-            mapRef.current.animateToRegion({
-              latitude: item.latitude,
-              longitude: item.longitude,
-              latitudeDelta: 0.02,
-              longitudeDelta: 0.02,
-            }, CONSTANTS.MAP_ANIMATION_DURATION)
-          }
-        } else {
-          navigation.navigate("BusinessDetails", { business: item })
-        }
+        navigation.navigate("BusinessDetails", { business: item })
       }}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ${item.category}`}
@@ -414,34 +312,17 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           pitchEnabled={true}
           toolbarEnabled={true}
           mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
-          onPress={() => {
-            // Clear selection when map is pressed
-            setSelectedBusinessId(null)
-          }}
         >
           {initialMarkers.map((business) => (
             <BusinessMarker
               key={business.id}
               business={business}
-              isSelected={selectedBusinessId === business.id}
               navigation={navigation}
-              onPress={() => {
-                setSelectedBusinessId(business.id)
-                // Animate to the selected marker
-                if (mapRef.current) {
-                  mapRef.current.animateToRegion({
-                    latitude: business.latitude,
-                    longitude: business.longitude,
-                    latitudeDelta: 0.02,
-                    longitudeDelta: 0.02,
-                  }, CONSTANTS.MAP_ANIMATION_DURATION)
-                }
-              }}
             />
           ))}
         </MapView>
 
-        {/* Enhanced Legend */}
+        {/* Legend */}
         <View style={styles.legend}>
           <Text style={styles.legendTitle}>Legend</Text>
           <View style={styles.legendItem}>
@@ -606,25 +487,6 @@ const styles = StyleSheet.create({
     color: "white",
     opacity: 0.9,
     marginBottom: 20,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    height: 45,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-  },
-  locationButton: {
-    padding: 5,
   },
   toggleContainer: {
     flexDirection: "row",
@@ -795,15 +657,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  searchInputTouchable: {
-    flex: 1,
-    height: 45,
-    justifyContent: "center",
-  },
-  searchPlaceholder: {
-    fontSize: 16,
-    color: "#666",
-  },
   categoryTabsContainer: {
     height: 50,
     paddingHorizontal: 10,
@@ -854,121 +707,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 40,
   },
-  // New marker styles
-  markerContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'white',
-    elevation: 5,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  selectedMarkerContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 4,
-    borderColor: '#fff',
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calloutContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    minWidth: 200,
-    maxWidth: 250,
-    elevation: 5,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  calloutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  calloutTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-    marginRight: 8,
-  },
-  calloutRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  calloutRatingText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 2,
-  },
-  calloutCategory: {
-    fontSize: 11,
-    color: '#FF6B6B',
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  calloutAddress: {
-    fontSize: 12,
-    color: '#666',
-    lineHeight: 16,
-    marginBottom: 8,
-  },
-  calloutTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  calloutTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginRight: 4,
-    marginBottom: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  calloutTagText: {
-    fontSize: 9,
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  calloutFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  calloutFooterText: {
-    fontSize: 10,
-    color: '#666',
-    marginLeft: 4,
-    fontStyle: 'italic',
-  },
   floatingActionButton: {
     position: 'absolute',
     bottom: 100,
@@ -983,5 +721,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-  }
+  },
 })
