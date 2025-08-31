@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     paddingHorizontal: 20,
     borderBottomColor:"black",
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
   },
   profileSection: {
     flexDirection: "row",
@@ -327,7 +327,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     backgroundColor: "rgba(255,255,255,0.1)",
-   
     borderRadius: 15,
     paddingVertical: 20,
   },

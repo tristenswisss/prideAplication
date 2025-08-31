@@ -204,13 +204,13 @@ export default function AuthScreen() {
             <View style={styles.logoContainer}>
               <View style={styles.logoWrapper}>
                 <Image 
-                  source={require('../../assets/logoM.png')} 
+                  source={require('../../assets/logo.jpg')} 
                   style={styles.logo}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.appTitle}>Mirae App</Text>
-              <Text style={styles.appSubtitle}>SafePlaces</Text>
+              <Text style={styles.appTitle}>Mirae</Text>
+              {/* <Text style={styles.appSubtitle}>SafePlaces</Text> */}
             </View>
           </View>
 
@@ -410,6 +410,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: 80,
+    borderRadius: 40,
     height: 80,
   },
   appTitle: {

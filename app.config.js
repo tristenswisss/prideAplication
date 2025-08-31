@@ -6,15 +6,15 @@ module.exports = () => {
 
   return {
     expo: {
-      name: "Mirae SafePlaces",
+      name: "Mirae",
       slug: "Mirae-safeplaces",
       version: "1.0.0",
       orientation: "portrait",
-      icon: "./assets/icon.png",
+      icon: "./assets/logo.jpg",
       userInterfaceStyle: "light",
       platforms: ["ios", "android", "web"],
       splash: {
-        image: "./assets/icon.png",
+        image: "./assets/logo.jpg",
         resizeMode: "contain",
         backgroundColor: "#FF6B6B",
       },
@@ -72,7 +72,7 @@ module.exports = () => {
         [
           "expo-notifications",
           {
-            icon: "./assets/icon.png",
+            icon: "./assets/logo.jpg",
             color: "#FF6B6B",
           },
         ],
