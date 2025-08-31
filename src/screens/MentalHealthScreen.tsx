@@ -25,11 +25,13 @@ import {
   type Therapist,
 } from "../../services/mentalHealthService"
 import { useAuth } from "../../Contexts/AuthContexts"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 const screenWidth = Dimensions.get("window").width
 
 export default function MentalHealthScreen({ navigation }: any) {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([])
   const [moodPattern, setMoodPattern] = useState<MoodPattern | null>(null)
   const [therapists, setTherapists] = useState<Therapist[]>([])
@@ -138,30 +140,30 @@ export default function MentalHealthScreen({ navigation }: any) {
   }
 
   const renderTherapist = ({ item }: { item: Therapist }) => (
-    <View style={styles.therapistCard}>
+    <View style={[styles.therapistCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
       <View style={styles.therapistHeader}>
         <View style={styles.therapistInfo}>
-          <Text style={styles.therapistName}>{item.name}</Text>
-          <Text style={styles.therapistCredentials}>{item.credentials.join(", ")}</Text>
+          <Text style={[styles.therapistName, { color: theme.colors.text }]}>{item.name}</Text>
+          <Text style={[styles.therapistCredentials, { color: theme.colors.textSecondary }]}>{item.credentials.join(", ")}</Text>
           <View style={styles.therapistRating}>
-            <MaterialIcons name="star" size={16} color="#FFD700" />
-            <Text style={styles.ratingText}>{item.rating}</Text>
-            <Text style={styles.priceRange}> • {item.price_range}</Text>
+            <MaterialIcons name="star" size={16} color={theme.colors.accent} />
+            <Text style={[styles.ratingText, { color: theme.colors.text }]}>{item.rating}</Text>
+            <Text style={[styles.priceRange, { color: theme.colors.textSecondary }]}> • {item.price_range}</Text>
           </View>
         </View>
-        <View style={styles.availabilityBadge}>
-          <Text style={styles.availabilityText}>{item.availability.replace("_", " ")}</Text>
+        <View style={[styles.availabilityBadge, { backgroundColor: theme.colors.success }]}>
+          <Text style={[styles.availabilityText, { color: theme.colors.surface }]}>{item.availability.replace("_", " ")}</Text>
         </View>
       </View>
 
-      <Text style={styles.therapistBio} numberOfLines={2}>
+      <Text style={[styles.therapistBio, { color: theme.colors.textSecondary }]} numberOfLines={2}>
         {item.bio}
       </Text>
 
       <View style={styles.specialties}>
         {item.specialties.slice(0, 3).map((specialty, index) => (
-          <View key={index} style={styles.specialtyTag}>
-            <Text style={styles.specialtyText}>{specialty}</Text>
+          <View key={index} style={[styles.specialtyTag, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.specialtyText, { color: theme.colors.primary }]}>{specialty}</Text>
           </View>
         ))}
       </View>
@@ -170,59 +172,59 @@ export default function MentalHealthScreen({ navigation }: any) {
         <View style={styles.therapistFeatures}>
           {item.lgbtq_friendly && (
             <View style={styles.featureTag}>
-              <MaterialIcons name="favorite" size={12} color="#FF6B6B" />
-              <Text style={styles.featureText}>LGBTQ+ Friendly</Text>
+              <MaterialIcons name="favorite" size={12} color={theme.colors.lgbtqFriendly} />
+              <Text style={[styles.featureText, { color: theme.colors.textSecondary }]}>LGBTQ+ Friendly</Text>
             </View>
           )}
           {item.location.remote_available && (
             <View style={styles.featureTag}>
-              <MaterialIcons name="videocam" size={12} color="#4CAF50" />
-              <Text style={styles.featureText}>Remote</Text>
+              <MaterialIcons name="videocam" size={12} color={theme.colors.success} />
+              <Text style={[styles.featureText, { color: theme.colors.textSecondary }]}>Remote</Text>
             </View>
           )}
         </View>
-        <TouchableOpacity style={styles.contactButton}>
-          <Text style={styles.contactButtonText}>Contact</Text>
+        <TouchableOpacity style={[styles.contactButton, { backgroundColor: theme.colors.primary }]}>
+          <Text style={[styles.contactButtonText, { color: theme.colors.surface }]}>Contact</Text>
         </TouchableOpacity>
       </View>
     </View>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Mental Health</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Mental Health</Text>
           <TouchableOpacity onPress={() => setShowMoodModal(true)}>
-            <MaterialIcons name="add" size={24} color="white" />
+            <MaterialIcons name="add" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.headerSubtitle}>Track your wellness journey</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.colors.headerText, opacity: 0.9 }]}>Track your wellness journey</Text>
       </LinearGradient>
 
       {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
+      <View style={[styles.tabContainer, { backgroundColor: theme.colors.surface }]}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "mood" && styles.activeTab]}
+          style={[styles.tab, activeTab === "mood" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("mood")}
         >
-          <Text style={[styles.tabText, activeTab === "mood" && styles.activeTabText]}>Mood Tracker</Text>
+          <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "mood" && [styles.activeTabText, { color: theme.colors.primary }]]}>Mood Tracker</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "resources" && styles.activeTab]}
+          style={[styles.tab, activeTab === "resources" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("resources")}
         >
-          <Text style={[styles.tabText, activeTab === "resources" && styles.activeTabText]}>Resources</Text>
+          <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "resources" && [styles.activeTabText, { color: theme.colors.primary }]]}>Resources</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "therapists" && styles.activeTab]}
+          style={[styles.tab, activeTab === "therapists" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("therapists")}
         >
-          <Text style={[styles.tabText, activeTab === "therapists" && styles.activeTabText]}>Therapists</Text>
+          <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "therapists" && [styles.activeTabText, { color: theme.colors.primary }]]}>Therapists</Text>
         </TouchableOpacity>
       </View>
 
@@ -231,29 +233,29 @@ export default function MentalHealthScreen({ navigation }: any) {
           <>
             {/* Current Mood */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>How are you feeling today?</Text>
-              <TouchableOpacity style={styles.moodButton} onPress={() => setShowMoodModal(true)}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>How are you feeling today?</Text>
+              <TouchableOpacity style={[styles.moodButton, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]} onPress={() => setShowMoodModal(true)}>
                 <Text style={styles.moodEmoji}>😊</Text>
-                <Text style={styles.moodButtonText}>Log Your Mood</Text>
+                <Text style={[styles.moodButtonText, { color: theme.colors.primary }]}>Log Your Mood</Text>
               </TouchableOpacity>
             </View>
 
             {/* Mood Chart */}
             {moodEntries.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Mood Trend (Last 7 Days)</Text>
-                <View style={styles.chartContainer}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Mood Trend (Last 7 Days)</Text>
+                <View style={[styles.chartContainer, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
                   <LineChart
                     data={getChartData()}
                     width={screenWidth - 40}
                     height={200}
                     chartConfig={{
-                      backgroundColor: "#ffffff",
-                      backgroundGradientFrom: "#ffffff",
-                      backgroundGradientTo: "#ffffff",
+                      backgroundColor: theme.colors.card,
+                      backgroundGradientFrom: theme.colors.card,
+                      backgroundGradientTo: theme.colors.card,
                       decimalPlaces: 0,
                       color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(${theme.colors.text.replace('#', '')}, ${opacity})`,
                       style: {
                         borderRadius: 16,
                       },
@@ -273,8 +275,8 @@ export default function MentalHealthScreen({ navigation }: any) {
             {/* Mood Insights */}
             {moodPattern && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Insights</Text>
-                <View style={styles.insightCard}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Insights</Text>
+                <View style={[styles.insightCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
                   <View style={styles.insightHeader}>
                     <MaterialIcons
                       name={
@@ -287,16 +289,16 @@ export default function MentalHealthScreen({ navigation }: any) {
                       size={24}
                       color={
                         moodPattern.moodTrend === "improving"
-                          ? "#4CAF50"
+                          ? theme.colors.success
                           : moodPattern.moodTrend === "declining"
-                            ? "#F44336"
-                            : "#FF9800"
+                            ? theme.colors.error
+                            : theme.colors.warning
                       }
                     />
-                    <Text style={styles.insightTitle}>Average Mood: {moodPattern.averageMood}/10</Text>
+                    <Text style={[styles.insightTitle, { color: theme.colors.text }]}>Average Mood: {moodPattern.averageMood}/10</Text>
                   </View>
                   {moodPattern.insights.map((insight, index) => (
-                    <Text key={index} style={styles.insightText}>
+                    <Text key={index} style={[styles.insightText, { color: theme.colors.textSecondary }]}>
                       • {insight}
                     </Text>
                   ))}
@@ -306,18 +308,18 @@ export default function MentalHealthScreen({ navigation }: any) {
 
             {/* Recent Entries */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Entries</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Recent Entries</Text>
               {moodEntries.slice(0, 5).map((entry) => (
-                <View key={entry.id} style={styles.moodEntryCard}>
+                <View key={entry.id} style={[styles.moodEntryCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
                   <View style={styles.moodEntryHeader}>
                     <Text style={styles.moodEntryEmoji}>{getMoodEmoji(entry.mood)}</Text>
                     <View style={styles.moodEntryInfo}>
-                      <Text style={styles.moodEntryMood}>Mood: {entry.mood}/10</Text>
-                      <Text style={styles.moodEntryDate}>{new Date(entry.created_at).toLocaleDateString()}</Text>
+                      <Text style={[styles.moodEntryMood, { color: theme.colors.text }]}>Mood: {entry.mood}/10</Text>
+                      <Text style={[styles.moodEntryDate, { color: theme.colors.textSecondary }]}>{new Date(entry.created_at).toLocaleDateString()}</Text>
                     </View>
                     <View style={[styles.moodIndicator, { backgroundColor: getMoodColor(entry.mood) }]} />
                   </View>
-                  {entry.notes && <Text style={styles.moodEntryNotes}>{entry.notes}</Text>}
+                  {entry.notes && <Text style={[styles.moodEntryNotes, { color: theme.colors.textSecondary }]}>{entry.notes}</Text>}
                 </View>
               ))}
             </View>
@@ -326,56 +328,56 @@ export default function MentalHealthScreen({ navigation }: any) {
 
         {activeTab === "resources" && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Mental Health Resources</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Mental Health Resources</Text>
 
             {/* Crisis Support */}
-            <View style={styles.resourceCard}>
+            <View style={[styles.resourceCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
               <View style={styles.resourceHeader}>
-                <MaterialIcons name="phone" size={24} color="#F44336" />
-                <Text style={styles.resourceTitle}>Crisis Support</Text>
+                <MaterialIcons name="phone" size={24} color={theme.colors.error} />
+                <Text style={[styles.resourceTitle, { color: theme.colors.text }]}>Crisis Support</Text>
               </View>
-              <TouchableOpacity style={styles.hotlineButton}>
-                <Text style={styles.hotlineText}>LGBTQ+ Crisis Hotline</Text>
-                <Text style={styles.hotlineNumber}>1-866-488-7386</Text>
+              <TouchableOpacity style={[styles.hotlineButton, { backgroundColor: theme.colors.surface }]}>
+                <Text style={[styles.hotlineText, { color: theme.colors.text }]}>LGBTQ+ Crisis Hotline</Text>
+                <Text style={[styles.hotlineNumber, { color: theme.colors.primary }]}>1-866-488-7386</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.hotlineButton}>
-                <Text style={styles.hotlineText}>Trans Lifeline</Text>
-                <Text style={styles.hotlineNumber}>877-565-8860</Text>
+              <TouchableOpacity style={[styles.hotlineButton, { backgroundColor: theme.colors.surface }]}>
+                <Text style={[styles.hotlineText, { color: theme.colors.text }]}>Trans Lifeline</Text>
+                <Text style={[styles.hotlineNumber, { color: theme.colors.primary }]}>877-565-8860</Text>
               </TouchableOpacity>
             </View>
 
             {/* Self-Care Tips */}
-            <View style={styles.resourceCard}>
+            <View style={[styles.resourceCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
               <View style={styles.resourceHeader}>
-                <MaterialIcons name="self-improvement" size={24} color="#4CAF50" />
-                <Text style={styles.resourceTitle}>Self-Care Tips</Text>
+                <MaterialIcons name="self-improvement" size={24} color={theme.colors.success} />
+                <Text style={[styles.resourceTitle, { color: theme.colors.text }]}>Self-Care Tips</Text>
               </View>
               <View style={styles.tipsList}>
-                <Text style={styles.tipItem}>• Practice deep breathing for 5 minutes daily</Text>
-                <Text style={styles.tipItem}>• Connect with supportive LGBTQ+ friends</Text>
-                <Text style={styles.tipItem}>• Keep a gratitude journal</Text>
-                <Text style={styles.tipItem}>• Engage in physical activity you enjoy</Text>
-                <Text style={styles.tipItem}>• Set healthy boundaries</Text>
+                <Text style={[styles.tipItem, { color: theme.colors.textSecondary }]}>• Practice deep breathing for 5 minutes daily</Text>
+                <Text style={[styles.tipItem, { color: theme.colors.textSecondary }]}>• Connect with supportive LGBTQ+ friends</Text>
+                <Text style={[styles.tipItem, { color: theme.colors.textSecondary }]}>• Keep a gratitude journal</Text>
+                <Text style={[styles.tipItem, { color: theme.colors.textSecondary }]}>• Engage in physical activity you enjoy</Text>
+                <Text style={[styles.tipItem, { color: theme.colors.textSecondary }]}>• Set healthy boundaries</Text>
               </View>
             </View>
 
             {/* LGBTQ+ Resources */}
-            <View style={styles.resourceCard}>
+            <View style={[styles.resourceCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
               <View style={styles.resourceHeader}>
-                <MaterialIcons name="favorite" size={24} color="#FF6B6B" />
-                <Text style={styles.resourceTitle}>LGBTQ+ Support</Text>
+                <MaterialIcons name="favorite" size={24} color={theme.colors.lgbtqFriendly} />
+                <Text style={[styles.resourceTitle, { color: theme.colors.text }]}>LGBTQ+ Support</Text>
               </View>
-              <TouchableOpacity style={styles.resourceLink}>
-                <Text style={styles.linkText}>The Trevor Project</Text>
-                <MaterialIcons name="open-in-new" size={16} color="#666" />
+              <TouchableOpacity style={[styles.resourceLink, { borderBottomColor: theme.colors.divider }]}>
+                <Text style={[styles.linkText, { color: theme.colors.primary }]}>The Trevor Project</Text>
+                <MaterialIcons name="open-in-new" size={16} color={theme.colors.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.resourceLink}>
-                <Text style={styles.linkText}>PFLAG Support Groups</Text>
-                <MaterialIcons name="open-in-new" size={16} color="#666" />
+              <TouchableOpacity style={[styles.resourceLink, { borderBottomColor: theme.colors.divider }]}>
+                <Text style={[styles.linkText, { color: theme.colors.primary }]}>PFLAG Support Groups</Text>
+                <MaterialIcons name="open-in-new" size={16} color={theme.colors.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.resourceLink}>
-                <Text style={styles.linkText}>GLAAD Mental Health Resources</Text>
-                <MaterialIcons name="open-in-new" size={16} color="#666" />
+              <TouchableOpacity style={[styles.resourceLink, { borderBottomColor: theme.colors.divider }]}>
+                <Text style={[styles.linkText, { color: theme.colors.primary }]}>GLAAD Mental Health Resources</Text>
+                <MaterialIcons name="open-in-new" size={16} color={theme.colors.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -383,7 +385,7 @@ export default function MentalHealthScreen({ navigation }: any) {
 
         {activeTab === "therapists" && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>LGBTQ+ Friendly Therapists</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>LGBTQ+ Friendly Therapists</Text>
             <FlatList
               data={therapists}
               renderItem={renderTherapist}
@@ -391,9 +393,9 @@ export default function MentalHealthScreen({ navigation }: any) {
               scrollEnabled={false}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                  <MaterialIcons name="psychology" size={64} color="#ccc" />
-                  <Text style={styles.emptyTitle}>No Therapists Found</Text>
-                  <Text style={styles.emptyDescription}>Try adjusting your search criteria</Text>
+                  <MaterialIcons name="psychology" size={64} color={theme.colors.textTertiary} />
+                  <Text style={[styles.emptyTitle, { color: theme.colors.textSecondary }]}>No Therapists Found</Text>
+                  <Text style={[styles.emptyDescription, { color: theme.colors.textTertiary }]}>Try adjusting your search criteria</Text>
                 </View>
               }
             />
@@ -403,21 +405,21 @@ export default function MentalHealthScreen({ navigation }: any) {
 
       {/* Mood Logging Modal */}
       <Modal visible={showMoodModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.colors.divider }]}>
             <TouchableOpacity onPress={() => setShowMoodModal(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
+              <Text style={[styles.modalCancel, { color: theme.colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Log Your Mood</Text>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Log Your Mood</Text>
             <TouchableOpacity onPress={handleLogMood}>
-              <Text style={styles.modalSave}>Save</Text>
+              <Text style={[styles.modalSave, { color: theme.colors.primary }]}>Save</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalContent}>
             {/* Mood Slider */}
             <View style={styles.sliderSection}>
-              <Text style={styles.sliderLabel}>
+              <Text style={[styles.sliderLabel, { color: theme.colors.text }]}>
                 Mood: {currentMood}/10 {getMoodEmoji(currentMood)}
               </Text>
               <Slider
@@ -427,14 +429,14 @@ export default function MentalHealthScreen({ navigation }: any) {
                 step={1}
                 value={currentMood}
                 onValueChange={setCurrentMood}
-                minimumTrackTintColor="#FF6B6B"
-                maximumTrackTintColor="#ddd"
+                minimumTrackTintColor={theme.colors.primary}
+                maximumTrackTintColor={theme.colors.textTertiary}
               />
             </View>
 
             {/* Energy Slider */}
             <View style={styles.sliderSection}>
-              <Text style={styles.sliderLabel}>Energy Level: {currentEnergy}/10</Text>
+              <Text style={[styles.sliderLabel, { color: theme.colors.text }]}>Energy Level: {currentEnergy}/10</Text>
               <Slider
                 style={styles.slider}
                 minimumValue={1}
@@ -442,14 +444,14 @@ export default function MentalHealthScreen({ navigation }: any) {
                 step={1}
                 value={currentEnergy}
                 onValueChange={setCurrentEnergy}
-                minimumTrackTintColor="#4CAF50"
-                maximumTrackTintColor="#ddd"
+                minimumTrackTintColor={theme.colors.success}
+                maximumTrackTintColor={theme.colors.textTertiary}
               />
             </View>
 
             {/* Anxiety Slider */}
             <View style={styles.sliderSection}>
-              <Text style={styles.sliderLabel}>Anxiety Level: {currentAnxiety}/10</Text>
+              <Text style={[styles.sliderLabel, { color: theme.colors.text }]}>Anxiety Level: {currentAnxiety}/10</Text>
               <Slider
                 style={styles.slider}
                 minimumValue={1}
@@ -457,17 +459,18 @@ export default function MentalHealthScreen({ navigation }: any) {
                 step={1}
                 value={currentAnxiety}
                 onValueChange={setCurrentAnxiety}
-                minimumTrackTintColor="#FF9800"
-                maximumTrackTintColor="#ddd"
+                minimumTrackTintColor={theme.colors.warning}
+                maximumTrackTintColor={theme.colors.textTertiary}
               />
             </View>
 
             {/* Notes */}
             <View style={styles.notesSection}>
-              <Text style={styles.notesLabel}>Notes (Optional)</Text>
+              <Text style={[styles.notesLabel, { color: theme.colors.text }]}>Notes (Optional)</Text>
               <TextInput
-                style={styles.notesInput}
+                style={[styles.notesInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
                 placeholder="How are you feeling? What's on your mind?"
+                placeholderTextColor={theme.colors.textSecondary}
                 multiline
                 numberOfLines={4}
                 value={moodNotes}
@@ -476,7 +479,7 @@ export default function MentalHealthScreen({ navigation }: any) {
               />
             </View>
 
-            <Text style={styles.modalNote}>💡 Regular mood tracking helps identify patterns and triggers</Text>
+            <Text style={[styles.modalNote, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary, color: theme.colors.textSecondary }]}>💡 Regular mood tracking helps identify patterns and triggers</Text>
           </ScrollView>
         </SafeAreaView>
       </Modal>

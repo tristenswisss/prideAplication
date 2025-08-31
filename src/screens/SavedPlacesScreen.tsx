@@ -9,6 +9,7 @@ import { useAuth } from "../../Contexts/AuthContexts"
 import type { Business } from "../../types"
 import type { SavedPlacesScreenProps } from "../../types/navigation"
 import AppModal from "../../components/AppModal"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface SavedPlace extends Business {
   savedAt?: string
@@ -16,6 +17,7 @@ interface SavedPlace extends Business {
 }
 
 export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps) {
+  const { theme } = useTheme()
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "visited" | "wishlist">("all")
@@ -73,69 +75,69 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
 
   const renderSavedPlace = ({ item }: { item: SavedPlace }) => (
     <TouchableOpacity
-      style={styles.placeCard}
+      style={[styles.placeCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}
       onPress={() => (navigation as any).navigate("Home", { screen: "BusinessDetails", params: { business: item } })}
     >
       <View style={styles.placeImageContainer}>
         {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.placeImage} />
         ) : (
-          <View style={styles.placeholderImage}>
-            <MaterialIcons name="place" size={40} color="#ccc" />
+          <View style={[styles.placeholderImage, { backgroundColor: theme.colors.surface }]}>
+            <MaterialIcons name="place" size={40} color={theme.colors.textTertiary} />
           </View>
         )}
-        <TouchableOpacity style={styles.removeButton} onPress={() => removeSavedPlace(item.id)}>
-          <MaterialIcons name="favorite" size={20} color="black" />
+        <TouchableOpacity style={[styles.removeButton, { backgroundColor: theme.colors.surface, shadowColor: theme.colors.shadow }]} onPress={() => removeSavedPlace(item.id)}>
+          <MaterialIcons name="favorite" size={20} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.placeInfo}>
         <View style={styles.placeHeader}>
-          <Text style={styles.placeName}>{item.name}</Text>
+          <Text style={[styles.placeName, { color: theme.colors.text }]}>{item.name}</Text>
           <View style={styles.ratingContainer}>
-            <MaterialIcons name="star" size={16} color="#FFD700" />
-                         <Text style={styles.rating}>{item.rating ?? 0}</Text>
-</View>
+            <MaterialIcons name="star" size={16} color={theme.colors.accent} />
+                          <Text style={[styles.rating, { color: theme.colors.text }]}>{item.rating ?? 0}</Text>
+        </View>
         </View>
 
-        <Text style={styles.placeCategory}>{item.category.toUpperCase()}</Text>
-        <Text style={styles.placeDescription} numberOfLines={2}>
+        <Text style={[styles.placeCategory, { color: theme.colors.primary }]}>{item.category.toUpperCase()}</Text>
+        <Text style={[styles.placeDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
           {item.description}
         </Text>
 
         <View style={styles.placeTags}>
           {item.lgbtq_friendly && (
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>LGBTQ+ Friendly</Text>
+            <View style={[styles.tag, { backgroundColor: theme.colors.lgbtqFriendly }]}>
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>LGBTQ+ Friendly</Text>
             </View>
           )}
           {item.trans_friendly && (
-            <View style={[styles.tag, styles.transTag]}>
-              <Text style={styles.tagText}>Trans Friendly</Text>
+            <View style={[styles.tag, { backgroundColor: theme.colors.transFriendly }]}>
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>Trans Friendly</Text>
             </View>
           )}
           {item.verified && (
-            <View style={[styles.tag, styles.verifiedTag]}>
-              <MaterialIcons name="verified" size={12} color="white" />
-              <Text style={styles.tagText}>Verified</Text>
+            <View style={[styles.tag, { backgroundColor: theme.colors.verified }]}>
+              <MaterialIcons name="verified" size={12} color={theme.colors.surface} />
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>Verified</Text>
             </View>
           )}
           {item.wheelchair_accessible && (
-            <View style={[styles.tag, styles.accessibleTag]}>
-              <MaterialIcons name="accessible" size={12} color="white" />
-              <Text style={styles.tagText}>Accessible</Text>
+            <View style={[styles.tag, { backgroundColor: "#FFA726" }]}>
+              <MaterialIcons name="accessible" size={12} color={theme.colors.surface} />
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>Accessible</Text>
             </View>
           )}
         </View>
 
         {item.notes && (
-          <View style={styles.notesContainer}>
-            <MaterialIcons name="note" size={14} color="#666" />
-            <Text style={styles.notes}>{item.notes}</Text>
+          <View style={[styles.notesContainer, { backgroundColor: theme.colors.surface }]}>
+            <MaterialIcons name="note" size={14} color={theme.colors.textSecondary} />
+            <Text style={[styles.notes, { color: theme.colors.textSecondary }]}>{item.notes}</Text>
           </View>
         )}
 
-        {item.savedAt && <Text style={styles.savedDate}>Saved on {new Date(item.savedAt).toLocaleDateString()}</Text>}
+        {item.savedAt && <Text style={[styles.savedDate, { color: theme.colors.textTertiary }]}>Saved on {new Date(item.savedAt).toLocaleDateString()}</Text>}
       </View>
     </TouchableOpacity>
   )
@@ -147,26 +149,26 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
   })
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Saved Places</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Saved Places</Text>
           <View style={styles.headerRight} />
         </View>
       </LinearGradient>
 
       {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, { backgroundColor: theme.colors.surface }]}>
         {["all", "visited", "wishlist"].map((filterOption) => (
           <TouchableOpacity
             key={filterOption}
-            style={[styles.filterTab, filter === filterOption && styles.activeFilterTab]}
+            style={[styles.filterTab, filter === filterOption && [styles.activeFilterTab, { backgroundColor: theme.colors.primary }]]}
             onPress={() => setFilter(filterOption as typeof filter)}
           >
-            <Text style={[styles.filterTabText, filter === filterOption && styles.activeFilterTabText]}>
+            <Text style={[styles.filterTabText, { color: theme.colors.textSecondary }, filter === filterOption && [styles.activeFilterTabText, { color: theme.colors.surface }]]}>
               {filterOption === "all" ? "All" : filterOption === "visited" ? "Visited" : "Wishlist"}
             </Text>
           </TouchableOpacity>
@@ -175,15 +177,15 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading saved places...</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>Loading saved places...</Text>
         </View>
       ) : filteredPlaces.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons name="bookmark-border" size={80} color="#ccc" />
-          <Text style={styles.emptyTitle}>No Saved Places</Text>
-          <Text style={styles.emptyDescription}>Start exploring and save your favorite LGBTQ+ friendly places!</Text>
-          <TouchableOpacity style={styles.exploreButton} onPress={() => (navigation as any).navigate("Home")}>
-            <Text style={styles.exploreButtonText}>Explore Places</Text>
+          <MaterialIcons name="bookmark-border" size={80} color={theme.colors.textTertiary} />
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No Saved Places</Text>
+          <Text style={[styles.emptyDescription, { color: theme.colors.textSecondary }]}>Start exploring and save your favorite LGBTQ+ friendly places!</Text>
+          <TouchableOpacity style={[styles.exploreButton, { backgroundColor: theme.colors.primary }]} onPress={() => (navigation as any).navigate("Home")}>
+            <Text style={[styles.exploreButtonText, { color: theme.colors.surface }]}>Explore Places</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -213,7 +215,7 @@ export default function SavedPlacesScreen({ navigation }: SavedPlacesScreenProps
           },
         }}
       >
-        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>}
       </AppModal>
     </SafeAreaView>
   )

@@ -10,6 +10,8 @@ import { businessService } from "../../services/businessService"
 import type { Business } from "../../types"
 import type { HomeScreenProps } from "../../types/navigation"
 import React from "react"
+import { useTheme } from "../../Contexts/ThemeContext"
+import { createThemedStyles } from "../../lib/themeUtils"
 
 interface Category {
   id: string
@@ -54,6 +56,7 @@ const BusinessMarker = React.memo(({
 })
 
 export default function HomeScreen({ navigation, route }: HomeScreenProps) {
+  const { theme } = useTheme()
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -254,7 +257,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   const renderBusinessCard = ({ item }: { item: Business }) => (
     <TouchableOpacity
-      style={styles.businessCard}
+      style={[styles.businessCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}
       onPress={() => {
         navigation.navigate("BusinessDetails", { business: item })
       }}
@@ -263,31 +266,31 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       accessibilityHint="Double tap to view business details"
     >
       <View style={styles.businessHeader}>
-        <Text style={styles.businessName}>{item.name}</Text>
+        <Text style={[styles.businessName, { color: theme.colors.text }]}>{item.name}</Text>
         <View style={styles.businessRating}>
-          <MaterialIcons name="star" size={16} color="#FFD700" />
-          <Text style={styles.ratingText}>{item.rating || "N/A"}</Text>
+          <MaterialIcons name="star" size={16} color={theme.colors.accent} />
+          <Text style={[styles.ratingText, { color: theme.colors.text }]}>{item.rating || "N/A"}</Text>
         </View>
       </View>
-      <Text style={styles.businessCategory}>{item.category.toUpperCase()}</Text>
-      <Text style={styles.businessDescription} numberOfLines={2}>
+      <Text style={[styles.businessCategory, { color: theme.colors.primary }]}>{item.category.toUpperCase()}</Text>
+      <Text style={[styles.businessDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
         {item.description}
       </Text>
       <View style={styles.businessTags}>
         {item.lgbtq_friendly && (
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>LGBTQ+ Friendly</Text>
+          <View style={[styles.tag, { backgroundColor: theme.colors.lgbtqFriendly }]}>
+            <Text style={[styles.tagText, { color: theme.colors.surface }]}>LGBTQ+ Friendly</Text>
           </View>
         )}
         {item.trans_friendly && (
-          <View style={[styles.tag, styles.transTag]}>
-            <Text style={styles.tagText}>Trans Friendly</Text>
+          <View style={[styles.tag, { backgroundColor: theme.colors.transFriendly }]}>
+            <Text style={[styles.tagText, { color: theme.colors.surface }]}>Trans Friendly</Text>
           </View>
         )}
         {item.verified && (
-          <View style={[styles.tag, styles.verifiedTag]}>
-            <MaterialIcons name="verified" size={12} color="white" />
-            <Text style={styles.tagText}>Verified</Text>
+          <View style={[styles.tag, { backgroundColor: theme.colors.verified }]}>
+            <MaterialIcons name="verified" size={12} color={theme.colors.surface} />
+            <Text style={[styles.tagText, { color: theme.colors.surface }]}>Verified</Text>
           </View>
         )}
       </View>
@@ -323,30 +326,30 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
         </MapView>
 
         {/* Legend */}
-        <View style={styles.legend}>
-          <Text style={styles.legendTitle}>Legend</Text>
+        <View style={[styles.legend, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.legendTitle, { color: theme.colors.text }]}>Legend</Text>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#FF6B6B" }]} />
-            <Text style={styles.legendText}>LGBTQ+ & Trans Friendly</Text>
+            <View style={[styles.legendColor, { backgroundColor: theme.colors.lgbtqFriendly }]} />
+            <Text style={[styles.legendText, { color: theme.colors.textSecondary }]}>LGBTQ+ & Trans Friendly</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#4ECDC4" }]} />
-            <Text style={styles.legendText}>LGBTQ+ Friendly</Text>
+            <View style={[styles.legendColor, { backgroundColor: theme.colors.transFriendly }]} />
+            <Text style={[styles.legendText, { color: theme.colors.textSecondary }]}>LGBTQ+ Friendly</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: "#95E1D3" }]} />
-            <Text style={styles.legendText}>Other Safe Spaces</Text>
+            <Text style={[styles.legendText, { color: theme.colors.textSecondary }]}>Other Safe Spaces</Text>
           </View>
         </View>
 
         {/* Floating action button for adding new places */}
-        <TouchableOpacity 
-          style={styles.floatingActionButton}
+        <TouchableOpacity
+          style={[styles.floatingActionButton, { backgroundColor: theme.colors.success, shadowColor: theme.colors.shadow }]}
           onPress={() => navigation.navigate("SuggestSafeSpace" as never)}
           accessibilityRole="button"
           accessibilityLabel="Suggest a new safe space"
         >
-          <MaterialIcons name="add-location" size={24} color="white" />
+          <MaterialIcons name="add-location" size={24} color={theme.colors.surface} />
         </TouchableOpacity>
       </View>
     )
@@ -355,30 +358,30 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
-        <Text style={styles.headerTitle}>SafePlaces</Text>
-        <Text style={styles.headerSubtitle}>Find LGBTQ+ friendly spaces</Text>
-      </LinearGradient>
+      <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
+        <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>SafePlaces</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.colors.headerText }]}>Find LGBTQ+ friendly spaces</Text>
+      </View>
 
       {/* View Toggle */}
-      <View style={styles.toggleContainer}>
+      <View style={[styles.toggleContainer, { backgroundColor: theme.colors.surface }]}>
         <TouchableOpacity
-          style={[styles.toggleButton, showMap && styles.activeToggle]}
+          style={[styles.toggleButton, showMap && [styles.activeToggle, { backgroundColor: theme.colors.primary }]]}
           onPress={() => setShowMap(true)}
           accessibilityRole="button"
           accessibilityLabel="Switch to map view"
         >
-          <MaterialIcons name="map" size={18} color={showMap ? "white" : "#666"} />
-          <Text style={[styles.toggleText, showMap && styles.activeToggleText]}>Map</Text>
+          <MaterialIcons name="map" size={18} color={showMap ? theme.colors.surface : theme.colors.textSecondary} />
+          <Text style={[styles.toggleText, { color: theme.colors.textSecondary }, showMap && [styles.activeToggleText, { color: theme.colors.surface }]]}>Map</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.toggleButton, !showMap && styles.activeToggle]}
+          style={[styles.toggleButton, !showMap && [styles.activeToggle, { backgroundColor: theme.colors.primary }]]}
           onPress={() => setShowMap(false)}
           accessibilityRole="button"
           accessibilityLabel="Switch to list view"
         >
-          <MaterialIcons name="list" size={18} color={!showMap ? "white" : "#666"} />
-          <Text style={[styles.toggleText, !showMap && styles.activeToggleText]}>List</Text>
+          <MaterialIcons name="list" size={18} color={!showMap ? theme.colors.surface : theme.colors.textSecondary} />
+          <Text style={[styles.toggleText, { color: theme.colors.textSecondary }, !showMap && [styles.activeToggleText, { color: theme.colors.surface }]]}>List</Text>
         </TouchableOpacity>
       </View>
 
@@ -392,7 +395,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           {categories.map((category) => (
             <TouchableOpacity
               key={category.id}
-              style={[styles.categoryTab, selectedCategory === category.id && { backgroundColor: category.color }]}
+              style={[styles.categoryTab, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, selectedCategory === category.id && { backgroundColor: category.color }]}
               onPress={() => setSelectedCategory(category.id)}
               accessibilityRole="button"
               accessibilityLabel={`Filter by ${category.name}`}
@@ -401,12 +404,13 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
               <MaterialIcons
                 name={category.icon as any}
                 size={16}
-                color={selectedCategory === category.id ? "white" : category.color}
+                color={selectedCategory === category.id ? theme.colors.surface : category.color}
               />
               <Text
                 style={[
                   styles.categoryTabText,
-                  selectedCategory === category.id && { color: "white" },
+                  { color: theme.colors.textSecondary },
+                  selectedCategory === category.id && { color: theme.colors.surface },
                   selectedCategory !== category.id && { color: category.color },
                 ]}
               >
@@ -415,13 +419,13 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
             </TouchableOpacity>
           ))}
           <TouchableOpacity
-            style={[styles.categoryTab, { backgroundColor: "#4CAF50" }]}
+            style={[styles.categoryTab, { backgroundColor: theme.colors.success }]}
             onPress={() => navigation.navigate("SuggestSafeSpace" as never)}
             accessibilityRole="button"
             accessibilityLabel="Recommend a safe space"
           >
-            <MaterialIcons name="add-location" size={16} color="white" />
-            <Text style={[styles.categoryTabText, { color: "white" }]}>Recommend</Text>
+            <MaterialIcons name="add-location" size={16} color={theme.colors.surface} />
+            <Text style={[styles.categoryTabText, { color: theme.colors.surface }]}>Recommend</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -432,7 +436,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           data={Object.keys(groupedByCategory)}
           renderItem={({ item: cat }) => (
             <View style={{ marginBottom: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: "700", marginHorizontal: 16, marginBottom: 8 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", marginHorizontal: 16, marginBottom: 8, color: theme.colors.text }}>
                 {cat.toUpperCase()}
               </Text>
               {groupedByCategory[cat].map((biz: Business) => (
@@ -448,9 +452,9 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="business" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>{loading ? "Loading businesses..." : "No businesses found"}</Text>
-              <Text style={styles.emptySubtext}>{!loading && "Try adjusting your category filter"}</Text>
+              <MaterialIcons name="business" size={64} color={theme.colors.textTertiary} />
+              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>{loading ? "Loading businesses..." : "No businesses found"}</Text>
+              <Text style={[styles.emptySubtext, { color: theme.colors.textTertiary }]}>{!loading && "Try adjusting your category filter"}</Text>
             </View>
           }
         />
@@ -459,7 +463,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       {/* Loading indicator */}
       {loading && (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading businesses...</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary, backgroundColor: theme.colors.surface }]}>Loading businesses...</Text>
         </View>
       )}
     </SafeAreaView>
@@ -469,7 +473,6 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
     paddingTop: 30,
@@ -479,18 +482,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "white",
     marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: "white",
-    opacity: 0.9,
     marginBottom: 20,
   },
   toggleContainer: {
     flexDirection: "row",
-    backgroundColor: "white",
     marginHorizontal: 10,
     marginTop: 10,
     borderRadius: 25,
@@ -505,16 +504,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   activeToggle: {
-    backgroundColor: "black",
+    // backgroundColor will be set inline
   },
   toggleText: {
     marginLeft: 5,
     fontSize: 14,
-    color: "#666",
     fontWeight: "600",
   },
   activeToggleText: {
-    color: "white",
+    // color will be set inline
   },
   mapContainer: {
     flex: 1,
@@ -533,7 +531,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 20,
     left: 20,
-    backgroundColor: "white",
     padding: 12,
     borderRadius: 10,
     elevation: 3,
@@ -560,7 +557,6 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 11,
-    color: "#666",
   },
   businessList: {
     flex: 1,
@@ -569,7 +565,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   businessCard: {
-    backgroundColor: "white",
     borderRadius: 12,
     padding: 15,
     marginBottom: 15,
@@ -587,7 +582,6 @@ const styles = StyleSheet.create({
   businessName: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
     flex: 1,
   },
   businessRating: {
@@ -598,17 +592,14 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 14,
     fontWeight: "bold",
-    color: "#333",
   },
   businessCategory: {
     fontSize: 12,
-    color: "#FF6B6B",
     fontWeight: "600",
     marginBottom: 8,
   },
   businessDescription: {
     fontSize: 14,
-    color: "#666",
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -617,7 +608,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   tag: {
-    backgroundColor: "#FF6B6B",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -627,14 +617,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   transTag: {
-    backgroundColor: "#4ECDC4",
+    // backgroundColor will be set inline
   },
   verifiedTag: {
-    backgroundColor: "#4CAF50",
+    // backgroundColor will be set inline
   },
   tagText: {
     fontSize: 10,
-    color: "white",
     fontWeight: "bold",
     marginLeft: 2,
   },
@@ -646,12 +635,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    backgroundColor: "white",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
     fontSize: 14,
-    color: "#666",
     elevation: 3,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -669,7 +656,6 @@ const styles = StyleSheet.create({
   categoryTab: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 16,
@@ -696,13 +682,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#666",
     marginTop: 16,
     textAlign: "center",
   },
   emptySubtext: {
     fontSize: 14,
-    color: "#999",
     marginTop: 8,
     textAlign: "center",
     paddingHorizontal: 40,
@@ -714,7 +698,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4CAF50',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,

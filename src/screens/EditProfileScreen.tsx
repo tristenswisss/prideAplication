@@ -8,9 +8,11 @@ import { useAuth } from "../../Contexts/AuthContexts"
 import { imageUploadService } from "../../services/imageUploadService"
 import { profileService } from "../../services/profileService"
 import type { EditProfileScreenProps } from "../../types/navigation"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function EditProfileScreen({ navigation }: EditProfileScreenProps) {
   const { user, refreshUser } = useAuth()
+  const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -202,145 +204,157 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={loading}>
-            <Text style={styles.saveButtonText}>{loading ? "Saving..." : "Save"}</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Edit Profile</Text>
+          <TouchableOpacity onPress={handleSave} style={[styles.saveButton, { backgroundColor: theme.colors.surface }]} disabled={loading}>
+            <Text style={[styles.saveButtonText, { color: theme.colors.text }]}>{loading ? "Saving..." : "Save"}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Photo Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Photo</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Profile Photo</Text>
           <View style={styles.photoContainer}>
             {profileImage ? (
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             ) : currentAvatarUrl ? (
               <Image source={{ uri: currentAvatarUrl }} style={styles.profileImage} />
             ) : (
-              <View style={styles.photoPlaceholder}>
-                <MaterialIcons name="person" size={60} color="#ccc" />
+              <View style={[styles.photoPlaceholder, { backgroundColor: theme.colors.card }]}>
+                <MaterialIcons name="person" size={60} color={theme.colors.textTertiary} />
               </View>
             )}
             <View style={styles.changePhotoActions}>
-              <TouchableOpacity style={styles.changePhotoButton} onPress={handlePickImage}>
-                <MaterialIcons name="photo-library" size={20} color="black" />
-                <Text style={styles.changePhotoText}>Choose Photo</Text>
+              <TouchableOpacity style={[styles.changePhotoButton, { borderColor: theme.colors.border }]} onPress={handlePickImage}>
+                <MaterialIcons name="photo-library" size={20} color={theme.colors.text} />
+                <Text style={[styles.changePhotoText, { color: theme.colors.text }]}>Choose Photo</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.changePhotoButton} onPress={handleTakePhoto}>
-                <MaterialIcons name="camera-alt" size={20} color="black" />
-                <Text style={styles.changePhotoText}>Take Photo</Text>
+              <TouchableOpacity style={[styles.changePhotoButton, { borderColor: theme.colors.border }]} onPress={handleTakePhoto}>
+                <MaterialIcons name="camera-alt" size={20} color={theme.colors.text} />
+                <Text style={[styles.changePhotoText, { color: theme.colors.text }]}>Take Photo</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
         {/* Basic Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Basic Information</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Name *</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Name *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
               value={formData.name}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, name: text }))}
               placeholder="Enter your name"
+              placeholderTextColor={theme.colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
             <TextInput
-              style={[styles.input, styles.disabledInput]}
+              style={[styles.input, styles.disabledInput, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.textSecondary }]}
               value={formData.email}
               editable={false}
               placeholder="Email address"
+              placeholderTextColor={theme.colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Bio</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Bio</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
               value={formData.bio}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, bio: text }))}
               placeholder="Tell us about yourself..."
+              placeholderTextColor={theme.colors.textSecondary}
               multiline
               numberOfLines={4}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Pronouns</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Pronouns</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
               value={formData.pronouns}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, pronouns: text }))}
               placeholder="e.g., they/them, she/her, he/him"
+              placeholderTextColor={theme.colors.textSecondary}
             />
           </View>
         </View>
 
         {/* Contact Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Information</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Contact Information</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Phone</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
               value={formData.phone}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, phone: text }))}
               placeholder="Phone number"
+              placeholderTextColor={theme.colors.textSecondary}
               keyboardType="phone-pad"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Location</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Location</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
               value={formData.location}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
               placeholder="City, State"
+              placeholderTextColor={theme.colors.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Website</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Website</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
               value={formData.website}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, website: text }))}
               placeholder="https://yourwebsite.com"
+              placeholderTextColor={theme.colors.textSecondary}
               keyboardType="url"
             />
           </View>
         </View>
 
         {/* Interests */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Interests</Text>
-          <Text style={styles.sectionSubtitle}>Select topics you're interested in</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Interests</Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>Select topics you're interested in</Text>
           <View style={styles.interestsContainer}>
             {interestOptions.map((interest) => (
               <TouchableOpacity
                 key={interest}
-                style={[styles.interestTag, formData.interests.includes(interest) && styles.selectedInterestTag]}
+                style={[
+                  styles.interestTag,
+                  { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+                  formData.interests.includes(interest) && [styles.selectedInterestTag, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]
+                ]}
                 onPress={() => toggleInterest(interest)}
               >
                 <Text
                   style={[
                     styles.interestTagText,
-                    formData.interests.includes(interest) && styles.selectedInterestTagText,
+                    { color: theme.colors.textSecondary },
+                    formData.interests.includes(interest) && [styles.selectedInterestTagText, { color: theme.colors.surface }],
                   ]}
                 >
                   {interest}
@@ -351,24 +365,24 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
         </View>
 
         {/* Privacy Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy Settings</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Privacy Settings</Text>
 
           {Object.entries(privacySettings).map(([key, value]) => (
             <TouchableOpacity
               key={key}
-              style={styles.privacyOption}
+              style={[styles.privacyOption, { borderBottomColor: theme.colors.divider }]}
               onPress={() => togglePrivacySetting(key as keyof typeof privacySettings)}
             >
               <View style={styles.privacyOptionContent}>
-                <Text style={styles.privacyOptionTitle}>
+                <Text style={[styles.privacyOptionTitle, { color: theme.colors.text }]}>
                   {key === "profileVisible" && "Profile Visible to Others"}
                   {key === "showEmail" && "Show Email Address"}
                   {key === "showPhone" && "Show Phone Number"}
                   {key === "allowMessages" && "Allow Direct Messages"}
                   {key === "showLocation" && "Show Location"}
                 </Text>
-                <Text style={styles.privacyOptionDescription}>
+                <Text style={[styles.privacyOptionDescription, { color: theme.colors.textSecondary }]}>
                   {key === "profileVisible" && "Others can find and view your profile"}
                   {key === "showEmail" && "Display email on your public profile"}
                   {key === "showPhone" && "Display phone number on your profile"}
@@ -376,8 +390,8 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
                   {key === "showLocation" && "Display your location on your profile"}
                 </Text>
               </View>
-              <View style={[styles.toggle, value && styles.toggleActive]}>
-                <View style={[styles.toggleThumb, value && styles.toggleThumbActive]} />
+              <View style={[styles.toggle, { backgroundColor: theme.colors.card }, value && [styles.toggleActive, { backgroundColor: theme.colors.primary }]]}>
+                <View style={[styles.toggleThumb, { backgroundColor: theme.colors.surface }, value && styles.toggleThumbActive]} />
               </View>
             </TouchableOpacity>
           ))}

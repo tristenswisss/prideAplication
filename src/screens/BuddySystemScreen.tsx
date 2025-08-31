@@ -27,9 +27,11 @@ import { messagingService } from "../../services/messagingService"
 import { userReportService } from "../../services/userReportService"
 import type { UserProfile } from "../../types"
 import AppModal from "../../components/AppModal"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function BuddySystemScreen({ navigation }: any) {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [matches, setMatches] = useState<BuddyMatch[]>([])
   const [requests, setRequests] = useState<BuddyRequest[]>([])
   const [buddies, setBuddies] = useState<BuddyMatch[]>([])
@@ -252,28 +254,28 @@ export default function BuddySystemScreen({ navigation }: any) {
   }
 
   const renderMatch = ({ item }: { item: BuddyMatch }) => (
-    <View style={styles.matchCard}>
+    <View style={[styles.matchCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
       <Image source={{ uri: "/placeholder.svg?height=80&width=80&text=User" }} style={styles.matchAvatar} />
       <View style={styles.matchInfo}>
-        <Text style={styles.matchName}>Potential Buddy</Text>
-        <Text style={styles.matchCompatibility}>{item.compatibility_score}% Compatible</Text>
-        <Text style={styles.matchDistance}>{item.distance} miles away</Text>
+        <Text style={[styles.matchName, { color: theme.colors.text }]}>Potential Buddy</Text>
+        <Text style={[styles.matchCompatibility, { color: theme.colors.accent }]}>{item.compatibility_score}% Compatible</Text>
+        <Text style={[styles.matchDistance, { color: theme.colors.textSecondary }]}>{item.distance} miles away</Text>
         <View style={styles.matchInterests}>
           {item.matched_interests.slice(0, 2).map((interest, index) => (
-            <View key={index} style={styles.interestTag}>
-              <Text style={styles.interestText}>{interest}</Text>
+            <View key={index} style={[styles.interestTag, { backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.interestText, { color: theme.colors.primary }]}>{interest}</Text>
             </View>
           ))}
         </View>
       </View>
-      <TouchableOpacity style={styles.connectButton} onPress={() => openRequestModal(item.id)}>
-        <Text style={styles.connectButtonText}>Connect</Text>
+      <TouchableOpacity style={[styles.connectButton, { backgroundColor: theme.colors.primary }]} onPress={() => openRequestModal(item.id)}>
+        <Text style={[styles.connectButtonText, { color: theme.colors.surface }]}>Connect</Text>
       </TouchableOpacity>
     </View>
   )
 
   const renderRequest = ({ item }: { item: BuddyRequest }) => (
-    <View style={styles.requestCard}>
+    <View style={[styles.requestCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
       <TouchableOpacity
         onPress={() => {
           const profileId = item.from_user_id === user?.id ? item.to_user_id : item.from_user_id
@@ -290,7 +292,7 @@ export default function BuddySystemScreen({ navigation }: any) {
             return (
               <>
                 <Image source={{ uri: mainUri }} style={styles.requestAvatar} />
-                <Image source={{ uri: cornerUri }} style={styles.cornerBadgeAvatar} />
+                <Image source={{ uri: cornerUri }} style={[styles.cornerBadgeAvatar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.surface }]} />
               </>
             )
           })()}
@@ -303,30 +305,30 @@ export default function BuddySystemScreen({ navigation }: any) {
             navigation.navigate("UserProfile", { userId: profileId })
           }}
         >
-          <Text style={styles.requestName}>Buddy Request</Text>
+          <Text style={[styles.requestName, { color: theme.colors.text }]}>Buddy Request</Text>
         </TouchableOpacity>
-        <Text style={styles.requestMessage}>{item.message}</Text>
-        <Text style={styles.requestTime}>{new Date(item.created_at).toLocaleDateString()}</Text>
+        <Text style={[styles.requestMessage, { color: theme.colors.textSecondary }]}>{item.message}</Text>
+        <Text style={[styles.requestTime, { color: theme.colors.textTertiary }]}>{new Date(item.created_at).toLocaleDateString()}</Text>
       </View>
       {item.status === "pending" && item.to_user_id === user?.id && (
         <View style={styles.requestActions}>
           <TouchableOpacity
-            style={[styles.requestActionButton, styles.acceptButton]}
+            style={[styles.requestActionButton, styles.acceptButton, { backgroundColor: theme.colors.success }]}
             onPress={() => handleRespondToRequest(item.id, "accepted")}
           >
-            <MaterialIcons name="check" size={20} color="white" />
+            <MaterialIcons name="check" size={20} color={theme.colors.surface} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.requestActionButton, styles.rejectButton]}
+            style={[styles.requestActionButton, styles.rejectButton, { backgroundColor: theme.colors.error }]}
             onPress={() => handleRespondToRequest(item.id, "rejected")}
           >
-            <MaterialIcons name="close" size={20} color="white" />
+            <MaterialIcons name="close" size={20} color={theme.colors.surface} />
           </TouchableOpacity>
         </View>
       )}
       {item.status !== "pending" && (
-        <View style={styles.statusBadge}>
-          <Text style={[styles.statusText, { color: item.status === "accepted" ? "#020303ff" : "black" }]}>
+        <View style={[styles.statusBadge, { backgroundColor: item.status === "accepted" ? theme.colors.success : theme.colors.error }]}>
+          <Text style={[styles.statusText, { color: theme.colors.surface }]}>
             {item.status.toUpperCase()}
           </Text>
         </View>
@@ -339,63 +341,63 @@ export default function BuddySystemScreen({ navigation }: any) {
     const otherName = item.user1_id === user?.id ? item.user2?.name : item.user1?.name
     const otherAvatar = item.user1_id === user?.id ? item.user2?.avatar_url : item.user1?.avatar_url
     return (
-      <View style={styles.matchCard}>
+      <View style={[styles.matchCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
         <Image source={{ uri: otherAvatar || "/placeholder.svg?height=80&width=80&text=U" }} style={styles.matchAvatar} />
         <View style={styles.matchInfo}>
-          <Text style={styles.matchName}>{otherName || "Buddy"}</Text>
-          <Text style={styles.matchCompatibility}>Connected</Text>
+          <Text style={[styles.matchName, { color: theme.colors.text }]}>{otherName || "Buddy"}</Text>
+          <Text style={[styles.matchCompatibility, { color: theme.colors.success }]}>Connected</Text>
         </View>
-        <TouchableOpacity style={styles.connectButton} onPress={() => handleUnfriend(otherId)}>
-          <Text style={styles.connectButtonText}>Unfriend</Text>
+        <TouchableOpacity style={[styles.connectButton, { backgroundColor: theme.colors.error }]} onPress={() => handleUnfriend(otherId)}>
+          <Text style={[styles.connectButtonText, { color: theme.colors.surface }]}>Unfriend</Text>
         </TouchableOpacity>
       </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Buddy System</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Buddy System</Text>
           <View style={{ flexDirection: "row" }}>
             <TouchableOpacity onPress={() => setShowFindModal(true)} style={{ marginRight: 12 }}>
-              <MaterialIcons name="person-add" size={24} color="white" />
+              <MaterialIcons name="person-add" size={24} color={theme.colors.headerText} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSafetyCheckIn}>
-              <MaterialIcons name="security" size={24} color="white" />
+              <MaterialIcons name="security" size={24} color={theme.colors.headerText} />
             </TouchableOpacity>
           </View>
         </View>
-        <Text style={styles.headerSubtitle}>Find safe companions for your adventures</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.colors.headerText, opacity: 0.9 }]}>Find safe companions for your adventures</Text>
       </LinearGradient>
 
       {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
+      <View style={[styles.tabContainer, { backgroundColor: theme.colors.surface }]}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "matches" && styles.activeTab]}
+          style={[styles.tab, activeTab === "matches" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("matches")}
         >
-          <Text style={[styles.tabText, activeTab === "matches" && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "matches" && [styles.activeTabText, { color: theme.colors.primary }]]}>
             Matches ({matches.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "requests" && styles.activeTab]}
+          style={[styles.tab, activeTab === "requests" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("requests")}
         >
-          <Text style={[styles.tabText, activeTab === "requests" && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "requests" && [styles.activeTabText, { color: theme.colors.primary }]]}>
             Requests ({requests.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "buddies" && styles.activeTab]}
+          style={[styles.tab, activeTab === "buddies" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("buddies")}
         >
-          <Text style={[styles.tabText, activeTab === "buddies" && styles.activeTabText]}>My Buddies ({buddies.length})</Text>
+          <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "buddies" && [styles.activeTabText, { color: theme.colors.primary }]]}>My Buddies ({buddies.length})</Text>
         </TouchableOpacity>
       </View>
 
@@ -409,9 +411,9 @@ export default function BuddySystemScreen({ navigation }: any) {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <MaterialIcons name="people" size={64} color="#ccc" />
-                <Text style={styles.emptyTitle}>No Matches Yet</Text>
-                <Text style={styles.emptyDescription}>Complete your profile to find compatible buddies</Text>
+                <MaterialIcons name="people" size={64} color={theme.colors.textTertiary} />
+                <Text style={[styles.emptyTitle, { color: theme.colors.textSecondary }]}>No Matches Yet</Text>
+                <Text style={[styles.emptyDescription, { color: theme.colors.textTertiary }]}>Complete your profile to find compatible buddies</Text>
               </View>
             }
           />
@@ -459,14 +461,14 @@ export default function BuddySystemScreen({ navigation }: any) {
         variant="sheet"
       >
         <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <MaterialIcons name="search" size={20} color="#666" />
+          <View style={[styles.searchInputContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <MaterialIcons name="search" size={20} color={theme.colors.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.colors.text }]}
               placeholder="Search by name or @username"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.colors.textSecondary}
               autoFocus
             />
           </View>
@@ -476,17 +478,17 @@ export default function BuddySystemScreen({ navigation }: any) {
           data={searchResults}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.searchResultItem}>
+            <View style={[styles.searchResultItem, { borderBottomColor: theme.colors.divider }]}>
               <Image source={{ uri: item.avatar_url || "/placeholder.svg?height=50&width=50&text=U" }} style={styles.searchAvatar} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.searchUserName}>{item.name}</Text>
-                <Text style={styles.searchUserHandle}>@{item.username || item.name.toLowerCase().replace(/\s+/g, "")}</Text>
+                <Text style={[styles.searchUserName, { color: theme.colors.text }]}>{item.name}</Text>
+                <Text style={[styles.searchUserHandle, { color: theme.colors.textSecondary }]}>@{item.username || item.name.toLowerCase().replace(/\s+/g, "")}</Text>
               </View>
-              <TouchableOpacity style={styles.smallAction} onPress={() => handleStartChat(item)}>
-                <MaterialIcons name="chat" size={20} color="#fff" />
+              <TouchableOpacity style={[styles.smallAction, { backgroundColor: theme.colors.primary }]} onPress={() => handleStartChat(item)}>
+                <MaterialIcons name="chat" size={20} color={theme.colors.surface} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.smallAction, { backgroundColor: "#FF6B6B" }]}
+                style={[styles.smallAction, { backgroundColor: theme.colors.lgbtqFriendly }]}
                 onPress={() => {
                   setSelectedBuddy({
                     id: item.id,
@@ -512,28 +514,28 @@ export default function BuddySystemScreen({ navigation }: any) {
                   setShowRequestModal(true)
                 }}
               >
-                <MaterialIcons name="person-add" size={20} color="#fff" />
+                <MaterialIcons name="person-add" size={20} color={theme.colors.surface} />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.smallAction, { backgroundColor: "#333" }]} onPress={() => handleBlockUser(item)}>
-                <MaterialIcons name="block" size={20} color="#fff" />
+              <TouchableOpacity style={[styles.smallAction, { backgroundColor: theme.colors.text }]} onPress={() => handleBlockUser(item)}>
+                <MaterialIcons name="block" size={20} color={theme.colors.surface} />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.smallAction, { backgroundColor: "#555" }]} onPress={() => handleReportUser(item)}>
-                <MaterialIcons name="flag" size={20} color="#fff" />
+              <TouchableOpacity style={[styles.smallAction, { backgroundColor: theme.colors.textSecondary }]} onPress={() => handleReportUser(item)}>
+                <MaterialIcons name="flag" size={20} color={theme.colors.surface} />
               </TouchableOpacity>
             </View>
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={styles.emptyDescription}>{searching ? "Searching..." : "No users found"}</Text>
+              <Text style={[styles.emptyDescription, { color: theme.colors.textTertiary }]}>{searching ? "Searching..." : "No users found"}</Text>
             </View>
           }
         />
       </AppModal>
 
       {/* Safety Check-in Button */}
-      <TouchableOpacity style={styles.safetyButton} onPress={handleSafetyCheckIn}>
-        <MaterialIcons name="security" size={24} color="white" />
-        <Text style={styles.safetyButtonText}>Safety Check-in</Text>
+      <TouchableOpacity style={[styles.safetyButton, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.shadow }]} onPress={handleSafetyCheckIn}>
+        <MaterialIcons name="security" size={24} color={theme.colors.surface} />
+        <Text style={[styles.safetyButtonText, { color: theme.colors.surface }]}>Safety Check-in</Text>
       </TouchableOpacity>
 
       {/* Request Modal */}
@@ -547,25 +549,26 @@ export default function BuddySystemScreen({ navigation }: any) {
 >
   {selectedBuddy && (
     <View style={{ maxHeight: "80%" }}>
-      <View style={styles.buddyPreview}>
+      <View style={[styles.buddyPreview, { backgroundColor: theme.colors.card }]}>
         <Image
           source={{ uri: selectedBuddy.avatar_url || "/placeholder.svg?height=80&width=80&text=User" }}
           style={styles.buddyAvatar}
         />
         <View style={styles.buddyInfo}>
-          <Text style={styles.buddyName}>{selectedBuddy.name}</Text>
-          <Text style={styles.buddyBio} numberOfLines={2}>{selectedBuddy.bio}</Text>
+          <Text style={[styles.buddyName, { color: theme.colors.text }]}>{selectedBuddy.name}</Text>
+          <Text style={[styles.buddyBio, { color: theme.colors.textSecondary }]} numberOfLines={2}>{selectedBuddy.bio}</Text>
           <View style={styles.buddyStats}>
-            <Text style={styles.buddyStat}>⭐ {selectedBuddy.safetyRating}</Text>
-            <Text style={styles.buddyStat}>🤝 {selectedBuddy.meetupCount} meetups</Text>
+            <Text style={[styles.buddyStat, { color: theme.colors.textSecondary }]}>⭐ {selectedBuddy.safetyRating}</Text>
+            <Text style={[styles.buddyStat, { color: theme.colors.textSecondary }]}>🤝 {selectedBuddy.meetupCount} meetups</Text>
           </View>
         </View>
       </View>
 
-      <Text style={styles.messageLabel}>Your Message</Text>
+      <Text style={[styles.messageLabel, { color: theme.colors.primary }]}>Your Message</Text>
       <TextInput
-        style={styles.messageInput}
+        style={[styles.messageInput, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
         placeholder="Hi! I'd love to be your buddy and explore safe spaces together..."
+        placeholderTextColor={theme.colors.textSecondary}
         multiline
         numberOfLines={4}
         value={requestMessage}
@@ -573,7 +576,7 @@ export default function BuddySystemScreen({ navigation }: any) {
         textAlignVertical="top"
       />
 
-      <Text style={styles.safetyNote}>
+      <Text style={[styles.safetyNote, { backgroundColor: theme.colors.warning, borderLeftColor: theme.colors.warning, color: theme.colors.text }]}>
         💡 Remember: Always meet in public places and let someone know your plans
       </Text>
     </View>
@@ -599,7 +602,7 @@ export default function BuddySystemScreen({ navigation }: any) {
           },
         }}
       >
-        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>}
       </AppModal>
 
     </SafeAreaView>

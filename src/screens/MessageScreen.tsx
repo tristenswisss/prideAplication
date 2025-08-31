@@ -13,6 +13,7 @@ import type { Conversation } from "../../types/messaging"
 import type { UserProfile } from "../../types"
 import AppModal from "../../components/AppModal"
 import { storage } from "../../lib/storage"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface MessagesScreenProps {
   navigation: any
@@ -29,6 +30,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
 
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [modal, setModal] = useState<
     | { type: "none" }
     | { type: "info"; title: string; message: string }
@@ -314,7 +316,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
 
   const renderConversation = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
-      style={styles.conversationItem}
+      style={[styles.conversationItem, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.divider }]}
       onPress={() => {
         const currentUnread = item.unread_count || 0
         setConversations((prev) => prev.map((c) => (c.id === item.id ? { ...c, unread_count: 0 } : c)))
@@ -333,16 +335,16 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
 
       <View style={styles.conversationContent}>
         <View style={styles.conversationHeader}>
-          <Text style={styles.conversationName} numberOfLines={1}>
+          <Text style={[styles.conversationName, { color: theme.colors.text }]} numberOfLines={1}>
             {getConversationName(item)}
           </Text>
           {(() => {
             const other = item.participant_profiles?.find((p) => p.id !== user?.id)
             if (other?.is_online) {
-              return <Text style={[styles.messageTime, { color: "#4CAF50" }]}>Online</Text>
+              return <Text style={[styles.messageTime, { color: theme.colors.success }]}>Online</Text>
             }
             const lastSeen = (other as any)?.last_seen || other?.updated_at
-            return <Text style={styles.messageTime}>{lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : ""}</Text>
+            return <Text style={[styles.messageTime, { color: theme.colors.textSecondary }]}>{lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : ""}</Text>
           })()}
         </View>
 
@@ -351,21 +353,21 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
             {item.last_message?.sender_id === user?.id && (
               (() => {
                 if (item.last_message?.read) {
-                  return <MaterialIcons name="done-all" size={16} color="#2196F3" style={{ marginRight: 6 }} />
+                  return <MaterialIcons name="done-all" size={16} color={theme.colors.info} style={{ marginRight: 6 }} />
                 }
                 if (item.last_message?.delivered_at) {
-                  return <MaterialIcons name="done-all" size={16} color="#bbb" style={{ marginRight: 6 }} />
+                  return <MaterialIcons name="done-all" size={16} color={theme.colors.textTertiary} style={{ marginRight: 6 }} />
                 }
-                return <MaterialIcons name="done" size={16} color="#bbb" style={{ marginRight: 6 }} />
+                return <MaterialIcons name="done" size={16} color={theme.colors.textTertiary} style={{ marginRight: 6 }} />
               })()
             )}
-            <Text style={[styles.lastMessage, item.unread_count > 0 && styles.unreadMessage]} numberOfLines={1}>
+            <Text style={[styles.lastMessage, { color: theme.colors.textSecondary }, item.unread_count > 0 && [styles.unreadMessage, { color: theme.colors.text }]]} numberOfLines={1}>
               {item.last_message?.sender_id === user?.id ? "You: " : ""}
               {item.last_message?.content || "No messages yet"}
             </Text>
           </View>
           {item.unread_count > 0 && (
-            <View style={styles.unreadDot} />
+            <View style={[styles.unreadDot, { backgroundColor: theme.colors.success }]} />
           )}
         </View>
       </View>
@@ -373,35 +375,35 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   )
 
   const renderSearchResult = ({ item }: { item: UserProfile }) => (
-    <TouchableOpacity style={styles.searchResultItem} onPress={() => handleStartConversation(item)}>
+    <TouchableOpacity style={[styles.searchResultItem, { borderBottomColor: theme.colors.divider }]} onPress={() => handleStartConversation(item)}>
       <Image
         source={{ uri: item.avatar_url || "/placeholder.svg?height=50&width=50&text=" + item.name.charAt(0) }}
         style={styles.searchAvatar}
       />
       <View style={styles.searchUserInfo}>
         <View style={styles.searchUserHeader}>
-          <Text style={styles.searchUserName}>{item.name}</Text>
-          {item.verified && <MaterialIcons name="verified" size={16} color="#4CAF50" />}
+          <Text style={[styles.searchUserName, { color: theme.colors.text }]}>{item.name}</Text>
+          {item.verified && <MaterialIcons name="verified" size={16} color={theme.colors.success} />}
         </View>
-        <Text style={styles.searchUserHandle}>@{item.username || item.name.toLowerCase().replace(/\s+/g, "")}</Text>
+        <Text style={[styles.searchUserHandle, { color: theme.colors.textSecondary }]}>@{item.username || item.name.toLowerCase().replace(/\s+/g, "")}</Text>
         {item.bio && (
-          <Text style={styles.searchUserBio} numberOfLines={1}>
+          <Text style={[styles.searchUserBio, { color: theme.colors.textTertiary }]} numberOfLines={1}>
             {item.bio}
           </Text>
         )}
       </View>
-      <View style={[styles.onlineStatus, item.is_online && styles.onlineStatusActive]} />
+      <View style={[styles.onlineStatus, { backgroundColor: theme.colors.textTertiary }, item.is_online && [styles.onlineStatusActive, { backgroundColor: theme.colors.success }]]} />
     </TouchableOpacity>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Messages</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Messages</Text>
           <TouchableOpacity onPress={() => setShowNewMessage(true)} style={styles.newMessageButton}>
-            <MaterialIcons name="edit" size={24} color="white" />
+            <MaterialIcons name="edit" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -422,11 +424,11 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
         }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <MaterialIcons name="chat-bubble-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyStateTitle}>No conversations yet</Text>
-            <Text style={styles.emptyStateSubtitle}>Start a conversation with someone from the community!</Text>
-            <TouchableOpacity style={styles.startChatButton} onPress={() => setShowNewMessage(true)}>
-              <Text style={styles.startChatButtonText}>Start New Chat</Text>
+            <MaterialIcons name="chat-bubble-outline" size={64} color={theme.colors.textTertiary} />
+            <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>No conversations yet</Text>
+            <Text style={[styles.emptyStateSubtitle, { color: theme.colors.textSecondary }]}>Start a conversation with someone from the community!</Text>
+            <TouchableOpacity style={[styles.startChatButton, { backgroundColor: theme.colors.primary }]} onPress={() => setShowNewMessage(true)}>
+              <Text style={[styles.startChatButtonText, { color: theme.colors.surface }]}>Start New Chat</Text>
             </TouchableOpacity>
           </View>
         }
@@ -441,14 +443,14 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
         variant="sheet"
       >
         <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <MaterialIcons name="search" size={20} color="#666" />
+          <View style={[styles.searchInputContainer, { backgroundColor: theme.colors.surface }]}>
+            <MaterialIcons name="search" size={20} color={theme.colors.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.colors.text }]}
               placeholder="Search by name or @username"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.colors.textSecondary}
               autoFocus
             />
           </View>
@@ -462,12 +464,12 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           ListEmptyComponent={
             searchQuery.trim() ? (
               <View style={styles.noResults}>
-                <Text style={styles.noResultsText}>{searchLoading ? "Searching..." : "No users found (users may be hidden based on visibility settings)"}</Text>
+                <Text style={[styles.noResultsText, { color: theme.colors.textSecondary }]}>{searchLoading ? "Searching..." : "No users found (users may be hidden based on visibility settings)"}</Text>
               </View>
             ) : (
               <View style={styles.searchPrompt}>
-                <MaterialIcons name="people" size={48} color="#ccc" />
-                <Text style={styles.searchPromptText}>Search for community members to start a conversation</Text>
+                <MaterialIcons name="people" size={48} color={theme.colors.textTertiary} />
+                <Text style={[styles.searchPromptText, { color: theme.colors.textSecondary }]}>Search for community members to start a conversation</Text>
               </View>
             )
           }
@@ -491,7 +493,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
           },
         }}
       >
-        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>}
       </AppModal>
     </SafeAreaView>
   )

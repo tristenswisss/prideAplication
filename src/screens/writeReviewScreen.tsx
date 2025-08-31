@@ -8,10 +8,12 @@ import { LinearGradient } from "expo-linear-gradient"
 import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { WriteReviewScreenProps } from "../../types/navigation"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function WriteReviewScreen({ route, navigation }: WriteReviewScreenProps) {
   const { business } = route.params
   const { user } = useAuth()
+  const { theme } = useTheme()
 
   const [rating, setRating] = useState(0)
   const [safetyRating, setSafetyRating] = useState(0)
@@ -78,17 +80,17 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
     title: string,
     currentRating: number,
     onRatingChange: (rating: number) => void,
-    color = "#FFD700",
+    color = theme.colors.accent,
   ) => (
-    <View style={styles.ratingSection}>
-      <Text style={styles.ratingTitle}>{title}</Text>
+    <View style={[styles.ratingSection, { backgroundColor: theme.colors.surface }]}>
+      <Text style={[styles.ratingTitle, { color: theme.colors.text }]}>{title}</Text>
       <View style={styles.stars}>
         {[1, 2, 3, 4, 5].map((star) => (
           <TouchableOpacity key={star} onPress={() => onRatingChange(star)}>
             <MaterialIcons
               name="star"
               size={32}
-              color={star <= currentRating ? color : "#E0E0E0"}
+              color={star <= currentRating ? color : theme.colors.textTertiary}
               style={styles.star}
             />
           </TouchableOpacity>
@@ -98,35 +100,36 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.surface + '40' }]}>
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Write Review</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Write Review</Text>
           <View style={styles.placeholder} />
         </View>
-        <Text style={styles.businessName}>{business.name}</Text>
-      </LinearGradient>
+        <Text style={[styles.businessName, { color: theme.colors.headerText }]}>{business.name}</Text>
+      </View>
 
       <ScrollView style={styles.content}>
         {/* Overall Rating */}
         {renderStarRating("Overall Rating", rating, setRating)}
 
         {/* Detailed Ratings */}
-        {renderStarRating("Safety Rating", safetyRating, setSafetyRating, "#4CAF50")}
-        {renderStarRating("Inclusivity Rating", inclusivityRating, setInclusivityRating, "#FF6B6B")}
-        {renderStarRating("Staff Friendliness", staffRating, setStaffRating, "#4ECDC4")}
-        {renderStarRating("Accessibility", accessibilityRating, setAccessibilityRating, "#FFA726")}
+        {renderStarRating("Safety Rating", safetyRating, setSafetyRating, theme.colors.success)}
+        {renderStarRating("Inclusivity Rating", inclusivityRating, setInclusivityRating, theme.colors.lgbtqFriendly)}
+        {renderStarRating("Staff Friendliness", staffRating, setStaffRating, theme.colors.transFriendly)}
+        {renderStarRating("Accessibility", accessibilityRating, setAccessibilityRating, theme.colors.warning)}
 
         {/* Written Review */}
-        <View style={styles.commentSection}>
-          <Text style={styles.commentTitle}>Share Your Experience</Text>
+        <View style={[styles.commentSection, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.commentTitle, { color: theme.colors.text }]}>Share Your Experience</Text>
           <TextInput
-            style={styles.commentInput}
+            style={[styles.commentInput, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
             placeholder="Tell others about your experience at this place. What made it feel safe and welcoming?"
+            placeholderTextColor={theme.colors.placeholder}
             value={comment}
             onChangeText={setComment}
             multiline
@@ -136,30 +139,30 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
         </View>
 
         {/* Recommendation */}
-        <View /* recommendSection */ style={styles.commentSection}>
-          <Text style={styles.recommendTitle}>Would you recommend this place?</Text>
+        <View /* recommendSection */ style={[styles.commentSection, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.recommendTitle, { color: theme.colors.text }]}>Would you recommend this place?</Text>
           <View style={styles.recommendButtons}>
             <TouchableOpacity
-              style={[styles.recommendButton, wouldRecommend && styles.recommendButtonActive]}
+              style={[styles.recommendButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, wouldRecommend && [styles.recommendButtonActive, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]]}
               onPress={() => setWouldRecommend(true)}
             >
-              <MaterialIcons name="thumb-up" size={20} color={wouldRecommend ? "white" : "#4CAF50"} />
-              <Text style={[styles.recommendButtonText, wouldRecommend && styles.recommendButtonTextActive]}>Yes</Text>
+              <MaterialIcons name="thumb-up" size={20} color={wouldRecommend ? theme.colors.surface : theme.colors.success} />
+              <Text style={[styles.recommendButtonText, { color: theme.colors.textSecondary }, wouldRecommend && [styles.recommendButtonTextActive, { color: theme.colors.surface }]]}>Yes</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.recommendButton, !wouldRecommend && styles.recommendButtonActive]}
+              style={[styles.recommendButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, !wouldRecommend && [styles.recommendButtonActive, { backgroundColor: theme.colors.error, borderColor: theme.colors.error }]]}
               onPress={() => setWouldRecommend(false)}
             >
-              <MaterialIcons name="thumb-down" size={20} color={!wouldRecommend ? "white" : "#F44336"} />
-              <Text style={[styles.recommendButtonText, !wouldRecommend && styles.recommendButtonTextActive]}>No</Text>
+              <MaterialIcons name="thumb-down" size={20} color={!wouldRecommend ? theme.colors.surface : theme.colors.error} />
+              <Text style={[styles.recommendButtonText, { color: theme.colors.textSecondary }, !wouldRecommend && [styles.recommendButtonTextActive, { color: theme.colors.surface }]]}>No</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Guidelines */}
-        <View style={styles.guidelines}>
-          <Text style={styles.guidelinesTitle}>Review Guidelines</Text>
-          <Text style={styles.guidelinesText}>
+        <View style={[styles.guidelines, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.guidelinesTitle, { color: theme.colors.text }]}>Review Guidelines</Text>
+          <Text style={[styles.guidelinesText, { color: theme.colors.textSecondary }]}>
             • Be honest and respectful{"\n"}• Focus on your personal experience{"\n"}• Help others understand what makes
             this place safe{"\n"}• Avoid discriminatory language
           </Text>
@@ -167,15 +170,15 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
       </ScrollView>
 
       {/* Submit Button */}
-      <View style={styles.submitContainer}>
+      <View style={[styles.submitContainer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.divider }]}>
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={loading}
         >
-          <LinearGradient colors={["black", "black"]} style={styles.submitButtonGradient}>
-            <Text style={styles.submitButtonText}>{loading ? "Submitting..." : "Submit Review"}</Text>
-          </LinearGradient>
+          <View style={[styles.submitButtonGradient, { backgroundColor: theme.colors.primary }]}>
+            <Text style={[styles.submitButtonText, { color: theme.colors.surface }]}>{loading ? "Submitting..." : "Submit Review"}</Text>
+          </View>
         </TouchableOpacity>
       </View>
       <AppModal
@@ -196,7 +199,7 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
           },
         }}
       >
-        <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+        <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>
       </AppModal>
     </SafeAreaView>
   )
@@ -205,7 +208,6 @@ export default function WriteReviewScreen({ route, navigation }: WriteReviewScre
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
     paddingTop: 40,
@@ -245,7 +247,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   ratingSection: {
-    backgroundColor: "black",
     padding: 20,
     borderRadius: 12,
     marginBottom: 15,
@@ -254,7 +255,6 @@ const styles = StyleSheet.create({
   ratingTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "gold",
     marginBottom: 15,
   },
   stars: {
@@ -264,7 +264,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   commentSection: {
-    backgroundColor: "white",
     padding: 20,
     borderRadius: 12,
     marginBottom: 15,
@@ -272,12 +271,10 @@ const styles = StyleSheet.create({
   commentTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "black",
     marginBottom: 15,
   },
   commentInput: {
     borderWidth: 1,
-    borderColor: "black",
     borderRadius: 8,
     padding: 13,
     marginBottom: 15,
@@ -285,7 +282,6 @@ const styles = StyleSheet.create({
   recommendTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 15,
     textAlign: "center",
   },
@@ -300,24 +296,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: "#E0E0E0",
-    backgroundColor: "white",
   },
   recommendButtonActive: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
+    // backgroundColor will be set inline
+    // borderColor will be set inline
   },
   recommendButtonText: {
     marginLeft: 8,
     fontSize: 16,
     fontWeight: "600",
-    color: "#666",
   },
   recommendButtonTextActive: {
-    color: "white",
+    // color will be set inline
   },
   guidelines: {
-    backgroundColor: "#f8f9fa",
     padding: 15,
     borderRadius: 12,
     marginBottom: 20,
@@ -325,19 +317,15 @@ const styles = StyleSheet.create({
   guidelinesTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 8,
   },
   guidelinesText: {
     fontSize: 12,
-    color: "#666",
     lineHeight: 18,
   },
   submitContainer: {
     padding: 20,
-    backgroundColor: "white",
     borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
   },
   submitButton: {
     borderRadius: 25,
@@ -353,6 +341,5 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
   },
 })

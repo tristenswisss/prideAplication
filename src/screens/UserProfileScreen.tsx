@@ -12,9 +12,11 @@ import { supabase } from "../../lib/supabase"
 import { profileService } from "../../services/profileService"
 import type { Post, UserProfile } from "../../types/social"
 import AppModal from "../../components/AppModal"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function UserProfileScreen({ navigation, route }: any) {
   const { userId } = route.params
+  const { theme } = useTheme()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [activeTab, setActiveTab] = useState<"posts" | "events">("posts")
@@ -173,34 +175,34 @@ export default function UserProfileScreen({ navigation, route }: any) {
       {item.images.length > 0 ? (
         <Image source={{ uri: item.images[0] }} style={styles.postThumbnail} />
       ) : (
-        <View style={styles.textPostThumbnail}>
-          <Text style={styles.textPostPreview} numberOfLines={3}>
+        <View style={[styles.textPostThumbnail, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.textPostPreview, { color: theme.colors.text }]} numberOfLines={3}>
             {item.content}
           </Text>
         </View>
       )}
       <View style={styles.postStats}>
         <View style={styles.postStat}>
-          <MaterialIcons name="favorite" size={12} color="#FF6B6B" />
-          <Text style={styles.postStatText}>{item.likes_count}</Text>
+          <MaterialIcons name="favorite" size={12} color={theme.colors.primary} />
+          <Text style={[styles.postStatText, { color: theme.colors.surface }]}>{item.likes_count}</Text>
         </View>
         <View style={styles.postStat}>
-          <MaterialIcons name="chat-bubble" size={12} color="#666" />
-          <Text style={styles.postStatText}>{item.comments_count}</Text>
+          <MaterialIcons name="chat-bubble" size={12} color={theme.colors.surface} />
+          <Text style={[styles.postStatText, { color: theme.colors.surface }]}>{item.comments_count}</Text>
         </View>
       </View>
     </TouchableOpacity>
   )
 
   const renderEvent = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.eventItem}>
+    <TouchableOpacity style={[styles.eventItem, { backgroundColor: theme.colors.surface }]}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <MaterialIcons name="event" size={20} color="#666" />
-        <Text style={styles.eventTitle} numberOfLines={1}>{item.title}</Text>
+        <MaterialIcons name="event" size={20} color={theme.colors.textSecondary} />
+        <Text style={[styles.eventTitle, { color: theme.colors.text }]} numberOfLines={1}>{item.title}</Text>
       </View>
       <View style={{ flexDirection: "row", marginTop: 6, alignItems: "center" }}>
-        <MaterialIcons name="location-on" size={16} color="#999" />
-        <Text style={styles.eventMeta} numberOfLines={1}>{item.location} • {new Date(item.date).toLocaleDateString()}</Text>
+        <MaterialIcons name="location-on" size={16} color={theme.colors.textTertiary} />
+        <Text style={[styles.eventMeta, { color: theme.colors.textSecondary }]} numberOfLines={1}>{item.location} • {new Date(item.date).toLocaleDateString()}</Text>
       </View>
     </TouchableOpacity>
   )
@@ -251,62 +253,62 @@ export default function UserProfileScreen({ navigation, route }: any) {
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.loadingContainer}>
-          <Text>Loading profile...</Text>
+          <Text style={{ color: theme.colors.text }}>Loading profile...</Text>
         </View>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#333" />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{profile.name}</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{profile.name}</Text>
         <TouchableOpacity style={styles.moreButton} onPress={() => setShowMoreOptions(true)}>
-          <MaterialIcons name="more-vert" size={24} color="#333" />
+          <MaterialIcons name="more-vert" size={24} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content}>
         {/* Cover Image */}
         <View style={styles.coverImageContainer}>
-          <LinearGradient colors={["black", "black"]} style={styles.coverImage} />
+          <View style={[styles.coverImage, { backgroundColor: theme.colors.headerBackground }]} />
         </View>
 
         {/* Profile Info */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             {profile.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+              <Image source={{ uri: profile.avatar_url }} style={[styles.avatar, { borderColor: theme.colors.surface }]} />
             ) : (
-              <View style={[styles.avatar, { alignItems: "center", justifyContent: "center", backgroundColor: "#eee" }]}>
-                <MaterialIcons name="person" size={40} color="#ccc" />
+              <View style={[styles.avatar, { alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.surface, borderColor: theme.colors.surface }]}>
+                <MaterialIcons name="person" size={40} color={theme.colors.textTertiary} />
               </View>
             )}
             {profile.verified && (
-              <View style={styles.verifiedBadge}>
-                <MaterialIcons name="verified" size={20} color="#4CAF50" />
+              <View style={[styles.verifiedBadge, { backgroundColor: theme.colors.surface }]}>
+                <MaterialIcons name="verified" size={20} color={theme.colors.verified} />
               </View>
             )}
           </View>
 
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.displayName}>{profile.name}</Text>
+              <Text style={[styles.displayName, { color: theme.colors.text }]}>{profile.name}</Text>
             </View>
-            <Text style={styles.username}>@{profile.username || profile.name.toLowerCase().replace(/\s+/g, "")}</Text>
-            {profile.pronouns && <Text style={styles.pronouns}>{profile.pronouns}</Text>}
-            {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+            <Text style={[styles.username, { color: theme.colors.textSecondary }]}>@{profile.username || profile.name.toLowerCase().replace(/\s+/g, "")}</Text>
+            {profile.pronouns && <Text style={[styles.pronouns, { color: theme.colors.transFriendly }]}>{profile.pronouns}</Text>}
+            {profile.bio && <Text style={[styles.bio, { color: theme.colors.text }]}>{profile.bio}</Text>}
 
             {profile.location && (
               <View style={styles.locationRow}>
-                <MaterialIcons name="location-on" size={16} color="#666" />
-                <Text style={styles.location}>{profile.location}</Text>
+                <MaterialIcons name="location-on" size={16} color={theme.colors.textSecondary} />
+                <Text style={[styles.location, { color: theme.colors.textSecondary }]}>{profile.location}</Text>
               </View>
             )}
 
@@ -314,8 +316,8 @@ export default function UserProfileScreen({ navigation, route }: any) {
             {profile.interests.length > 0 && (
               <View style={styles.interestsContainer}>
                 {profile.interests.map((interest, index) => (
-                  <View key={index} style={styles.interestTag}>
-                    <Text style={styles.interestText}>{interest}</Text>
+                  <View key={index} style={[styles.interestTag, { backgroundColor: theme.colors.surface }]}>
+                    <Text style={[styles.interestText, { color: theme.colors.textSecondary }]}>{interest}</Text>
                   </View>
                 ))}
               </View>
@@ -324,37 +326,37 @@ export default function UserProfileScreen({ navigation, route }: any) {
             {/* Stats */}
             <View style={styles.statsRow}>
               <TouchableOpacity style={styles.stat}>
-                <Text style={styles.statNumber}>{profile.post_count}</Text>
-                <Text style={styles.statLabel}>Posts</Text>
+                <Text style={[styles.statNumber, { color: theme.colors.text }]}>{profile.post_count}</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Posts</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.stat}>
-                <Text style={styles.statNumber}>{profile.follower_count}</Text>
-                <Text style={styles.statLabel}>Followers</Text>
+                <Text style={[styles.statNumber, { color: theme.colors.text }]}>{profile.follower_count}</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Followers</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.stat}>
-                <Text style={styles.statNumber}>{profile.following_count}</Text>
-                <Text style={styles.statLabel}>Following</Text>
+                <Text style={[styles.statNumber, { color: theme.colors.text }]}>{profile.following_count}</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Following</Text>
               </TouchableOpacity>
             </View>
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
               {isOwnProfile ? (
-                <TouchableOpacity style={styles.editButton}>
-                  <Text style={styles.editButtonText}>Edit Profile</Text>
+                <TouchableOpacity style={[styles.editButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                  <Text style={[styles.editButtonText, { color: theme.colors.text }]}>Edit Profile</Text>
                 </TouchableOpacity>
               ) : (
                 <>
                   <TouchableOpacity
-                    style={[styles.followButton, isFollowing && styles.followingButton]}
+                    style={[styles.followButton, isFollowing && [styles.followingButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]]}
                     onPress={handleFollow}
                   >
-                    <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                    <Text style={[styles.followButtonText, { color: theme.colors.surface }, isFollowing && [styles.followingButtonText, { color: theme.colors.text }]]}>
                       {isFollowing ? "Following" : "Follow"}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-                    <MaterialIcons name="message" size={20} color="#4ECDC4" />
+                  <TouchableOpacity style={[styles.messageButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={handleMessage}>
+                    <MaterialIcons name="message" size={20} color={theme.colors.transFriendly} />
                   </TouchableOpacity>
                 </>
               )}
@@ -363,20 +365,20 @@ export default function UserProfileScreen({ navigation, route }: any) {
         </View>
 
         {/* Content Tabs */}
-        <View style={styles.tabsContainer}>
+        <View style={[styles.tabsContainer, { borderBottomColor: theme.colors.border }]}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === "posts" && styles.activeTab]}
+            style={[styles.tab, activeTab === "posts" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
             onPress={() => setActiveTab("posts")}
           >
-            <MaterialIcons name="grid-on" size={20} color={activeTab === "posts" ? "#FF6B6B" : "#666"} />
-            <Text style={[styles.tabText, activeTab === "posts" && styles.activeTabText]}>Posts</Text>
+            <MaterialIcons name="grid-on" size={20} color={activeTab === "posts" ? theme.colors.primary : theme.colors.textSecondary} />
+            <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "posts" && [styles.activeTabText, { color: theme.colors.primary }]]}>Posts</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === "events" && styles.activeTab]}
+            style={[styles.tab, activeTab === "events" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
             onPress={() => setActiveTab("events")}
           >
-            <MaterialIcons name="event" size={20} color={activeTab === "events" ? "#FF6B6B" : "#666"} />
-            <Text style={[styles.tabText, activeTab === "events" && styles.activeTabText]}>Events</Text>
+            <MaterialIcons name="event" size={20} color={activeTab === "events" ? theme.colors.primary : theme.colors.textSecondary} />
+            <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === "events" && [styles.activeTabText, { color: theme.colors.primary }]]}>Events</Text>
           </TouchableOpacity>
         </View>
 
@@ -408,7 +410,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
         variant="center"
         rightAction={{ label: "OK", onPress: () => setModal({ visible: false }) }}
       >
-        <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+        <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>
       </AppModal>
 
       <AppModal
@@ -421,19 +423,19 @@ export default function UserProfileScreen({ navigation, route }: any) {
         <View style={{ gap: 12 }}>
           {!isOwnProfile && (
             <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleAddBuddy() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <MaterialIcons name="person-add" size={22} color="#333" />
-              <Text style={{ fontSize: 16, color: "#333" }}>Add as Buddy</Text>
+              <MaterialIcons name="person-add" size={22} color={theme.colors.text} />
+              <Text style={{ fontSize: 16, color: theme.colors.text }}>Add as Buddy</Text>
             </TouchableOpacity>
           )}
           {!isOwnProfile && (
             <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleBlockUser() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <MaterialIcons name="block" size={22} color="#F44336" />
-              <Text style={{ fontSize: 16, color: "#F44336" }}>Block User</Text>
+              <MaterialIcons name="block" size={22} color={theme.colors.error} />
+              <Text style={{ fontSize: 16, color: theme.colors.error }}>Block User</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleShareProfile() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <MaterialIcons name="share" size={22} color="#333" />
-            <Text style={{ fontSize: 16, color: "#333" }}>Share Profile</Text>
+            <MaterialIcons name="share" size={22} color={theme.colors.text} />
+            <Text style={{ fontSize: 16, color: theme.colors.text }}>Share Profile</Text>
           </TouchableOpacity>
         </View>
       </AppModal>
@@ -444,7 +446,6 @@ export default function UserProfileScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
   },
   header: {
     flexDirection: "row",
@@ -453,7 +454,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   backButton: {
     padding: 5,
@@ -461,7 +461,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
   },
   moreButton: {
     padding: 5,
@@ -489,13 +488,11 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 4,
-    borderColor: "white",
   },
   verifiedBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "white",
     borderRadius: 12,
     padding: 2,
   },
@@ -509,22 +506,18 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
   },
   username: {
     fontSize: 16,
-    color: "#666",
     marginTop: 2,
   },
   pronouns: {
     fontSize: 14,
-    color: "#4ECDC4",
     marginTop: 4,
     fontWeight: "600",
   },
   bio: {
     fontSize: 16,
-    color: "#333",
     lineHeight: 22,
     marginTop: 10,
   },
@@ -535,7 +528,6 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 14,
-    color: "#666",
     marginLeft: 4,
   },
   interestsContainer: {
@@ -544,7 +536,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   interestTag: {
-    backgroundColor: "#f0f0f0",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -553,7 +544,6 @@ const styles = StyleSheet.create({
   },
   interestText: {
     fontSize: 12,
-    color: "#666",
   },
   statsRow: {
     flexDirection: "row",
@@ -567,11 +557,9 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
   },
   statLabel: {
     fontSize: 12,
-    color: "#666",
     marginTop: 2,
   },
   actionButtons: {
@@ -580,53 +568,43 @@ const styles = StyleSheet.create({
   },
   editButton: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e0e0e0",
   },
   editButtonText: {
     fontSize: 16,
-    color: "#333",
     fontWeight: "600",
   },
   followButton: {
     flex: 1,
-    backgroundColor: "black",
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: "center",
     marginRight: 10,
   },
   followingButton: {
-    backgroundColor: "#f0f0f0",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
+    // backgroundColor and borderColor will be set inline
   },
   followButtonText: {
     fontSize: 16,
-    color: "white",
     fontWeight: "600",
   },
   followingButtonText: {
-    color: "#333",
+    // color will be set inline
   },
   messageButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#e0e0e0",
   },
   tabsContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   tab: {
     flex: 1,
@@ -637,22 +615,19 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: "black",
   },
   tabText: {
     fontSize: 14,
-    color: "#666",
     marginLeft: 5,
     fontWeight: "600",
   },
   activeTabText: {
-    color: "#FF6B6B",
+    // color will be set inline
   },
   postsGrid: {
     padding: 2,
   },
   eventItem: {
-    backgroundColor: "#f8f9fa",
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
@@ -660,14 +635,12 @@ const styles = StyleSheet.create({
   eventTitle: {
     marginLeft: 8,
     fontSize: 16,
-    color: "#333",
     fontWeight: "600",
     flex: 1,
   },
   eventMeta: {
     marginLeft: 4,
     fontSize: 13,
-    color: "#666",
   },
   postItem: {
     flex: 1,
@@ -683,14 +656,12 @@ const styles = StyleSheet.create({
   textPostThumbnail: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#f8f9fa",
     borderRadius: 8,
     padding: 10,
     justifyContent: "center",
   },
   textPostPreview: {
     fontSize: 12,
-    color: "#333",
     lineHeight: 16,
   },
   postStats: {

@@ -15,6 +15,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { supabase } from "../lib/supabase"
+import { useTheme } from "../Contexts/ThemeContext"
 
 interface ForgotPasswordModalProps {
   visible: boolean
@@ -22,6 +23,7 @@ interface ForgotPasswordModalProps {
 }
 
 export default function ForgotPasswordModal({ visible, onClose }: ForgotPasswordModalProps) {
+  const { theme } = useTheme()
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -90,33 +92,34 @@ export default function ForgotPasswordModal({ visible, onClose }: ForgotPassword
       presentationStyle="formSheet"
       onRequestClose={handleClose}
     >
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
         >
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Reset Password</Text>
+          <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Reset Password</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <MaterialIcons name="close" size={24} color="#333" />
+              <MaterialIcons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.content}>
             <View style={styles.iconContainer}>
-              <MaterialIcons name="lock-reset" size={60} color="#DAA520" />
+              <MaterialIcons name="lock-reset" size={60} color={theme.colors.accent} />
             </View>
 
-            <Text style={styles.title}>Forgot your password?</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>Forgot your password?</Text>
+            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
               No worries! Enter your email address below and we'll send you a link to reset your password.
             </Text>
 
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder }]}>
+              <MaterialIcons name="email" size={20} color={theme.colors.placeholder} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.colors.inputText }]}
                 placeholder="Enter your email address"
+                placeholderTextColor={theme.colors.placeholder}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -147,22 +150,22 @@ export default function ForgotPasswordModal({ visible, onClose }: ForgotPassword
             </TouchableOpacity>
 
             {sent && (
-              <View style={styles.successContainer}>
-                <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
-                <Text style={styles.successText}>
+              <View style={[styles.successContainer, { backgroundColor: theme.isDark ? 'rgba(76, 175, 80, 0.1)' : '#f1f8e9' }]}>
+                <MaterialIcons name="check-circle" size={24} color={theme.colors.success} />
+                <Text style={[styles.successText, { color: theme.colors.success }]}>
                   Check your email for the reset link!
                 </Text>
               </View>
             )}
 
-            <Text style={styles.helpText}>
+            <Text style={[styles.helpText, { color: theme.colors.textSecondary }]}>
               Remember your password?{" "}
               <TouchableOpacity onPress={handleClose} disabled={loading}>
-                <Text style={styles.helpLink}>Back to Sign In</Text>
+                <Text style={[styles.helpLink, { color: theme.colors.accent }]}>Back to Sign In</Text>
               </TouchableOpacity>
             </Text>
 
-            <Text style={styles.supportText}>
+            <Text style={[styles.supportText, { color: theme.colors.textTertiary }]}>
               Still having trouble? Contact our support team for assistance.
             </Text>
           </View>
@@ -175,7 +178,6 @@ export default function ForgotPasswordModal({ visible, onClose }: ForgotPassword
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   keyboardView: {
     flex: 1,
@@ -187,12 +189,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
   },
   closeButton: {
     padding: 5,
@@ -209,13 +209,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 15,
     textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
-    color: "#666",
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 40,
@@ -224,13 +222,11 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8f8f8",
     borderRadius: 15,
     marginBottom: 30,
     paddingHorizontal: 15,
     height: 55,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
     width: "100%",
   },
   inputIcon: {
@@ -239,7 +235,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: "#333",
     fontWeight: "400",
   },
   resetButton: {
@@ -281,7 +276,6 @@ const styles = StyleSheet.create({
   successContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f1f8e9",
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 10,
@@ -290,14 +284,12 @@ const styles = StyleSheet.create({
   },
   successText: {
     fontSize: 14,
-    color: "#4CAF50",
     fontWeight: "500",
     marginLeft: 10,
     flex: 1,
   },
   helpText: {
     fontSize: 14,
-    color: "#666",
     textAlign: "center",
     marginBottom: 20,
   },
@@ -306,13 +298,11 @@ const styles = StyleSheet.create({
     position: "relative",
     top: 4,
     fontSize: 14,
-    color: "#DAA520",
     fontWeight: "500",
     textDecorationLine: "underline",
   },
   supportText: {
     fontSize: 12,
-    color: "#999",
     textAlign: "center",
     lineHeight: 18,
     paddingHorizontal: 20,

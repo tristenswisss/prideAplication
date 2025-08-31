@@ -8,6 +8,7 @@ import { supabase } from "../../lib/supabase"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { NotificationSettingsScreenProps } from "../../types/navigation"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface NotificationSettings {
   pushNotifications: boolean
@@ -34,6 +35,7 @@ interface NotificationSettings {
 
 export default function NotificationSettingsScreen({ navigation }: NotificationSettingsScreenProps) {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [settings, setSettings] = useState<NotificationSettings>({
     pushNotifications: true,
     emailNotifications: true,
@@ -159,42 +161,42 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
     disabled = false,
   ) => (
     <TouchableOpacity
-      style={[styles.option, disabled && styles.disabledOption]}
+      style={[styles.option, { borderBottomColor: theme.colors.divider }, disabled && styles.disabledOption]}
       onPress={() => !disabled && toggleSetting(key)}
       disabled={disabled}
     >
       <View style={styles.optionIcon}>
-        <MaterialIcons name={icon as any} size={24} color={disabled ? "#ccc" : "black"} />
+        <MaterialIcons name={icon as any} size={24} color={disabled ? theme.colors.textTertiary : theme.colors.text} />
       </View>
-      
+
       <View style={styles.optionContent}>
-        <Text style={[styles.optionTitle, disabled && styles.disabledText]}>{title}</Text>
-        <Text style={[styles.optionDescription, disabled && styles.disabledText]}>{description}</Text>
+        <Text style={[styles.optionTitle, { color: theme.colors.text }, disabled && styles.disabledText]}>{title}</Text>
+        <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }, disabled && styles.disabledText]}>{description}</Text>
       </View>
-      <View style={[styles.toggle, settings[key] && styles.toggleActive, disabled && styles.disabledToggle]}>
-        <View style={[styles.toggleThumb, settings[key] && styles.toggleThumbActive]} />
+      <View style={[styles.toggle, { backgroundColor: theme.colors.surface }, settings[key] && [styles.toggleActive, { backgroundColor: theme.colors.primary }], disabled && styles.disabledToggle]}>
+        <View style={[styles.toggleThumb, { backgroundColor: theme.colors.surface }, settings[key] && styles.toggleThumbActive]} />
       </View>
     </TouchableOpacity>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          <TouchableOpacity onPress={saveSettings} style={styles.saveButton} disabled={loading}>
-            <Text style={styles.saveButtonText}>{loading ? "Saving..." : "Save"}</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Notifications</Text>
+          <TouchableOpacity onPress={saveSettings} style={[styles.saveButton, { backgroundColor: theme.colors.surface + '40' }]} disabled={loading}>
+            <Text style={[styles.saveButtonText, { color: theme.colors.headerText }]}>{loading ? "Saving..." : "Save"}</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* General Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>General</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>General</Text>
 
           {renderToggleOption(
             "pushNotifications",
@@ -214,8 +216,8 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
         </View>
 
         {/* Event Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Events</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Events</Text>
 
           {renderToggleOption(
             "eventReminders",
@@ -243,8 +245,8 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
         </View>
 
         {/* Community Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Community</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Community</Text>
 
           {renderToggleOption(
             "communityMessages",
@@ -272,8 +274,8 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
         </View>
 
         {/* Safety & Health */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Safety & Health</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Safety & Health</Text>
 
           {renderToggleOption("safetyAlerts", "Safety Alerts", "Important safety notifications and alerts", "security")}
 
@@ -287,8 +289,8 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
         </View>
 
         {/* Marketing & Updates */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Updates</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Updates</Text>
 
           {renderToggleOption(
             "weeklyDigest",
@@ -308,8 +310,8 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
         </View>
 
         {/* Sound & Vibration */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sound & Vibration</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Sound & Vibration</Text>
 
           {renderToggleOption(
             "soundEnabled",
@@ -329,26 +331,26 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
         </View>
 
         {/* Quiet Hours */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quiet Hours</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Quiet Hours</Text>
 
           <TouchableOpacity
-            style={[styles.option, !settings.pushNotifications && styles.disabledOption]}
+            style={[styles.option, { borderBottomColor: theme.colors.divider }, !settings.pushNotifications && styles.disabledOption]}
             onPress={toggleQuietHours}
             disabled={!settings.pushNotifications}
           >
             <View style={styles.optionIcon}>
-              <MaterialIcons name="do-not-disturb" size={24} color={!settings.pushNotifications ? "#ccc" : "black"} />
+              <MaterialIcons name="do-not-disturb" size={24} color={!settings.pushNotifications ? theme.colors.textTertiary : theme.colors.text} />
             </View>
             <View style={styles.optionContent}>
-              <Text style={[styles.optionTitle, !settings.pushNotifications && styles.disabledText]}>
+              <Text style={[styles.optionTitle, { color: theme.colors.text }, !settings.pushNotifications && styles.disabledText]}>
                 Enable Quiet Hours
               </Text>
-              <Text style={[styles.optionDescription, !settings.pushNotifications && styles.disabledText]}>
+              <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }, !settings.pushNotifications && styles.disabledText]}>
                 Silence non-urgent notifications during specified hours
               </Text>
               {settings.quietHours.enabled && (
-                <Text style={styles.quietHoursTime}>
+                <Text style={[styles.quietHoursTime, { color: theme.colors.primary }]}>
                   {settings.quietHours.startTime} - {settings.quietHours.endTime}
                 </Text>
               )}
@@ -356,20 +358,21 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
             <View
               style={[
                 styles.toggle,
-                settings.quietHours.enabled && styles.toggleActive,
+                { backgroundColor: theme.colors.surface },
+                settings.quietHours.enabled && [styles.toggleActive, { backgroundColor: theme.colors.primary }],
                 !settings.pushNotifications && styles.disabledToggle,
               ]}
             >
-              <View style={[styles.toggleThumb, settings.quietHours.enabled && styles.toggleThumbActive]} />
+              <View style={[styles.toggleThumb, { backgroundColor: theme.colors.surface }, settings.quietHours.enabled && styles.toggleThumbActive]} />
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Test Notification */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.testButton}>
-            <MaterialIcons name="notifications" size={20} color="black" />
-            <Text style={styles.testButtonText}>Send Test Notification</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <TouchableOpacity style={[styles.testButton, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <MaterialIcons name="notifications" size={20} color={theme.colors.text} />
+            <Text style={[styles.testButtonText, { color: theme.colors.text }]}>Send Test Notification</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -380,7 +383,6 @@ export default function NotificationSettingsScreen({ navigation }: NotificationS
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
     paddingTop: 40,
@@ -398,33 +400,28 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "white",
     flex: 1,
     textAlign: "center",
     marginHorizontal: 20,
   },
   saveButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
   saveButtonText: {
-    color: "white",
     fontWeight: "600",
   },
   content: {
     flex: 1,
   },
   section: {
-    backgroundColor: "white",
     marginBottom: 20,
     paddingVertical: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 15,
     paddingHorizontal: 20,
   },
@@ -434,7 +431,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   disabledOption: {
     opacity: 0.5,
@@ -450,20 +446,17 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
     marginBottom: 4,
   },
   optionDescription: {
     fontSize: 14,
-    color: "#666",
     lineHeight: 20,
   },
   disabledText: {
-    color: "#ccc",
+    opacity: 0.5,
   },
   quietHoursTime: {
     fontSize: 12,
-    color: "black",
     fontWeight: "600",
     marginTop: 4,
   },
@@ -471,21 +464,19 @@ const styles = StyleSheet.create({
     width: 50,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#ddd",
     justifyContent: "center",
     paddingHorizontal: 2,
   },
   toggleActive: {
-    backgroundColor: "black",
+    // backgroundColor will be set inline
   },
   disabledToggle: {
-    backgroundColor: "#f0f0f0",
+    opacity: 0.5,
   },
   toggleThumb: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "white",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -499,17 +490,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f8f8f8",
     marginHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "black",
   },
   testButtonText: {
     marginLeft: 8,
     fontSize: 16,
-    color: "black",
     fontWeight: "600",
   },
 })

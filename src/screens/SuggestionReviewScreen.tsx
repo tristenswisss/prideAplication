@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Alert
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { safeSpacesService } from "../../services/safeSpacesService"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface Suggestion {
   id: string
@@ -17,6 +18,7 @@ interface Suggestion {
 }
 
 export default function SuggestionReviewScreen({ navigation }: any) {
+  const { theme } = useTheme()
   const [pending, setPending] = useState<Suggestion[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -47,31 +49,31 @@ export default function SuggestionReviewScreen({ navigation }: any) {
   }
 
   const renderItem = ({ item }: { item: Suggestion }) => (
-    <View style={styles.card}>
-      <Text style={styles.title}>{item.name}</Text>
-      <Text style={styles.meta}>{item.category.toUpperCase()} • {item.city || ""} {item.country || ""}</Text>
-      {item.description ? <Text style={styles.desc}>{item.description}</Text> : null}
+    <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+      <Text style={[styles.title, { color: theme.colors.text }]}>{item.name}</Text>
+      <Text style={[styles.meta, { color: theme.colors.textSecondary }]}>{item.category.toUpperCase()} • {item.city || ""} {item.country || ""}</Text>
+      {item.description ? <Text style={[styles.desc, { color: theme.colors.textSecondary }]}>{item.description}</Text> : null}
       <View style={styles.actions}>
-        <TouchableOpacity style={[styles.btn, styles.reject]} onPress={() => reject(item.id)}>
-          <MaterialIcons name="close" size={18} color="white" />
-          <Text style={styles.btnText}>Reject</Text>
+        <TouchableOpacity style={[styles.btn, { backgroundColor: theme.colors.error }]} onPress={() => reject(item.id)}>
+          <MaterialIcons name="close" size={18} color={theme.colors.surface} />
+          <Text style={[styles.btnText, { color: theme.colors.surface }]}>Reject</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btn, styles.approve]} onPress={() => approve(item.id)}>
-          <MaterialIcons name="check" size={18} color="white" />
-          <Text style={styles.btnText}>Approve</Text>
+        <TouchableOpacity style={[styles.btn, { backgroundColor: theme.colors.success }]} onPress={() => approve(item.id)}>
+          <MaterialIcons name="check" size={18} color={theme.colors.surface} />
+          <Text style={[styles.btnText, { color: theme.colors.surface }]}>Approve</Text>
         </TouchableOpacity>
       </View>
     </View>
   )
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
-      <LinearGradient colors={["#FF6B6B", "#FF8E53"]} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6, marginRight: 8 }}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.surface} />
           </TouchableOpacity>
-          <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>Review Suggestions</Text>
+          <Text style={{ color: theme.colors.surface, fontSize: 18, fontWeight: "bold" }}>Review Suggestions</Text>
         </View>
       </LinearGradient>
       <FlatList
@@ -83,8 +85,8 @@ export default function SuggestionReviewScreen({ navigation }: any) {
         renderItem={renderItem}
         ListEmptyComponent={!loading ? (
           <View style={{ padding: 40, alignItems: "center" }}>
-            <MaterialIcons name="inbox" size={64} color="#ccc" />
-            <Text style={{ marginTop: 8, color: "#666" }}>No suggestions to review</Text>
+            <MaterialIcons name="inbox" size={64} color={theme.colors.textTertiary} />
+            <Text style={{ marginTop: 8, color: theme.colors.textSecondary }}>No suggestions to review</Text>
           </View>
         ) : null}
       />

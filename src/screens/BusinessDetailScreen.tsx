@@ -20,11 +20,13 @@ import { reviewService } from "../../services/reviewService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Review } from "../../types"
 import type { BusinessDetailScreenProps } from "../../types/navigation"
+import { useTheme } from "../../Contexts/ThemeContext"
 // Map removed from this screen; keep navigation to Home for map view
 
 export default function BusinessDetailsScreen({ route, navigation }: BusinessDetailScreenProps) {
   const { business } = route.params
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [reviews, setReviews] = useState<Review[]>([])
   const [ratings, setRatings] = useState({
     overall: 0,
@@ -132,49 +134,49 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   )
 
   const renderReview = ({ item }: { item: Review }) => (
-    <View style={styles.reviewCard}>
+    <View style={[styles.reviewCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
       <View style={styles.reviewHeader}>
         <Image source={{ uri: item.user?.avatar_url }} style={styles.reviewAvatar} />
         <View style={styles.reviewUserInfo}>
           <View style={styles.reviewUserName}>
-            <Text style={styles.reviewUserNameText}>{item.user?.name}</Text>
-            {item.user?.verified && <MaterialIcons name="verified" size={16} color="#4CAF50" />}
+            <Text style={[styles.reviewUserNameText, { color: theme.colors.text }]}>{item.user?.name}</Text>
+            {item.user?.verified && <MaterialIcons name="verified" size={16} color={theme.colors.verified} />}
           </View>
           <View style={styles.reviewRating}>
             {[...Array(5)].map((_, index) => (
-              <MaterialIcons key={index} name="star" size={14} color={index < item.rating ? "#FFD700" : "#E0E0E0"} />
+              <MaterialIcons key={index} name="star" size={14} color={index < item.rating ? theme.colors.accent : theme.colors.textTertiary} />
             ))}
-            <Text style={styles.reviewDate}> • {new Date(item.created_at).toLocaleDateString()}</Text>
+            <Text style={[styles.reviewDate, { color: theme.colors.textSecondary }]}> • {new Date(item.created_at).toLocaleDateString()}</Text>
           </View>
         </View>
       </View>
 
-      {item.comment && <Text style={styles.reviewComment}>{item.comment}</Text>}
+      {item.comment && <Text style={[styles.reviewComment, { color: theme.colors.text }]}>{item.comment}</Text>}
 
       <View style={styles.reviewDetails}>
         <View style={styles.reviewDetailItem}>
-          <Text style={styles.reviewDetailLabel}>Safety: </Text>
-          <Text style={styles.reviewDetailValue}>{item.safety_rating}/5</Text>
+          <Text style={[styles.reviewDetailLabel, { color: theme.colors.textSecondary }]}>Safety: </Text>
+          <Text style={[styles.reviewDetailValue, { color: theme.colors.text }]}>{item.safety_rating}/5</Text>
         </View>
         <View style={styles.reviewDetailItem}>
-          <Text style={styles.reviewDetailLabel}>Inclusivity: </Text>
-          <Text style={styles.reviewDetailValue}>{item.inclusivity_rating}/5</Text>
+          <Text style={[styles.reviewDetailLabel, { color: theme.colors.textSecondary }]}>Inclusivity: </Text>
+          <Text style={[styles.reviewDetailValue, { color: theme.colors.text }]}>{item.inclusivity_rating}/5</Text>
         </View>
         <View style={styles.reviewDetailItem}>
-          <Text style={styles.reviewDetailLabel}>Staff: </Text>
-          <Text style={styles.reviewDetailValue}>{item.staff_friendliness}/5</Text>
+          <Text style={[styles.reviewDetailLabel, { color: theme.colors.textSecondary }]}>Staff: </Text>
+          <Text style={[styles.reviewDetailValue, { color: theme.colors.text }]}>{item.staff_friendliness}/5</Text>
         </View>
       </View>
 
       <View style={styles.reviewActions}>
         <TouchableOpacity style={styles.helpfulButton} onPress={() => handleMarkHelpful(item.id)}>
-          <MaterialIcons name="thumb-up" size={16} color="#666" />
-          <Text style={styles.helpfulText}>Helpful ({item.helpful_count})</Text>
+          <MaterialIcons name="thumb-up" size={16} color={theme.colors.textSecondary} />
+          <Text style={[styles.helpfulText, { color: theme.colors.textSecondary }]}>Helpful ({item.helpful_count})</Text>
         </TouchableOpacity>
         {item.would_recommend && (
-          <View style={styles.recommendBadge}>
-            <MaterialIcons name="recommend" size={14} color="#4CAF50" />
-            <Text style={styles.recommendText}>Recommends</Text>
+          <View style={[styles.recommendBadge, { backgroundColor: theme.colors.success + '20' }]}>
+            <MaterialIcons name="recommend" size={14} color={theme.colors.success} />
+            <Text style={[styles.recommendText, { color: theme.colors.success }]}>Recommends</Text>
           </View>
         )}
       </View>
@@ -182,7 +184,7 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView>
         {/* Header Image */}
         <View style={styles.imageContainer}>
@@ -212,77 +214,77 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
         <View style={styles.content}>
           <View style={styles.header}>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>{business.name}</Text>
-              {business.verified && <MaterialIcons name="verified" size={24} color="#4CAF50" />}
+              <Text style={[styles.title, { color: theme.colors.text }]}>{business.name}</Text>
+              {business.verified && <MaterialIcons name="verified" size={24} color={theme.colors.verified} />}
             </View>
-            <Text style={styles.category}>{business.category.replace("_", " ").toUpperCase()}</Text>
+            <Text style={[styles.category, { color: theme.colors.primary }]}>{business.category.replace("_", " ").toUpperCase()}</Text>
           </View>
 
           {/* Rating Summary */}
-          <View style={styles.ratingSection}>
+          <View style={[styles.ratingSection, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.overallRating}>
-              <Text style={styles.ratingNumber}>{ratings.overall.toFixed(1)}</Text>
+              <Text style={[styles.ratingNumber, { color: theme.colors.text }]}>{ratings.overall.toFixed(1)}</Text>
               <View style={styles.stars}>
                 {[...Array(5)].map((_, index) => (
                   <MaterialIcons
                     key={index}
                     name="star"
                     size={20}
-                    color={index < Math.floor(ratings.overall) ? "#FFD700" : "#E0E0E0"}
+                    color={index < Math.floor(ratings.overall) ? theme.colors.accent : theme.colors.textTertiary}
                   />
                 ))}
               </View>
-              <Text style={styles.reviewCount}>({ratings.count} reviews)</Text>
+              <Text style={[styles.reviewCount, { color: theme.colors.textSecondary }]}>({ratings.count} reviews)</Text>
             </View>
 
             <View style={styles.ratingBars}>
-              {renderRatingBar("Safety", ratings.safety, "#4CAF50")}
-              {renderRatingBar("Inclusivity", ratings.inclusivity, "#FF6B6B")}
-              {renderRatingBar("Staff", ratings.staff, "#4ECDC4")}
-              {renderRatingBar("Accessibility", ratings.accessibility, "#FFA726")}
+              {renderRatingBar("Safety", ratings.safety, theme.colors.success)}
+              {renderRatingBar("Inclusivity", ratings.inclusivity, theme.colors.lgbtqFriendly)}
+              {renderRatingBar("Staff", ratings.staff, theme.colors.transFriendly)}
+              {renderRatingBar("Accessibility", ratings.accessibility, theme.colors.warning)}
             </View>
           </View>
 
           {/* Tags */}
           <View style={styles.tagsSection}>
             {business.lgbtq_friendly && (
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>LGBTQ+ Friendly</Text>
+              <View style={[styles.tag, { backgroundColor: theme.colors.lgbtqFriendly }]}>
+                <Text style={[styles.tagText, { color: theme.colors.surface }]}>LGBTQ+ Friendly</Text>
               </View>
             )}
             {business.trans_friendly && (
-              <View style={[styles.tag, styles.transTag]}>
-                <Text style={styles.tagText}>Trans Friendly</Text>
+              <View style={[styles.tag, { backgroundColor: theme.colors.transFriendly }]}>
+                <Text style={[styles.tagText, { color: theme.colors.surface }]}>Trans Friendly</Text>
               </View>
             )}
             {business.wheelchair_accessible && (
-              <View style={[styles.tag, styles.accessibleTag]}>
-                <MaterialIcons name="accessible" size={12} color="white" />
-                <Text style={styles.tagText}>Accessible</Text>
+              <View style={[styles.tag, { backgroundColor: theme.colors.warning }]}>
+                <MaterialIcons name="accessible" size={12} color={theme.colors.surface} />
+                <Text style={[styles.tagText, { color: theme.colors.surface }]}>Accessible</Text>
               </View>
             )}
           </View>
 
           {/* Description */}
-          <Text style={styles.description}>{business.description}</Text>
+          <Text style={[styles.description, { color: theme.colors.textSecondary }]}>{business.description}</Text>
 
           {/* Contact Info */}
           <View style={styles.infoSection}>
-            <Text style={styles.sectionTitle}>Information</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Information</Text>
             <View style={styles.infoItem}>
-              <MaterialIcons name="location-on" size={20} color="#666" />
-              <Text style={styles.infoText}>{business.address}</Text>
+              <MaterialIcons name="location-on" size={20} color={theme.colors.textSecondary} />
+              <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>{business.address}</Text>
             </View>
             {business.phone && (
               <View style={styles.infoItem}>
-                <MaterialIcons name="phone" size={20} color="#666" />
-                <Text style={styles.infoText}>{business.phone}</Text>
+                <MaterialIcons name="phone" size={20} color={theme.colors.textSecondary} />
+                <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>{business.phone}</Text>
               </View>
             )}
             {business.website && (
               <View style={styles.infoItem}>
-                <MaterialIcons name="language" size={20} color="#666" />
-                <Text style={styles.infoText}>{business.website}</Text>
+                <MaterialIcons name="language" size={20} color={theme.colors.textSecondary} />
+                <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>{business.website}</Text>
               </View>
             )}
           </View>
@@ -306,10 +308,10 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
           {/* Reviews */}
           <View style={styles.reviewsSection}>
             <View style={styles.reviewsHeader}>
-              <Text style={styles.sectionTitle}>Reviews</Text>
-              <TouchableOpacity style={styles.writeReviewButton} onPress={handleWriteReview}>
-                <MaterialIcons name="edit" size={16} color="black" />
-                <Text style={styles.writeReviewText}>Write Review</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Reviews</Text>
+              <TouchableOpacity style={[styles.writeReviewButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={handleWriteReview}>
+                <MaterialIcons name="edit" size={16} color={theme.colors.text} />
+                <Text style={[styles.writeReviewText, { color: theme.colors.text }]}>Write Review</Text>
               </TouchableOpacity>
             </View>
 
@@ -321,27 +323,27 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
                 scrollEnabled={false}
               />
             ) : (
-              <Text style={styles.noReviews}>No reviews yet. Be the first to review!</Text>
+              <Text style={[styles.noReviews, { color: theme.colors.textSecondary }]}>No reviews yet. Be the first to review!</Text>
             )}
           </View>
         </View>
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-          <MaterialIcons name="phone" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Call</Text>
+      <View style={[styles.bottomActions, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.divider }]}>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.primary }]} onPress={handleCall}>
+          <MaterialIcons name="phone" size={20} color={theme.colors.surface} />
+          <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Call</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleDirections}>
-          <MaterialIcons name="directions" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Directions</Text>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.primary }]} onPress={handleDirections}>
+          <MaterialIcons name="directions" size={20} color={theme.colors.surface} />
+          <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Directions</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleWebsite}>
-          <MaterialIcons name="language" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Website</Text>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.primary }]} onPress={handleWebsite}>
+          <MaterialIcons name="language" size={20} color={theme.colors.surface} />
+          <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Website</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -351,7 +353,6 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   imageContainer: {
     position: "relative",

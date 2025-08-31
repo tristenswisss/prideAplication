@@ -15,12 +15,14 @@ import {
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { safeSpacesService, type CrisisContact } from "../../services/safeSpacesService"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface SafetyScreenProps {
   navigation: any
 }
 
 export default function SafetyScreen({ navigation }: SafetyScreenProps) {
+  const { theme } = useTheme()
   const [crisisContacts, setCrisisContacts] = useState<CrisisContact[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -98,62 +100,62 @@ export default function SafetyScreen({ navigation }: SafetyScreenProps) {
   }
 
   const renderCrisisContact = (contact: CrisisContact) => (
-    <View key={contact.id} style={styles.contactCard}>
+    <View key={contact.id} style={[styles.contactCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
       <View style={styles.contactHeader}>
         <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(contact.category) }]}>
-          <MaterialIcons name={getCategoryIcon(contact.category) as any} size={24} color="white" />
+          <MaterialIcons name={getCategoryIcon(contact.category) as any} size={24} color={theme.colors.surface} />
         </View>
         <View style={styles.contactInfo}>
-          <Text style={styles.contactName}>{contact.name}</Text>
-          <Text style={styles.contactDescription}>{contact.description}</Text>
-          <Text style={styles.contactHours}>Available: {contact.available_hours}</Text>
+          <Text style={[styles.contactName, { color: theme.colors.text }]}>{contact.name}</Text>
+          <Text style={[styles.contactDescription, { color: theme.colors.textSecondary }]}>{contact.description}</Text>
+          <Text style={[styles.contactHours, { color: theme.colors.success }]}>Available: {contact.available_hours}</Text>
         </View>
       </View>
 
       <View style={styles.contactActions}>
-        <TouchableOpacity style={[styles.actionButton, styles.callButton]} onPress={() => handleCall(contact.phone)}>
-          <MaterialIcons name="phone" size={20} color="white" />
-          <Text style={styles.actionButtonText}>Call</Text>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.success }]} onPress={() => handleCall(contact.phone)}>
+          <MaterialIcons name="phone" size={20} color={theme.colors.surface} />
+          <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Call</Text>
         </TouchableOpacity>
 
         {contact.email && (
           <TouchableOpacity
-            style={[styles.actionButton, styles.emailButton]}
+            style={[styles.actionButton, { backgroundColor: theme.colors.info }]}
             onPress={() => handleEmail(contact.email!)}
           >
-            <MaterialIcons name="email" size={20} color="white" />
-            <Text style={styles.actionButtonText}>Email</Text>
+            <MaterialIcons name="email" size={20} color={theme.colors.surface} />
+            <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Email</Text>
           </TouchableOpacity>
         )}
 
         {contact.website && (
           <TouchableOpacity
-            style={[styles.actionButton, styles.websiteButton]}
+            style={[styles.actionButton, { backgroundColor: theme.colors.warning }]}
             onPress={() => handleWebsite(contact.website!)}
           >
-            <MaterialIcons name="language" size={20} color="white" />
-            <Text style={styles.actionButtonText}>Website</Text>
+            <MaterialIcons name="language" size={20} color={theme.colors.surface} />
+            <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Website</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={styles.contactDetails}>
-        <Text style={styles.contactPhone}>📞 {contact.phone}</Text>
-        <Text style={styles.contactLanguages}>🗣️ Languages: {contact.languages.join(", ")}</Text>
-        <Text style={styles.contactServices}>🛠️ Services: {contact.services.join(", ")}</Text>
+      <View style={[styles.contactDetails, { borderTopColor: theme.colors.divider }]}>
+        <Text style={[styles.contactPhone, { color: theme.colors.text }]}>📞 {contact.phone}</Text>
+        <Text style={[styles.contactLanguages, { color: theme.colors.textSecondary }]}>🗣️ Languages: {contact.languages.join(", ")}</Text>
+        <Text style={[styles.contactServices, { color: theme.colors.textSecondary }]}>🛠️ Services: {contact.services.join(", ")}</Text>
       </View>
     </View>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["#FF6B6B", "#FF8E53"]} style={styles.header}>
+      <LinearGradient colors={[theme.colors.primary, theme.colors.primaryVariant]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.surface} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Safety Center</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.surface }]}>Safety Center</Text>
           <View style={styles.placeholder} />
         </View>
       </LinearGradient>
@@ -163,66 +165,66 @@ export default function SafetyScreen({ navigation }: SafetyScreenProps) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Emergency Notice */}
-        <View style={styles.emergencyNotice}>
-          <MaterialIcons name="warning" size={24} color="#FF5722" />
-          <Text style={styles.emergencyText}>
+        <View style={[styles.emergencyNotice, { backgroundColor: theme.colors.warning + '20', borderLeftColor: theme.colors.warning }]}>
+          <MaterialIcons name="warning" size={24} color={theme.colors.warning} />
+          <Text style={[styles.emergencyText, { color: theme.colors.text }]}>
             If you are in immediate danger, please contact local emergency services or call 999 in Zimbabwe.
           </Text>
         </View>
 
         {/* Admin Contact */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App Support</Text>
-          <View style={styles.adminCard}>
-            <MaterialIcons name="support-agent" size={24} color="#2196F3" />
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>App Support</Text>
+          <View style={[styles.adminCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <MaterialIcons name="support-agent" size={24} color={theme.colors.info} />
             <View style={styles.adminInfo}>
-              <Text style={styles.adminTitle}>Mirae Support Team</Text>
-              <Text style={styles.adminDescription}>For app-related issues, feedback, or general support</Text>
+              <Text style={[styles.adminTitle, { color: theme.colors.text }]}>Mirae Support Team</Text>
+              <Text style={[styles.adminDescription, { color: theme.colors.textSecondary }]}>For app-related issues, feedback, or general support</Text>
             </View>
-            <TouchableOpacity style={styles.adminButton} onPress={() => handleEmail(adminEmail)}>
-              <MaterialIcons name="email" size={20} color="white" />
+            <TouchableOpacity style={[styles.adminButton, { backgroundColor: theme.colors.info }]} onPress={() => handleEmail(adminEmail)}>
+              <MaterialIcons name="email" size={20} color={theme.colors.surface} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Crisis Contacts */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Crisis Support Contacts</Text>
-          <Text style={styles.sectionSubtitle}>Professional support services available in Zimbabwe</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Crisis Support Contacts</Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>Professional support services available in Zimbabwe</Text>
 
           {loading ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading crisis contacts...</Text>
+              <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>Loading crisis contacts...</Text>
             </View>
           ) : crisisContacts.length > 0 ? (
             crisisContacts.map(renderCrisisContact)
           ) : (
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="info" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No crisis contacts available</Text>
+              <MaterialIcons name="info" size={48} color={theme.colors.textTertiary} />
+              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>No crisis contacts available</Text>
             </View>
           )}
         </View>
 
         {/* Safety Tips */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Safety Tips</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Safety Tips</Text>
           <View style={styles.tipsContainer}>
             <View style={styles.tipItem}>
-              <MaterialIcons name="location-on" size={20} color="#4CAF50" />
-              <Text style={styles.tipText}>Share your location with trusted friends when meeting new people</Text>
+              <MaterialIcons name="location-on" size={20} color={theme.colors.success} />
+              <Text style={[styles.tipText, { color: theme.colors.text }]}>Share your location with trusted friends when meeting new people</Text>
             </View>
             <View style={styles.tipItem}>
-              <MaterialIcons name="people" size={20} color="#4CAF50" />
-              <Text style={styles.tipText}>Meet in public places for first-time meetings</Text>
+              <MaterialIcons name="people" size={20} color={theme.colors.success} />
+              <Text style={[styles.tipText, { color: theme.colors.text }]}>Meet in public places for first-time meetings</Text>
             </View>
             <View style={styles.tipItem}>
-              <MaterialIcons name="phone" size={20} color="#4CAF50" />
-              <Text style={styles.tipText}>Keep emergency contacts easily accessible</Text>
+              <MaterialIcons name="phone" size={20} color={theme.colors.success} />
+              <Text style={[styles.tipText, { color: theme.colors.text }]}>Keep emergency contacts easily accessible</Text>
             </View>
             <View style={styles.tipItem}>
-              <MaterialIcons name="security" size={20} color="#4CAF50" />
-              <Text style={styles.tipText}>Trust your instincts and leave if you feel unsafe</Text>
+              <MaterialIcons name="security" size={20} color={theme.colors.success} />
+              <Text style={[styles.tipText, { color: theme.colors.text }]}>Trust your instincts and leave if you feel unsafe</Text>
             </View>
           </View>
         </View>

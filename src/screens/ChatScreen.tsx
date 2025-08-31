@@ -27,6 +27,7 @@ import { realtime } from "../../lib/realtime"
 import { useIsFocused } from "@react-navigation/native"
 import { events } from "../../lib/events"
 import { storage } from "../../lib/storage"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface ChatScreenProps {
   navigation: any
@@ -46,6 +47,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const flatListRef = useRef<FlatList>(null)
 
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<{ uri: string; name?: string; mimeType?: string } | null>(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -82,9 +84,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           <View style={styles.headerTitle}>
             <Image source={{ uri: getConversationAvatar() }} style={styles.headerAvatar} />
             <View>
-              <Text style={styles.headerName}>{getConversationName()}</Text>
+              <Text style={[styles.headerName, { color: theme.colors.headerText }]}>{getConversationName()}</Text>
               {!conversation.is_group && (
-                <Text style={styles.headerStatus}>
+                <Text style={[styles.headerStatus, { color: theme.colors.success }]}>
                   {(() => {
                     const other = conversation.participant_profiles?.find((p) => p.id !== user?.id)
                     return other?.is_online ? "Online" : ""
@@ -97,7 +99,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       ),
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#333" />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
         </TouchableOpacity>
       ),
       headerRight: () => renderHeaderActions(),
@@ -422,10 +424,10 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
       return (
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerAction} onPress={clearSelection}>
-            <MaterialIcons name="close" size={24} color="#333" />
+            <MaterialIcons name="close" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerAction} onPress={handleDeleteSelectedMessages}>
-            <MaterialIcons name="delete" size={24} color="#FF6B6B" />
+            <MaterialIcons name="delete" size={24} color={theme.colors.error} />
           </TouchableOpacity>
         </View>
       )
@@ -433,7 +435,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
     return (
       <View style={styles.headerActions}>
         <TouchableOpacity style={styles.headerAction} onPress={handleMoreActions}>
-          <MaterialIcons name="more-vert" size={24} color="#333" />
+          <MaterialIcons name="more-vert" size={24} color={theme.colors.headerText} />
         </TouchableOpacity>
       </View>
     )
@@ -688,7 +690,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <AppModal
         visible={modal.type !== "none"}
         onClose={() => {
@@ -707,7 +709,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           },
         }}
       >
-        {modal.type !== "none" && <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>}
+        {modal.type !== "none" && <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>}
       </AppModal>
       <KeyboardAvoidingView style={styles.keyboardAvoid} behavior="padding" keyboardVerticalOffset={64}>
         {/* Messages List */}
@@ -736,7 +738,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
 
         {/* Emoji Picker */}
         {showEmojiPicker && (
-          <View style={styles.emojiPicker}>
+          <View style={[styles.emojiPicker, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.divider }]}>
             {EMOJIS.map((e) => (
               <TouchableOpacity key={e} style={styles.emojiButton} onPress={() => handleSelectEmoji(e)}>
                 <Text style={styles.emojiText}>{e}</Text>
@@ -746,29 +748,30 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
         )}
 
         {/* Message Input - full width with + to open modal */}
-        <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.plusButton} onPress={() => setShowAttachModal(true)}>
-            <MaterialIcons name="add" size={24} color="#333" />
+        <View style={[styles.inputContainer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.divider }]}>
+          <TouchableOpacity style={[styles.plusButton, { backgroundColor: theme.colors.card }]} onPress={() => setShowAttachModal(true)}>
+            <MaterialIcons name="add" size={24} color={theme.colors.text} />
           </TouchableOpacity>
-          <View style={styles.textInputContainer}>
+          <View style={[styles.textInputContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
             {selectedImage || selectedFile ? (
               renderAttachmentPreview()
             ) : (
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { color: theme.colors.text }]}
                 placeholder="Type a message..."
                 value={newMessage}
                 onChangeText={setNewMessage}
                 multiline
                 maxLength={1000}
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.colors.textSecondary}
               />
             )}
           </View>
           <TouchableOpacity
             style={[
               styles.sendButton,
-              ((!newMessage.trim() && !selectedImage && !selectedFile) || sending) && styles.sendButtonDisabled,
+              { backgroundColor: theme.colors.primary },
+              ((!newMessage.trim() && !selectedImage && !selectedFile) || sending) && [styles.sendButtonDisabled, { backgroundColor: theme.colors.card }],
             ]}
             onPress={handleSendMessage}
             disabled={(!newMessage.trim() && !selectedImage && !selectedFile) || sending}
@@ -776,7 +779,7 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
             <MaterialIcons
               name="send"
               size={20}
-              color={(newMessage.trim() || selectedImage || selectedFile) && !sending ? "white" : "#ccc"}
+              color={(newMessage.trim() || selectedImage || selectedFile) && !sending ? theme.colors.surface : theme.colors.textTertiary}
             />
           </TouchableOpacity>
         </View>
@@ -808,8 +811,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               toggleEmojiPicker()
             }}
           >
-            <MaterialIcons name="emoji-emotions" size={24} color="#4ECDC4" />
-            <Text style={styles.optionText}>Emoji</Text>
+            <MaterialIcons name="emoji-emotions" size={24} color={theme.colors.secondary} />
+            <Text style={[styles.optionText, { color: theme.colors.text }]}>Emoji</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.optionRow}
@@ -818,8 +821,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               handlePickImage()
             }}
           >
-            <MaterialIcons name="image" size={24} color="#4ECDC4" />
-            <Text style={styles.optionText}>Gallery</Text>
+            <MaterialIcons name="image" size={24} color={theme.colors.secondary} />
+            <Text style={[styles.optionText, { color: theme.colors.text }]}>Gallery</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.optionRow}
@@ -828,8 +831,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               handleTakePhoto()
             }}
           >
-            <MaterialIcons name="photo-camera" size={24} color="#4ECDC4" />
-            <Text style={styles.optionText}>Camera</Text>
+            <MaterialIcons name="photo-camera" size={24} color={theme.colors.secondary} />
+            <Text style={[styles.optionText, { color: theme.colors.text }]}>Camera</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.optionRow}
@@ -838,8 +841,8 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
               handlePickDocument()
             }}
           >
-            <MaterialIcons name="attach-file" size={24} color="#4ECDC4" />
-            <Text style={styles.optionText}>Document</Text>
+            <MaterialIcons name="attach-file" size={24} color={theme.colors.secondary} />
+            <Text style={[styles.optionText, { color: theme.colors.text }]}>Document</Text>
           </TouchableOpacity>
         </View>
       </AppModal>

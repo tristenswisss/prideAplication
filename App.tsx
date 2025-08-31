@@ -14,6 +14,7 @@ import { storage } from "./lib/storage"
 // Contexts
 import { AuthProvider, useAuth } from "./Contexts/AuthContexts"
 import { OfflineProvider } from "./Contexts/OfflineContext"
+import { ThemeProvider, useTheme } from "./Contexts/ThemeContext"
 
 // Screens
 import AuthScreen from "./src/screens/AuthScreen"
@@ -77,8 +78,20 @@ function AuthNavigator() {
 
 // Home Stack Navigator
 function HomeNavigator() {
+  const { theme } = useTheme()
+
   return (
-    <HomeStack.Navigator>
+    <HomeStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.headerBackground,
+        },
+        headerTintColor: theme.colors.headerText,
+        headerTitleStyle: {
+          color: theme.colors.headerText,
+        },
+      }}
+    >
       <HomeStack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
       <HomeStack.Screen
         name="BusinessDetails"
@@ -97,8 +110,20 @@ function HomeNavigator() {
 
 // Events Stack Navigator
 function EventsNavigator() {
+  const { theme } = useTheme()
+
   return (
-    <EventsStack.Navigator>
+    <EventsStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.headerBackground,
+        },
+        headerTintColor: theme.colors.headerText,
+        headerTitleStyle: {
+          color: theme.colors.headerText,
+        },
+      }}
+    >
       <EventsStack.Screen name="EventsMain" component={EventsScreen} options={{ headerShown: false }} />
       <EventsStack.Screen name="LiveEvents" component={LiveEventsScreenList} options={{ headerShown: false }} />
       <EventsStack.Screen name="EventDetails" component={EventsDetailScreen} options={{ title: "Event Details" }} />
@@ -112,8 +137,20 @@ function EventsNavigator() {
 
 // Community Stack Navigator
 function CommunityNavigator() {
+  const { theme } = useTheme()
+
   return (
-    <CommunityStack.Navigator>
+    <CommunityStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.headerBackground,
+        },
+        headerTintColor: theme.colors.headerText,
+        headerTitleStyle: {
+          color: theme.colors.headerText,
+        },
+      }}
+    >
       <CommunityStack.Screen name="CommunityMain" component={CommunityScreen} options={{ headerShown: false }} />
       <CommunityStack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: "Profile" }} />
       <CommunityStack.Screen name="Chat" component={ChatScreen} options={{ title: "Chat" }} />
@@ -124,8 +161,20 @@ function CommunityNavigator() {
 
 // Profile Stack Navigator
 function ProfileNavigator() {
+  const { theme } = useTheme()
+
   return (
-    <ProfileStack.Navigator>
+    <ProfileStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.headerBackground,
+        },
+        headerTintColor: theme.colors.headerText,
+        headerTitleStyle: {
+          color: theme.colors.headerText,
+        },
+      }}
+    >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: "Profile" }} />
       <ProfileStack.Screen name="Safety" component={SafetyScreen} options={{ headerShown: false }} />
@@ -160,6 +209,7 @@ function ProfileNavigator() {
 // Main Tab Navigator
 function TabNavigator() {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [unreadTotal, setUnreadTotal] = useState(0)
   const [convIds, setConvIds] = useState<string[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -304,8 +354,12 @@ function TabNavigator() {
           }
           return <MaterialIcons name={iconName} size={size} color={color} />
         },
-        tabBarActiveTintColor: "#FF6B6B",
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: theme.colors.tabBarActive,
+        tabBarInactiveTintColor: theme.colors.tabBarInactive,
+        tabBarStyle: {
+          backgroundColor: theme.colors.tabBarBackground,
+          borderTopColor: theme.colors.border,
+        },
         headerShown: false,
       })}
     >
@@ -323,31 +377,36 @@ function TabNavigator() {
 // Main App Component
 function AppContent() {
   const { user, loading } = useAuth()
+  const { theme } = useTheme()
 
   return (
-    <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        {loading ? (
-          <RootStack.Screen name="Loading" component={LoadingScreen} />
-        ) : user ? (
-          <RootStack.Screen name="Main" component={TabNavigator} />
-        ) : (
-          <RootStack.Screen name="Auth" component={AuthNavigator} />
-        )}
-      </RootStack.Navigator>
-      <OfflineStatus />
-    </NavigationContainer>
+    <>
+      <StatusBar style={theme.isDark ? "light" : "dark"} />
+      <NavigationContainer>
+        <RootStack.Navigator screenOptions={{ headerShown: false }}>
+          {loading ? (
+            <RootStack.Screen name="Loading" component={LoadingScreen} />
+          ) : user ? (
+            <RootStack.Screen name="Main" component={TabNavigator} />
+          ) : (
+            <RootStack.Screen name="Auth" component={AuthNavigator} />
+          )}
+        </RootStack.Navigator>
+        <OfflineStatus />
+      </NavigationContainer>
+    </>
   )
 }
 
 // Root App Component
 export default function App() {
   return (
-    <AuthProvider>
-      <OfflineProvider>
-        <StatusBar style="auto" />
-        <AppContent />
-      </OfflineProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <OfflineProvider>
+          <AppContent />
+        </OfflineProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

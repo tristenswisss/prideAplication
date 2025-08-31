@@ -4,12 +4,14 @@ import { useState, useEffect, useMemo } from "react"
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, Alert, ActivityIndicator } from "react-native"
 import { safeSpacesService, type CrisisContact } from "../../services/safeSpacesService"
 import type { SafeSpace } from "../../types"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface HelpSupportScreenProps {
   navigation: any
 }
 
 export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps) {
+  const { theme } = useTheme()
   const [safeSpaces, setSafeSpaces] = useState<SafeSpace[]>([])
   const [crisisContacts, setCrisisContacts] = useState<CrisisContact[]>([])
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
@@ -117,66 +119,66 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading help information...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>Loading help information...</Text>
       </View>
     )
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Help & Support</Text>
-        <Text style={styles.subtitle}>Resources and assistance for the LGBTQ+ community</Text>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.divider }]}>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Help & Support</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Resources and assistance for the LGBTQ+ community</Text>
       </View>
 
       {/* Crisis Helplines */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🚨 Crisis Helplines</Text>
-        <Text style={styles.sectionDescription}>Immediate legal assistance and support</Text>
+      <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>🚨 Crisis Helplines</Text>
+        <Text style={[styles.sectionDescription, { color: theme.colors.textSecondary }]}>Immediate legal assistance and support</Text>
         {crisisContacts.map((contact) => (
-          <View key={contact.id} style={styles.contactCard}>
+          <View key={contact.id} style={[styles.contactCard, { backgroundColor: theme.colors.card, borderLeftColor: theme.colors.error }]}>
             <View style={styles.contactHeader}>
-              <Text style={styles.contactName}>{contact.name}</Text>
-              <Text style={styles.contactLocation}>{contact.country}</Text>
+              <Text style={[styles.contactName, { color: theme.colors.text }]}>{contact.name}</Text>
+              <Text style={[styles.contactLocation, { color: theme.colors.textSecondary }]}>{contact.country}</Text>
             </View>
-            <Text style={styles.contactDescription}>{contact.description}</Text>
-            <TouchableOpacity style={styles.phoneButton} onPress={() => handlePhoneCall(contact.phone)}>
-              <Text style={styles.phoneButtonText}>📞 {contact.phone}</Text>
+            <Text style={[styles.contactDescription, { color: theme.colors.textSecondary }]}>{contact.description}</Text>
+            <TouchableOpacity style={[styles.phoneButton, { backgroundColor: theme.colors.error }]} onPress={() => handlePhoneCall(contact.phone)}>
+              <Text style={[styles.phoneButtonText, { color: theme.colors.surface }]}>📞 {contact.phone}</Text>
             </TouchableOpacity>
-            <Text style={styles.availabilityText}>Available: {contact.available_hours}</Text>
+            <Text style={[styles.availabilityText, { color: theme.colors.textSecondary }]}>Available: {contact.available_hours}</Text>
             {/* available_24_7 not in CrisisContact; show if text contains 24/7 */}
-            {(/24\/?7/i.test(contact.available_hours)) && <Text style={styles.available24Text}>Available 24/7</Text>}
+            {(/24\/?7/i.test(contact.available_hours)) && <Text style={[styles.available24Text, { color: theme.colors.success }]}>Available 24/7</Text>}
           </View>
         ))}
       </View>
 
       {/* Safe Spaces */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🏳️‍🌈 Safe Spaces</Text>
-        <Text style={styles.sectionDescription}>LGBTQ+ friendly locations and organizations in Zimbabwe</Text>
+      <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>🏳️‍🌈 Safe Spaces</Text>
+        <Text style={[styles.sectionDescription, { color: theme.colors.textSecondary }]}>LGBTQ+ friendly locations and organizations in Zimbabwe</Text>
 
         {Object.entries(groupedSafeSpaces).map(([category, spaces]) => (
           <View key={category} style={styles.categorySection}>
-            <Text style={styles.categoryTitle}>
+            <Text style={[styles.categoryTitle, { color: theme.colors.text }]}>
               {getCategoryIcon(category as SafeSpace["category"])} {getCategoryTitle(category as SafeSpace["category"])}
             </Text>
             {spaces.map((space) => (
-              <View key={space.id} style={styles.spaceCard}>
+              <View key={space.id} style={[styles.spaceCard, { backgroundColor: theme.colors.card, borderLeftColor: theme.colors.primary }]}>
                 <View style={styles.spaceHeader}>
-                  <Text style={styles.spaceName}>{space.name}</Text>
-                  {space.verified && <Text style={styles.verifiedBadge}>✓ Verified</Text>}
+                  <Text style={[styles.spaceName, { color: theme.colors.text }]}>{space.name}</Text>
+                  {space.verified && <Text style={[styles.verifiedBadge, { color: theme.colors.success }]}>✓ Verified</Text>}
                 </View>
-                <Text style={styles.spaceDescription}>{space.description}</Text>
-                <Text style={styles.spaceAddress}>📍 {space.address}</Text>
+                <Text style={[styles.spaceDescription, { color: theme.colors.textSecondary }]}>{space.description}</Text>
+                <Text style={[styles.spaceAddress, { color: theme.colors.textSecondary }]}>📍 {space.address}</Text>
 
                 {space.services.length > 0 && (
                   <View style={styles.servicesContainer}>
-                    <Text style={styles.servicesTitle}>Services:</Text>
+                    <Text style={[styles.servicesTitle, { color: theme.colors.text }]}>Services:</Text>
                     <View style={styles.servicesTags}>
                       {space.services.map((service, index) => (
-                        <Text key={index} style={styles.serviceTag}>
+                        <Text key={index} style={[styles.serviceTag, { backgroundColor: theme.colors.card, color: theme.colors.textSecondary }]}>
                           {service}
                         </Text>
                       ))}
@@ -185,13 +187,13 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
                 )}
 
                 <View style={styles.spaceFeatures}>
-                  {space.lgbtq_friendly && <Text style={styles.featureTag}>🏳️‍🌈 LGBTQ+ Friendly</Text>}
-                  {space.trans_friendly && <Text style={styles.featureTag}>🏳️‍⚧️ Trans Friendly</Text>}
+                  {space.lgbtq_friendly && <Text style={[styles.featureTag, { backgroundColor: theme.colors.lgbtqFriendly, color: theme.colors.surface }]}>🏳️‍🌈 LGBTQ+ Friendly</Text>}
+                  {space.trans_friendly && <Text style={[styles.featureTag, { backgroundColor: theme.colors.transFriendly, color: theme.colors.surface }]}>🏳️‍⚧️ Trans Friendly</Text>}
                 </View>
 
                 {space.phone && (
-                  <TouchableOpacity style={styles.contactButton} onPress={() => handlePhoneCall(space.phone!)}>
-                    <Text style={styles.contactButtonText}>📞 Call</Text>
+                  <TouchableOpacity style={[styles.contactButton, { backgroundColor: theme.colors.primary }]} onPress={() => handlePhoneCall(space.phone!)}>
+                    <Text style={[styles.contactButtonText, { color: theme.colors.surface }]}>📞 Call</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -202,33 +204,33 @@ export default function HelpSupportScreen({ navigation }: HelpSupportScreenProps
 
       {/* Admin Contact */}
       {adminEmail && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📧 App Support</Text>
-          <Text style={styles.sectionDescription}>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>📧 App Support</Text>
+          <Text style={[styles.sectionDescription, { color: theme.colors.textSecondary }]}>
             Contact the app administrators for technical support or feedback
           </Text>
-          <TouchableOpacity style={styles.adminContactCard} onPress={() => handleEmailContact(adminEmail)}>
-            <Text style={styles.adminContactTitle}>Pride Application Admin</Text>
-            <Text style={styles.adminContactEmail}>{adminEmail}</Text>
-            <Text style={styles.adminContactAction}>Tap to send email</Text>
+          <TouchableOpacity style={[styles.adminContactCard, { backgroundColor: theme.colors.card, borderLeftColor: theme.colors.secondary }]} onPress={() => handleEmailContact(adminEmail)}>
+            <Text style={[styles.adminContactTitle, { color: theme.colors.text }]}>Pride Application Admin</Text>
+            <Text style={[styles.adminContactEmail, { color: theme.colors.secondary }]}>{adminEmail}</Text>
+            <Text style={[styles.adminContactAction, { color: theme.colors.textTertiary }]}>Tap to send email</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Additional Resources */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📚 Additional Resources</Text>
-        <View style={styles.resourceCard}>
-          <Text style={styles.resourceTitle}>Mental Health Support</Text>
-          <Text style={styles.resourceDescription}>
+      <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>📚 Additional Resources</Text>
+        <View style={[styles.resourceCard, { backgroundColor: theme.colors.card, borderLeftColor: theme.colors.warning }]}>
+          <Text style={[styles.resourceTitle, { color: theme.colors.text }]}>Mental Health Support</Text>
+          <Text style={[styles.resourceDescription, { color: theme.colors.textSecondary }]}>
             If you're experiencing mental health challenges, please reach out to local mental health professionals or
             use our in-app mental health resources.
           </Text>
         </View>
 
-        <View style={styles.resourceCard}>
-          <Text style={styles.resourceTitle}>Safety Tips</Text>
-          <Text style={styles.resourceDescription}>
+        <View style={[styles.resourceCard, { backgroundColor: theme.colors.card, borderLeftColor: theme.colors.warning }]}>
+          <Text style={[styles.resourceTitle, { color: theme.colors.text }]}>Safety Tips</Text>
+          <Text style={[styles.resourceDescription, { color: theme.colors.textSecondary }]}>
             Always prioritize your safety when meeting new people or attending events. Trust your instincts and inform
             trusted friends about your plans.
           </Text>

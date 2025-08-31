@@ -10,9 +10,11 @@ import React from "react"
 import { businessService } from "../../services/businessService"
 import { reviewService } from "../../services/reviewService"
 import { buddySystemService } from "../../services/buddySystemService"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   const { user, signOut, refreshUser } = useAuth()
+  const { theme } = useTheme()
   const [stats, setStats] = useState({
     savedPlaces: 0,
     eventsAttended: 0,
@@ -133,21 +135,21 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   ]
 
   const renderOption = (option: (typeof profileOptions)[0]) => (
-    <TouchableOpacity key={option.title} style={styles.option} onPress={option.onPress}>
+    <TouchableOpacity key={option.title} style={[styles.option, { borderBottomColor: theme.colors.divider }]} onPress={option.onPress}>
       <View style={styles.optionIcon}>
-        <MaterialIcons name={option.icon as any} size={24} color="black" />
+        <MaterialIcons name={option.icon as any} size={24} color={theme.colors.text} />
       </View>
       <View style={styles.optionContent}>
-        <Text style={styles.optionTitle}>{option.title}</Text>
-        <Text style={styles.optionDescription}>{option.description}</Text>
+        <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{option.title}</Text>
+        <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>{option.description}</Text>
       </View>
-      <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+      <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
     </TouchableOpacity>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
                       <View style={styles.avatar}>
@@ -163,62 +165,62 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           </View>
 
           <View style={styles.profileInfo}>
-            <Text style={styles.userName}>{user?.name || "User"}</Text>
-            <Text style={styles.userEmail}>{user?.email || "user@example.com"}</Text>
+            <Text style={[styles.userName, { color: theme.colors.headerText }]}>{user?.name || "User"}</Text>
+            <Text style={[styles.userEmail, { color: theme.colors.headerText, opacity: 0.9 }]}>{user?.email || "user@example.com"}</Text>
             <View style={styles.verificationBadge}>
-              <MaterialIcons name="verified-user" size={16} color="white" />
-              <Text style={styles.verificationText}>Verified Member</Text>
+              <MaterialIcons name="verified-user" size={16} color={theme.colors.headerText} />
+              <Text style={[styles.verificationText, { color: theme.colors.headerText }]}>Verified Member</Text>
             </View>
           </View>
         </View>
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.savedPlaces}</Text>
-            <Text style={styles.statLabel}>Saved</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.eventsAttended}</Text>
-            <Text style={styles.statLabel}>Events</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.reviewsWritten}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.buddyConnections}</Text>
-            <Text style={styles.statLabel}>Buddies</Text>
-          </View>
-        </View>
+           <View style={styles.statItem}>
+             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.savedPlaces}</Text>
+             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Saved</Text>
+           </View>
+           <View style={styles.statItem}>
+             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.eventsAttended}</Text>
+             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Events</Text>
+           </View>
+           <View style={styles.statItem}>
+             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.reviewsWritten}</Text>
+             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Reviews</Text>
+           </View>
+           <View style={styles.statItem}>
+             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.buddyConnections}</Text>
+             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Buddies</Text>
+           </View>
+         </View>
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Options */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Profile</Text>
           {profileOptions.map(renderOption)}
         </View>
 
         {/* Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Settings</Text>
           {settingsOptions.map(renderOption)}
         </View>
 
         {/* Account Actions */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <MaterialIcons name="logout" size={24} color="#F44336" />
+            <MaterialIcons name="logout" size={24} color={theme.colors.error} />
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appName}>Mirae SafePlaces</Text>
-          <Text style={styles.appVersion}>Version 1.0.0</Text>
-          <Text style={styles.appDescription}>Building safer, more inclusive communities for LGBTQ+ individuals</Text>
+          <Text style={[styles.appName, { color: theme.colors.text }]}>Mirae SafePlaces</Text>
+          <Text style={[styles.appVersion, { color: theme.colors.textSecondary }]}>Version 1.0.0</Text>
+          <Text style={[styles.appDescription, { color: theme.colors.textSecondary }]}>Building safer, more inclusive communities for LGBTQ+ individuals</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

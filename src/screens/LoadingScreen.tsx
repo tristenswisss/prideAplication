@@ -3,8 +3,10 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useEffect, useRef } from "react"
 import { storage, STORAGE_KEYS } from "../../lib/storage"
 import { Image } from 'react-native';
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function LoadingScreen() {
+  const { theme } = useTheme()
   const bounceValue = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -38,16 +40,16 @@ export default function LoadingScreen() {
   })
 
   return (
-    <LinearGradient colors={["black", "black"]} style={styles.container}>
+    <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.container}>
       <View style={styles.content}>
         <Animated.View style={[styles.logo, { transform: [{ translateY: bounce }] }]}>
-          <Image 
-            source={require('../../assets/logoM.png')} 
+          <Image
+            source={require('../../assets/logoM.png')}
              style={styles.logo}
-/>
+ />
 
         </Animated.View>
-        <Text style={styles.title}>Mirae App</Text>
+        <Text style={[styles.title, { color: theme.colors.headerText }]}>Mirae App</Text>
       </View>
     </LinearGradient>
   )

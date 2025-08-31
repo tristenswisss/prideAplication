@@ -9,6 +9,7 @@ import type { MyEventsScreenProps } from "../../types/navigation"
 import { eventService } from "../../services/eventService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { useFocusEffect } from "@react-navigation/native"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface UserEvent extends Event {
   rsvpStatus: "going" | "interested" | "not_going"
@@ -16,6 +17,7 @@ interface UserEvent extends Event {
 }
 
 export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
+  const { theme } = useTheme()
   const [events, setEvents] = useState<UserEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"upcoming" | "past" | "going" | "interested">("upcoming")
@@ -105,17 +107,17 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
     const isUpcoming = eventDate > new Date()
 
     return (
-      <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("Events", { screen: "EventDetails", params: { event: item } })}>
+      <TouchableOpacity style={[styles.eventCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]} onPress={() => navigation.navigate("Events", { screen: "EventDetails", params: { event: item } })}>
         <View style={styles.eventImageContainer}>
           {item.image_url ? (
             <Image source={{ uri: item.image_url }} style={styles.eventImage} />
           ) : (
-            <View style={styles.placeholderImage}>
-              <MaterialIcons name="event" size={40} color="#ccc" />
+            <View style={[styles.placeholderImage, { backgroundColor: theme.colors.surface }]}>
+              <MaterialIcons name="event" size={40} color={theme.colors.textTertiary} />
             </View>
           )}
           <View style={[styles.statusBadge, styles[`${item.rsvpStatus}Badge`]]}>
-            <Text style={styles.statusText}>
+            <Text style={[styles.statusText, { color: theme.colors.surface }]}>
               {item.rsvpStatus === "going" ? "Going" : item.rsvpStatus === "interested" ? "Interested" : "Not Going"}
             </Text>
           </View>
@@ -123,45 +125,45 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
 
         <View style={styles.eventInfo}>
           <View style={styles.eventHeader}>
-            <Text style={styles.eventTitle}>{item.title}</Text>
+            <Text style={[styles.eventTitle, { color: theme.colors.text }]}>{item.title}</Text>
             <TouchableOpacity onPress={() => removeEvent(item.id)} style={styles.removeButton}>
-              <MaterialIcons name="close" size={20} color="#666" />
+              <MaterialIcons name="close" size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.eventMeta}>
             <View style={styles.metaItem}>
-              <MaterialIcons name="schedule" size={16} color="#666" />
-              <Text style={styles.metaText}>
+              <MaterialIcons name="schedule" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
                 {eventDate.toLocaleDateString()} at{" "}
                 {eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </Text>
             </View>
             <View style={styles.metaItem}>
-              <MaterialIcons name="location-on" size={16} color="#666" />
-              <Text style={styles.metaText}>{item.location}</Text>
+              <MaterialIcons name="location-on" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>{item.location}</Text>
             </View>
             <View style={styles.metaItem}>
-              <MaterialIcons name="people" size={16} color="#666" />
-              <Text style={styles.metaText}>{item.attendee_count} attending</Text>
+              <MaterialIcons name="people" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>{item.attendee_count} attending</Text>
             </View>
           </View>
 
-          <Text style={styles.eventDescription} numberOfLines={2}>
+          <Text style={[styles.eventDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
             {item.description}
           </Text>
 
           {isUpcoming && (
             <View style={styles.rsvpContainer}>
-              <Text style={styles.rsvpLabel}>RSVP Status:</Text>
+              <Text style={[styles.rsvpLabel, { color: theme.colors.text }]}>RSVP Status:</Text>
               <View style={styles.rsvpButtons}>
                 {(["going", "interested", "not_going"] as const).map((status) => (
                   <TouchableOpacity
                     key={status}
-                    style={[styles.rsvpButton, item.rsvpStatus === status && styles.activeRsvpButton]}
+                    style={[styles.rsvpButton, { borderColor: theme.colors.border }, item.rsvpStatus === status && [styles.activeRsvpButton, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]]}
                     onPress={() => updateRSVP(item.id, status)}
                   >
-                    <Text style={[styles.rsvpButtonText, item.rsvpStatus === status && styles.activeRsvpButtonText]}>
+                    <Text style={[styles.rsvpButtonText, { color: theme.colors.textSecondary }, item.rsvpStatus === status && [styles.activeRsvpButtonText, { color: theme.colors.surface }]]}>
                       {status === "going" ? "Going" : status === "interested" ? "Interested" : "Not Going"}
                     </Text>
                   </TouchableOpacity>
@@ -170,7 +172,7 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
             </View>
           )}
 
-          <Text style={styles.rsvpDate}>RSVP'd on {new Date(item.rsvpDate).toLocaleDateString()}</Text>
+          <Text style={[styles.rsvpDate, { color: theme.colors.textTertiary }]}>RSVP'd on {new Date(item.rsvpDate).toLocaleDateString()}</Text>
         </View>
       </TouchableOpacity>
     )
@@ -179,26 +181,26 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
   const filteredEvents = getFilteredEvents()
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Events</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>My Events</Text>
           <View style={styles.headerRight} />
         </View>
       </LinearGradient>
 
       {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, { backgroundColor: theme.colors.surface }]}>
         {(["upcoming", "past", "going", "interested"] as const).map((filterOption) => (
           <TouchableOpacity
             key={filterOption}
-            style={[styles.filterTab, filter === filterOption && styles.activeFilterTab]}
+            style={[styles.filterTab, filter === filterOption && [styles.activeFilterTab, { backgroundColor: theme.colors.primary }]]}
             onPress={() => setFilter(filterOption)}
           >
-            <Text style={[styles.filterTabText, filter === filterOption && styles.activeFilterTabText]}>
+            <Text style={[styles.filterTabText, { color: theme.colors.textSecondary }, filter === filterOption && [styles.activeFilterTabText, { color: theme.colors.surface }]]}>
               {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
             </Text>
           </TouchableOpacity>
@@ -207,13 +209,13 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading your events...</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>Loading your events...</Text>
         </View>
       ) : filteredEvents.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons name="event-note" size={80} color="#ccc" />
-          <Text style={styles.emptyTitle}>No Events Found</Text>
-          <Text style={styles.emptyDescription}>
+          <MaterialIcons name="event-note" size={80} color={theme.colors.textTertiary} />
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No Events Found</Text>
+          <Text style={[styles.emptyDescription, { color: theme.colors.textSecondary }]}>
             {filter === "upcoming"
               ? "You don't have any upcoming events."
               : filter === "past"
@@ -222,8 +224,8 @@ export default function MyEventsScreen({ navigation }: MyEventsScreenProps) {
                   ? "You're not going to any events yet."
                   : "You haven't shown interest in any events yet."}
           </Text>
-          <TouchableOpacity style={styles.exploreButton} onPress={() => navigation.navigate("Events", { screen: "EventsMain" })}>
-            <Text style={styles.exploreButtonText}>Explore Events</Text>
+          <TouchableOpacity style={[styles.exploreButton, { backgroundColor: theme.colors.primary }]} onPress={() => navigation.navigate("Events", { screen: "EventsMain" })}>
+            <Text style={[styles.exploreButtonText, { color: theme.colors.surface }]}>Explore Events</Text>
           </TouchableOpacity>
         </View>
       ) : (

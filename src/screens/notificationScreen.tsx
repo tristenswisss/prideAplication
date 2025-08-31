@@ -7,12 +7,14 @@ import { LinearGradient } from "expo-linear-gradient"
 import { notificationService } from "../../services/notificationService"
 import { useAuth } from "../../Contexts/AuthContexts"
 import type { Notification } from "../../types"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface NotificationsScreenProps {
   navigation: any
 }
 
 export default function NotificationsScreen({ navigation }: NotificationsScreenProps) {
+  const { theme } = useTheme()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
@@ -73,15 +75,15 @@ export default function NotificationsScreen({ navigation }: NotificationsScreenP
   const getNotificationColor = (type: string) => {
     switch (type) {
       case "event_reminder":
-        return "#FF6B6B"
+        return theme.colors.primary
       case "new_event":
-        return "#4ECDC4"
+        return theme.colors.transFriendly
       case "review_response":
-        return "#45B7D1"
+        return theme.colors.secondary
       case "friend_request":
-        return "#96CEB4"
+        return theme.colors.success
       default:
-        return "#666"
+        return theme.colors.textSecondary
     }
   }
 
@@ -102,39 +104,43 @@ export default function NotificationsScreen({ navigation }: NotificationsScreenP
 
   const renderNotification = ({ item }: { item: Notification }) => (
     <TouchableOpacity
-      style={[styles.notificationCard, !item.read && styles.unreadNotification]}
+      style={[styles.notificationCard, {
+        backgroundColor: theme.colors.card,
+        shadowColor: theme.colors.shadow,
+        borderLeftColor: !item.read ? theme.colors.primary : 'transparent'
+      }, !item.read && styles.unreadNotification]}
       onPress={() => handleMarkAsRead(item.id)}
     >
       <View style={[styles.notificationIcon, { backgroundColor: getNotificationColor(item.type) }]}>
-        <MaterialIcons name={getNotificationIcon(item.type) as any} size={20} color="white" />
+        <MaterialIcons name={getNotificationIcon(item.type) as any} size={20} color={theme.colors.surface} />
       </View>
 
       <View style={styles.notificationContent}>
-        <Text style={[styles.notificationTitle, !item.read && styles.unreadText]}>{item.title}</Text>
-        <Text style={styles.notificationMessage} numberOfLines={2}>
+        <Text style={[styles.notificationTitle, { color: theme.colors.text }, !item.read && [styles.unreadText, { color: theme.colors.primary }]]}>{item.title}</Text>
+        <Text style={[styles.notificationMessage, { color: theme.colors.textSecondary }]} numberOfLines={2}>
           {item.message}
         </Text>
-        <Text style={styles.notificationTime}>{formatTime(item.created_at)}</Text>
+        <Text style={[styles.notificationTime, { color: theme.colors.textTertiary }]}>{formatTime(item.created_at)}</Text>
       </View>
 
-      {!item.read && <View style={styles.unreadDot} />}
+      {!item.read && <View style={[styles.unreadDot, { backgroundColor: theme.colors.primary }]} />}
     </TouchableOpacity>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.surface + '20' }]}>
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton}>
-            <Text style={styles.markAllText}>Mark All Read</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Notifications</Text>
+          <TouchableOpacity onPress={handleMarkAllAsRead} style={[styles.markAllButton, { backgroundColor: theme.colors.surface + '20' }]}>
+            <Text style={[styles.markAllText, { color: theme.colors.headerText }]}>Mark All Read</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Notifications List */}
       <FlatList
@@ -147,9 +153,9 @@ export default function NotificationsScreen({ navigation }: NotificationsScreenP
         onRefresh={loadNotifications}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <MaterialIcons name="notifications-none" size={64} color="#ccc" />
-            <Text style={styles.emptyStateText}>No notifications yet</Text>
-            <Text style={styles.emptyStateSubtext}>
+            <MaterialIcons name="notifications-none" size={64} color={theme.colors.textTertiary} />
+            <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No notifications yet</Text>
+            <Text style={[styles.emptyStateSubtext, { color: theme.colors.textTertiary }]}>
               You'll see updates about events, reviews, and community activity here
             </Text>
           </View>
@@ -162,7 +168,6 @@ export default function NotificationsScreen({ navigation }: NotificationsScreenP
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
     paddingTop: 40,
@@ -178,23 +183,19 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "white",
   },
   markAllButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 15,
   },
   markAllText: {
-    color: "white",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -207,19 +208,16 @@ const styles = StyleSheet.create({
   notificationCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
     padding: 15,
     borderRadius: 12,
     marginBottom: 10,
     elevation: 2,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
   unreadNotification: {
     borderLeftWidth: 4,
-    borderLeftColor: "black",
   },
   notificationIcon: {
     width: 40,
@@ -235,7 +233,6 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
     marginBottom: 4,
   },
   unreadText: {
@@ -243,19 +240,16 @@ const styles = StyleSheet.create({
   },
   notificationMessage: {
     fontSize: 14,
-    color: "#666",
     lineHeight: 20,
     marginBottom: 4,
   },
   notificationTime: {
     fontSize: 12,
-    color: "#999",
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "black",
     marginLeft: 10,
   },
   emptyState: {
@@ -266,13 +260,11 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#666",
     marginTop: 20,
     marginBottom: 10,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: "#999",
     textAlign: "center",
     lineHeight: 20,
     paddingHorizontal: 40,

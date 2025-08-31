@@ -8,6 +8,7 @@ import type { PrivacySafetyScreenProps } from "../../types/navigation"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { profileService } from "../../services/profileService"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 interface PrivacySettings {
   profileVisibility: "public" | "friends" | "private"
@@ -20,9 +21,11 @@ interface PrivacySettings {
   locationTracking: boolean
   twoFactorAuth: boolean
   loginAlerts: boolean
+  themePreference: "system" | "light" | "dark"
 }
 
 export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenProps) {
+  const { theme, toggleTheme, setSystemTheme, setThemePreference } = useTheme()
   const [settings, setSettings] = useState<PrivacySettings>({
     profileVisibility: "public",
     showLocation: true,
@@ -34,6 +37,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     locationTracking: true,
     twoFactorAuth: false,
     loginAlerts: true,
+    themePreference: "system",
   })
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
@@ -46,8 +50,16 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     try {
       // Load settings from storage
       const savedSettings = await AsyncStorage.getItem("privacySettings")
+      const savedThemePreference = await AsyncStorage.getItem("themePreference")
+
       if (savedSettings) {
-        setSettings(JSON.parse(savedSettings))
+        const parsedSettings = JSON.parse(savedSettings)
+        setSettings({
+          ...parsedSettings,
+          themePreference: savedThemePreference || parsedSettings.themePreference || "system"
+        })
+      } else if (savedThemePreference) {
+        setSettings(prev => ({ ...prev, themePreference: savedThemePreference as "system" | "light" | "dark" }))
       }
     } catch (error) {
       console.error("Error loading privacy settings:", error)
@@ -60,6 +72,7 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
       // Save to storage and API
       await AsyncStorage.setItem("privacySettings", JSON.stringify(settings))
       await AsyncStorage.setItem("twoFactorAuthEnabled", settings.twoFactorAuth ? "1" : "0")
+      await AsyncStorage.setItem("themePreference", settings.themePreference)
 
       // Persist to Supabase profile
       if (user?.id) {
@@ -99,6 +112,19 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     setSettings((prev) => ({ ...prev, allowDirectMessages: value }))
   }
 
+  const updateThemePreference = (value: PrivacySettings["themePreference"]) => {
+    setSettings((prev) => ({ ...prev, themePreference: value }))
+
+    // Apply theme change immediately
+    if (value === "system") {
+      setSystemTheme()
+    } else if (value === "light") {
+      setThemePreference(false)
+    } else if (value === "dark") {
+      setThemePreference(true)
+    }
+  }
+
   const handleBlockedUsers = () => {
     navigation.navigate("BlockedUsers" as any)
   }
@@ -125,15 +151,15 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
   }
 
   const renderToggleOption = (key: keyof PrivacySettings, title: string, description: string, icon: string) => (
-    <TouchableOpacity style={styles.option} onPress={() => toggleSetting(key)}>
+    <TouchableOpacity style={[styles.option, { borderBottomColor: theme.colors.divider }]} onPress={() => toggleSetting(key)}>
       <View style={styles.optionIcon}>
-        <MaterialIcons name={icon as any} size={24} color="black" />
+        <MaterialIcons name={icon as any} size={24} color={theme.colors.text} />
       </View>
       <View style={styles.optionContent}>
-        <Text style={styles.optionTitle}>{title}</Text>
-        <Text style={styles.optionDescription}>{description}</Text>
+        <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{title}</Text>
+        <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>{description}</Text>
       </View>
-      <View style={[styles.toggle, settings[key] && styles.toggleActive]}>
+      <View style={[styles.toggle, settings[key] && [styles.toggleActive, { backgroundColor: theme.colors.primary }]]}>
         <View style={[styles.toggleThumb, settings[key] && styles.toggleThumbActive]} />
       </View>
     </TouchableOpacity>
@@ -147,24 +173,24 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     currentValue: T,
     onSelect: (value: T) => void,
   ) => (
-    <View style={styles.selectOption}>
+    <View style={[styles.selectOption, { borderBottomColor: theme.colors.divider }]}>
       <View style={styles.optionHeader}>
         <View style={styles.optionIcon}>
-          <MaterialIcons name={icon as any} size={24} color="black" />
+          <MaterialIcons name={icon as any} size={24} color={theme.colors.text} />
         </View>
         <View style={styles.optionContent}>
-          <Text style={styles.optionTitle}>{title}</Text>
-          <Text style={styles.optionDescription}>{description}</Text>
+          <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{title}</Text>
+          <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>{description}</Text>
         </View>
       </View>
       <View style={styles.selectButtons}>
         {options.map((option) => (
           <TouchableOpacity
             key={option.value}
-            style={[styles.selectButton, currentValue === option.value && styles.selectedButton]}
+            style={[styles.selectButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, currentValue === option.value && [styles.selectedButton, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]]}
             onPress={() => onSelect(option.value)}
           >
-            <Text style={[styles.selectButtonText, currentValue === option.value && styles.selectedButtonText]}>
+            <Text style={[styles.selectButtonText, { color: theme.colors.textSecondary }, currentValue === option.value && [styles.selectedButtonText, { color: theme.colors.surface }]]}>
               {option.label}
             </Text>
           </TouchableOpacity>
@@ -174,13 +200,13 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
   )
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Privacy & Safety</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Privacy & Safety</Text>
           <TouchableOpacity onPress={saveSettings} style={styles.saveButton} disabled={loading}>
             <Text style={styles.saveButtonText}>{loading ? "Saving..." : "Save"}</Text>
           </TouchableOpacity>
@@ -189,8 +215,8 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Privacy */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Privacy</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Profile Privacy</Text>
 
           {renderSelectOption(
             "Profile Visibility",
@@ -217,9 +243,27 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
           )}
         </View>
 
+        {/* Appearance */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Appearance</Text>
+
+          {renderSelectOption(
+            "Theme",
+            "Choose your preferred theme",
+            "palette",
+            [
+              { label: "System", value: "system" },
+              { label: "Light", value: "light" },
+              { label: "Dark", value: "dark" },
+            ],
+            settings.themePreference,
+            updateThemePreference,
+          )}
+        </View>
+
         {/* Communication */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Communication</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Communication</Text>
 
           {renderSelectOption(
             "Direct Messages",
@@ -234,21 +278,21 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
             updateDirectMessages,
           )}
 
-          <TouchableOpacity style={styles.actionOption} onPress={handleBlockedUsers}>
+          <TouchableOpacity style={[styles.actionOption, { borderBottomColor: theme.colors.divider }]} onPress={handleBlockedUsers}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="block" size={24} color="black" />
+              <MaterialIcons name="block" size={24} color={theme.colors.text} />
             </View>
             <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Blocked Users</Text>
-              <Text style={styles.optionDescription}>Manage your blocked users list</Text>
+              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Blocked Users</Text>
+              <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>Manage your blocked users list</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
         {/* Data & Privacy */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data & Privacy</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Data & Privacy</Text>
 
           {renderToggleOption(
             "dataCollection",
@@ -273,19 +317,19 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
 
           <TouchableOpacity style={styles.actionOption} onPress={handleDataDownload}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="download" size={24} color="black" />
+              <MaterialIcons name="download" size={24} color={theme.colors.text} />
             </View>
             <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Download My Data</Text>
-              <Text style={styles.optionDescription}>Get a copy of your data</Text>
+              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Download My Data</Text>
+              <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>Get a copy of your data</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
         {/* Security */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Security</Text>
 
           {renderToggleOption(
             "twoFactorAuth",
@@ -303,45 +347,45 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
         </View>
 
         {/* Safety Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Safety Actions</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Safety Actions</Text>
 
           <TouchableOpacity style={styles.actionOption} onPress={() => navigation.navigate("Safety")}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="shield" size={24} color="black" />
+              <MaterialIcons name="shield" size={24} color={theme.colors.text} />
             </View>
             <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Safety Center</Text>
-              <Text style={styles.optionDescription}>Access safety features and emergency contacts</Text>
+              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Safety Center</Text>
+              <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>Access safety features and emergency contacts</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionOption} onPress={() => navigation.navigate("BuddySystem")}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="people" size={24} color="black" />
+              <MaterialIcons name="people" size={24} color={theme.colors.text} />
             </View>
             <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Buddy System</Text>
-              <Text style={styles.optionDescription}>Manage your safety buddy connections</Text>
+              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Buddy System</Text>
+              <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>Manage your safety buddy connections</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
         {/* Account Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Account</Text>
 
           <TouchableOpacity style={styles.dangerOption} onPress={handleAccountDeletion}>
             <View style={styles.optionIcon}>
-              <MaterialIcons name="delete-forever" size={24} color="black" />
+              <MaterialIcons name="delete-forever" size={24} color={theme.colors.text} />
             </View>
             <View style={styles.optionContent}>
               <Text style={[styles.optionTitle, styles.dangerText]}>Delete Account</Text>
-              <Text style={styles.optionDescription}>Permanently delete your account and data</Text>
+              <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>Permanently delete your account and data</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
       </ScrollView>

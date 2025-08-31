@@ -24,8 +24,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { profileService } from "../../services/profileService"
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal"
 import ForgotPasswordModal from "../../components/ForgotPasswordModal"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function AuthScreen() {
+  const { theme } = useTheme()
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -189,7 +191,7 @@ export default function AuthScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"} 
         style={styles.keyboardView}

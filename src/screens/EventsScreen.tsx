@@ -9,9 +9,11 @@ import { liveEventService } from "../../services/liveEventService"
 import type { Event } from "../../types"
 import type { EventsScreenProps } from "../../types/navigation"
 import { useAuth } from "../../Contexts/AuthContexts"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function EventsScreen({ navigation }: EventsScreenProps) {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "upcoming" | "today" | "this_week">("all")
@@ -109,84 +111,84 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
     const organizerUsername = (item as any)?.organizer?.username
 
     return (
-      <TouchableOpacity style={styles.eventCard} onPress={() => navigation.navigate("EventDetails", { event: item })}>
+      <TouchableOpacity style={[styles.eventCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]} onPress={() => navigation.navigate("EventDetails", { event: item })}>
         <View style={styles.eventImageContainer}>
           {item.image_url ? (
             <Image source={{ uri: item.image_url }} style={styles.eventImage} />
           ) : (
-            <View style={styles.placeholderImage}>
-              <MaterialIcons name="event" size={40} color="#ccc" />
+            <View style={[styles.placeholderImage, { backgroundColor: theme.colors.surface }]}>
+              <MaterialIcons name="event" size={40} color={theme.colors.textTertiary} />
             </View>
           )}
           {!item.is_free && item.price && (
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceText}>{item.price === 0 ? "Free" : `$${item.price}`}</Text>
+            <View style={[styles.priceBadge, { backgroundColor: theme.colors.accent }]}>
+              <Text style={[styles.priceText, { color: theme.colors.surface }]}>{item.price === 0 ? "Free" : `$${item.price}`}</Text>
             </View>
           )}
         </View>
 
         <View style={styles.eventInfo}>
           <View style={styles.eventHeader}>
-            <Text style={styles.eventTitle}>{item.title}</Text>
+            <Text style={[styles.eventTitle, { color: theme.colors.text }]}>{item.title}</Text>
             <View style={styles.attendeeCount}>
-              <MaterialIcons name="people" size={16} color="#666" />
-              <Text style={styles.attendeeText}>{item.attendee_count || item.current_attendees || 0}</Text>
+              <MaterialIcons name="people" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.attendeeText, { color: theme.colors.textSecondary }]}>{item.attendee_count || item.current_attendees || 0}</Text>
             </View>
           </View>
 
           <View style={styles.eventMeta}>
             <View style={styles.metaItem}>
-              <MaterialIcons name="schedule" size={16} color="#666" />
-              <Text style={styles.metaText}>
+              <MaterialIcons name="schedule" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
                 {eventDate.toLocaleDateString()} at {item.time || item.start_time}
               </Text>
             </View>
             <View style={styles.metaItem}>
-              <MaterialIcons name="location-on" size={16} color="#666" />
-              <Text style={styles.metaText}>{item.location}</Text>
+              <MaterialIcons name="location-on" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>{item.location}</Text>
             </View>
             <View style={styles.metaItem}>
-              <MaterialIcons name="person" size={16} color="#666" />
-              <Text style={styles.metaText}>by {organizerUsername ? `@${organizerUsername}` : item.organizer?.name || "Unknown"}</Text>
+              <MaterialIcons name="person" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>by {organizerUsername ? `@${organizerUsername}` : item.organizer?.name || "Unknown"}</Text>
             </View>
           </View>
 
-          <Text style={styles.eventDescription} numberOfLines={2}>
+          <Text style={[styles.eventDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
             {item.description}
           </Text>
 
           <View style={styles.eventTags}>
-            <View style={styles.categoryTag}>
-              <Text style={styles.categoryTagText}>{item.category.toUpperCase()}</Text>
+            <View style={[styles.categoryTag, { backgroundColor: theme.colors.primary }]}>
+              <Text style={[styles.categoryTagText, { color: theme.colors.surface }]}>{item.category.toUpperCase()}</Text>
             </View>
             {item.tags.slice(0, 2).map((tag, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>#{tag}</Text>
+              <View key={index} style={[styles.tag, { backgroundColor: theme.colors.surface }]}>
+                <Text style={[styles.tagText, { color: theme.colors.textSecondary }]}>#{tag}</Text>
               </View>
             ))}
           </View>
 
           {isUpcoming && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.interestedButton} onPress={async () => {
+              <TouchableOpacity style={[styles.interestedButton, { borderColor: theme.colors.primary }]} onPress={async () => {
                 if (!user) return
                 try {
                   await eventService.rsvpToEvent(item.id, user.id, "interested")
                   loadEvents()
                 } catch {}
               }}>
-                <MaterialIcons name="star-border" size={16} color="#FF6B6B" />
-                <Text style={styles.interestedButtonText}>Interested</Text>
+                <MaterialIcons name="star-border" size={16} color={theme.colors.primary} />
+                <Text style={[styles.interestedButtonText, { color: theme.colors.primary }]}>Interested</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.goingButton} onPress={async () => {
+              <TouchableOpacity style={[styles.goingButton, { backgroundColor: theme.colors.primary }]} onPress={async () => {
                 if (!user) return
                 try {
                   await eventService.rsvpToEvent(item.id, user.id, "going")
                   loadEvents()
                 } catch {}
               }}>
-                <MaterialIcons name="check" size={16} color="white" />
-                <Text style={styles.goingButtonText}>Going</Text>
+                <MaterialIcons name="check" size={16} color={theme.colors.surface} />
+                <Text style={[styles.goingButtonText, { color: theme.colors.surface }]}>Going</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -198,19 +200,19 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
   const filteredEvents = getFilteredEvents()
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Events</Text>
-          <Text style={styles.headerSubtitle}>Discover LGBTQ+ community events</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Events</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.colors.headerText, opacity: 0.9 }]}>Discover LGBTQ+ community events</Text>
         </View>
 
         <View style={styles.searchBar}>
-          <MaterialIcons name="search" size={20} color="#666" />
+          <MaterialIcons name="search" size={20} color={theme.colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.colors.headerText }]}
             placeholder="Search by category, name, or location"
-            placeholderTextColor="#bbb"
+            placeholderTextColor={theme.colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
@@ -220,21 +222,21 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         <View style={styles.headerButtons}>
           {/* Live events removed */}
           <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent") }>
-            <MaterialIcons name="add" size={24} color="white" />
-            <Text style={styles.createButtonText}>Create Event</Text>
+            <MaterialIcons name="add" size={24} color={theme.colors.headerText} />
+            <Text style={[styles.createButtonText, { color: theme.colors.headerText }]}>Create Event</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
       {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, { backgroundColor: theme.colors.surface }]}>
         {(["all", "upcoming", "today", "this_week"] as const).map((filterOption) => (
           <TouchableOpacity
             key={filterOption}
-            style={[styles.filterTab, filter === filterOption && styles.activeFilterTab]}
+            style={[styles.filterTab, filter === filterOption && [styles.activeFilterTab, { backgroundColor: theme.colors.primary }]]}
             onPress={() => setFilter(filterOption)}
           >
-            <Text style={[styles.filterTabText, filter === filterOption && styles.activeFilterTabText]}>
+            <Text style={[styles.filterTabText, { color: theme.colors.textSecondary }, filter === filterOption && [styles.activeFilterTabText, { color: theme.colors.surface }]]}>
               {filterOption === "all"
                 ? "All"
                 : filterOption === "upcoming"
@@ -249,13 +251,13 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading events...</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>Loading events...</Text>
         </View>
       ) : filteredEvents.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons name="event-note" size={80} color="#ccc" />
-          <Text style={styles.emptyTitle}>No Events Found</Text>
-          <Text style={styles.emptyDescription}>
+          <MaterialIcons name="event-note" size={80} color={theme.colors.textTertiary} />
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No Events Found</Text>
+          <Text style={[styles.emptyDescription, { color: theme.colors.textSecondary }]}>
             {filter === "all"
               ? "No events available at the moment."
               : filter === "today"
@@ -264,8 +266,8 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
                   ? "No events this week."
                   : "No upcoming events found."}
           </Text>
-          <TouchableOpacity style={styles.createEventButton} onPress={() => navigation.navigate("CreateEvent")}>
-            <Text style={styles.createEventButtonText}>Create First Event</Text>
+          <TouchableOpacity style={[styles.createEventButton, { backgroundColor: theme.colors.primary }]} onPress={() => navigation.navigate("CreateEvent")}>
+            <Text style={[styles.createEventButtonText, { color: theme.colors.surface }]}>Create First Event</Text>
           </TouchableOpacity>
         </View>
       ) : (

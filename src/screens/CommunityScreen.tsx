@@ -28,6 +28,7 @@ import { messagingService } from "../../services/messagingService"
 import { buddySystemService } from "../../services/buddySystemService"
 import AppModal from "../../components/AppModal"
 import { notificationService } from "../../services/notificationService"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -48,6 +49,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [buddyList, setBuddyList] = useState<UserProfile[]>([])
 
   const { user } = useAuth()
+  const { theme } = useTheme()
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -519,7 +521,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   }
 
   const renderPost = ({ item }: { item: Post }) => (
-    <View style={styles.postCard}>
+    <View style={[styles.postCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
       {/* Post Header */}
       <View style={styles.postHeader}>
         <TouchableOpacity
@@ -528,8 +530,8 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           {item.user?.avatar_url ? (
             <Image source={{ uri: item.user?.avatar_url }} style={styles.userAvatar} />
           ) : (
-            <View style={[styles.userAvatar, { alignItems: "center", justifyContent: "center", backgroundColor: "#eee" }]}>
-              <MaterialIcons name="person" size={24} color="#ccc" />
+            <View style={[styles.userAvatar, { alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.card }]}>
+              <MaterialIcons name="person" size={24} color={theme.colors.textTertiary} />
             </View>
           )}
         </TouchableOpacity>
@@ -538,25 +540,25 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             onPress={() => item.user?.id && navigation.navigate("UserProfile", { userId: item.user.id })}
           >
             <View style={styles.userNameRow}>
-              <Text style={styles.userName}>{item.user?.name}</Text>
-              {item.user?.verified && <MaterialIcons name="verified" size={16} color="#4CAF50" />}
+              <Text style={[styles.userName, { color: theme.colors.text }]}>{item.user?.name}</Text>
+              {item.user?.verified && <MaterialIcons name="verified" size={16} color={theme.colors.success} />}
             </View>
-            <Text style={styles.userHandle}>
+            <Text style={[styles.userHandle, { color: theme.colors.textSecondary }]}>
               @{item.user?.username || item.user?.name.toLowerCase().replace(/\s+/g, "")}
             </Text>
           </TouchableOpacity>
-          <Text style={styles.postTime}>{formatTimeAgo(item.created_at)}</Text>
+          <Text style={[styles.postTime, { color: theme.colors.textTertiary }]}>{formatTimeAgo(item.created_at)}</Text>
         </View>
         <TouchableOpacity
           style={styles.moreButton}
           onPress={() => handleMoreOptions(item)}
         >
-          <MaterialIcons name="more-vert" size={20} color="#666" />
+          <MaterialIcons name="more-vert" size={20} color={theme.colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       {/* Post Content */}
-      <Text style={styles.postContent}>{item.content}</Text>
+      <Text style={[styles.postContent, { color: theme.colors.text }]}>{item.content}</Text>
 
       {/* Post Images */}
       {item.images.length > 0 && (
@@ -570,8 +572,8 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       {/* Location */}
       {item.location && (
         <View style={styles.locationContainer}>
-          <MaterialIcons name="location-on" size={16} color="#666" />
-          <Text style={styles.locationText}>{item.location.name}</Text>
+          <MaterialIcons name="location-on" size={16} color={theme.colors.textSecondary} />
+          <Text style={[styles.locationText, { color: theme.colors.textSecondary }]}>{item.location.name}</Text>
         </View>
       )}
 
@@ -579,7 +581,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       {item.tags.length > 0 && (
         <View style={styles.tagsContainer}>
           {item.tags.map((tag, index) => (
-            <Text key={index} style={styles.hashtag}>
+            <Text key={index} style={[styles.hashtag, { color: theme.colors.secondary }]}>
               #{tag}
             </Text>
           ))}
@@ -587,31 +589,31 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       )}
 
       {/* Post Actions */}
-      <View style={styles.postActions}>
+      <View style={[styles.postActions, { borderTopColor: theme.colors.divider }]}>
         <TouchableOpacity style={styles.actionButton} onPress={() => handleLikePost(item.id)}>
           <MaterialIcons
             name={item.is_liked ? "favorite" : "favorite-border"}
             size={20}
-            color={item.is_liked ? "#FF6B6B" : "#666"}
+            color={item.is_liked ? theme.colors.primary : theme.colors.textSecondary}
           />
-          <Text style={[styles.actionText, item.is_liked && styles.likedText]}>{item.likes_count}</Text>
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }, item.is_liked && [styles.likedText, { color: theme.colors.primary }]]}>{item.likes_count}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={() => handleShowComments(item)}>
-          <MaterialIcons name="chat-bubble-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>{item.comments_count}</Text>
+          <MaterialIcons name="chat-bubble-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.comments_count}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={() => handleSharePost(item)}>
-          <MaterialIcons name="share" size={20} color="#666" />
-          <Text style={styles.actionText}>{item.shares_count}</Text>
+          <MaterialIcons name="share" size={20} color={theme.colors.textSecondary} />
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.shares_count}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={() => handleSavePost(item.id)}>
           <MaterialIcons
             name={item.is_saved ? "bookmark" : "bookmark-border"}
             size={20}
-            color={item.is_saved ? "#4ECDC4" : "#666"}
+            color={item.is_saved ? theme.colors.secondary : theme.colors.textSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -623,40 +625,40 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       <Image source={{ uri: item.user?.avatar_url }} style={styles.commentAvatar} />
       <View style={styles.commentContent}>
         <View style={styles.commentHeader}>
-          <Text style={styles.commentUserName}>{item.user?.name}</Text>
-          <Text style={styles.commentTime}>{formatTimeAgo(item.created_at)}</Text>
+          <Text style={[styles.commentUserName, { color: theme.colors.text }]}>{item.user?.name}</Text>
+          <Text style={[styles.commentTime, { color: theme.colors.textTertiary }]}>{formatTimeAgo(item.created_at)}</Text>
         </View>
-        <Text style={styles.commentText}>{item.content}</Text>
+        <Text style={[styles.commentText, { color: theme.colors.text }]}>{item.content}</Text>
         <TouchableOpacity style={styles.commentLike}>
           <MaterialIcons
             name={item.is_liked ? "favorite" : "favorite-border"}
             size={14}
-            color={item.is_liked ? "#FF6B6B" : "#666"}
+            color={item.is_liked ? theme.colors.primary : theme.colors.textSecondary}
           />
-          <Text style={styles.commentLikeText}>{item.likes_count}</Text>
+          <Text style={[styles.commentLikeText, { color: theme.colors.textSecondary }]}>{item.likes_count}</Text>
         </TouchableOpacity>
       </View>
     </View>
   )
 
   const renderBuddyItem = ({ item }: { item: UserProfile }) => (
-    <TouchableOpacity style={styles.buddyItem} onPress={() => shareToUser(item)}>
+    <TouchableOpacity style={[styles.buddyItem, { borderBottomColor: theme.colors.divider }]} onPress={() => shareToUser(item)}>
       <Image
         source={{ uri: item.avatar_url || "/placeholder.svg?height=40&width=40&text=" + item.name.charAt(0) }}
         style={styles.buddyAvatar}
       />
-      <Text style={styles.buddyName}>{item.name}</Text>
+      <Text style={[styles.buddyName, { color: theme.colors.text }]}>{item.name}</Text>
     </TouchableOpacity>
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
-        <Text style={styles.headerTitle}>Community</Text>
-        <Text style={styles.headerSubtitle}>Connect with your Pride family</Text>
+      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
+        <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Community</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.colors.headerText, opacity: 0.9 }]}>Connect with your Pride family</Text>
         <TouchableOpacity style={styles.messagesButton} onPress={() => navigation.navigate("Messages")}>
-          <MaterialIcons name="message" size={24} color="white" />
+          <MaterialIcons name="message" size={24} color={theme.colors.headerText} />
         </TouchableOpacity>
       </LinearGradient>
 
@@ -673,13 +675,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         }}
         ListHeaderComponent={
           <>
-            <TouchableOpacity style={styles.createPostPrompt} onPress={() => setShowCreatePost(true)}>
+            <TouchableOpacity style={[styles.createPostPrompt, { backgroundColor: theme.colors.surface }]} onPress={() => setShowCreatePost(true)}>
               <Image
                 source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
                 style={styles.promptAvatar}
               />
-              <MaterialIcons name="add-circle" size={24} color="#FFD166" />
-              <Text style={[styles.promptText, { marginLeft: 10 }]}>Share something with the community...</Text>
+              <MaterialIcons name="add-circle" size={24} color={theme.colors.accent} />
+              <Text style={[styles.promptText, { marginLeft: 10, color: theme.colors.textSecondary }]}>Share something with the community...</Text>
             </TouchableOpacity>
           </>
         }
@@ -700,13 +702,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             style={styles.createPostAvatar}
           />
           <TextInput
-            style={styles.createPostInput}
+            style={[styles.createPostInput, { color: theme.colors.text }]}
             placeholder="What's happening in the community?"
             value={newPostContent}
             onChangeText={setNewPostContent}
             multiline
             autoFocus
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
           />
         </View>
 
@@ -726,22 +728,22 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         <View style={styles.createPostActions}>
           <View style={styles.actionRow}>
             <TouchableOpacity style={styles.createPostAction} onPress={handlePickImage}>
-              <MaterialIcons name="photo-library" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Photo</Text>
+              <MaterialIcons name="photo-library" size={24} color={theme.colors.text} />
+              <Text style={[styles.createPostActionText, { color: theme.colors.secondary }]}>Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.createPostAction} onPress={handleTakePhoto}>
-              <MaterialIcons name="camera-alt" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Camera</Text>
+              <MaterialIcons name="camera-alt" size={24} color={theme.colors.text} />
+              <Text style={[styles.createPostActionText, { color: theme.colors.secondary }]}>Camera</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.actionRow}>
             <TouchableOpacity style={styles.createPostAction} onPress={handleAddLocation}>
-              <MaterialIcons name="location-on" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Location</Text>
+              <MaterialIcons name="location-on" size={24} color={theme.colors.text} />
+              <Text style={[styles.createPostActionText, { color: theme.colors.secondary }]}>Location</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.createPostAction} onPress={handleAddEvent}>
-              <MaterialIcons name="event" size={24} color="black" />
-              <Text style={styles.createPostActionText}>Event</Text>
+              <MaterialIcons name="event" size={24} color={theme.colors.text} />
+              <Text style={[styles.createPostActionText, { color: theme.colors.secondary }]}>Event</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -762,30 +764,30 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           style={styles.commentsList}
           ListEmptyComponent={
             <View style={styles.noComments}>
-              <Text style={styles.noCommentsText}>No comments yet</Text>
-              <Text style={styles.noCommentsSubtext}>Be the first to comment!</Text>
+              <Text style={[styles.noCommentsText, { color: theme.colors.textSecondary }]}>No comments yet</Text>
+              <Text style={[styles.noCommentsSubtext, { color: theme.colors.textTertiary }]}>Be the first to comment!</Text>
             </View>
           }
         />
 
-        <View style={styles.addCommentContainer}>
+        <View style={[styles.addCommentContainer, { borderTopColor: theme.colors.divider }]}>
           <Image
             source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
             style={styles.commentInputAvatar}
           />
           <TextInput
-            style={styles.commentInput}
+            style={[styles.commentInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
             placeholder="Add a comment..."
             value={newComment}
             onChangeText={setNewComment}
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.colors.textSecondary}
           />
           <TouchableOpacity
             onPress={handleAddComment}
             disabled={!newComment.trim()}
             style={[styles.sendCommentButton, !newComment.trim() && styles.sendCommentButtonDisabled]}
           >
-            <MaterialIcons name="send" size={20} color={newComment.trim() ? "gold" : "#ccc"} />
+            <MaterialIcons name="send" size={20} color={newComment.trim() ? theme.colors.accent : theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
       </AppModal>
@@ -805,9 +807,9 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           style={styles.buddyList}
           ListEmptyComponent={
             <View style={styles.noBuddies}>
-              <MaterialIcons name="people" size={64} color="#ccc" />
-              <Text style={styles.noBuddiesText}>No contacts found</Text>
-              <Text style={styles.noBuddiesSubtext}>Connect with people to share posts</Text>
+              <MaterialIcons name="people" size={64} color={theme.colors.textTertiary} />
+              <Text style={[styles.noBuddiesText, { color: theme.colors.textSecondary }]}>No contacts found</Text>
+              <Text style={[styles.noBuddiesSubtext, { color: theme.colors.textTertiary }]}>Connect with people to share posts</Text>
             </View>
           }
         />

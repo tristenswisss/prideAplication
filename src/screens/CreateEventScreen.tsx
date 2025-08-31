@@ -18,9 +18,11 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { eventCreationService } from "../../services/eventCreationService"
 import type { CreateEventScreenProps } from "../../types/navigation"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function CreateEventScreen({ navigation }: CreateEventScreenProps) {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
 
   // Form state
@@ -217,43 +219,45 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={["black", "black"]} style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.surface + '40' }]}>
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Event</Text>
-          <TouchableOpacity onPress={handleSubmit} style={styles.createButton} disabled={loading}>
-            <Text style={styles.createButtonText}>{loading ? "Creating..." : "Create"}</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Create Event</Text>
+          <TouchableOpacity onPress={handleSubmit} style={[styles.createButton, { backgroundColor: theme.colors.surface + '40' }]} disabled={loading}>
+            <Text style={[styles.createButtonText, { color: theme.colors.headerText }]}>{loading ? "Creating..." : "Create"}</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Basic Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Basic Information</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Event Title *</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Event Title *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
               value={formData.title}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, title: text }))}
               placeholder="Enter event title"
+              placeholderTextColor={theme.colors.placeholder}
               maxLength={100}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Description *</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Description *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
               value={formData.description}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, description: text }))}
               placeholder="Describe your event..."
+              placeholderTextColor={theme.colors.placeholder}
               multiline
               numberOfLines={4}
               maxLength={500}
@@ -261,20 +265,20 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Category</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Category</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
               {categories.map((category) => (
                 <TouchableOpacity
                   key={category.id}
-                  style={[styles.categoryButton, formData.category === category.id && styles.selectedCategory]}
+                  style={[styles.categoryButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, formData.category === category.id && [styles.selectedCategory, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]]}
                   onPress={() => setFormData((prev) => ({ ...prev, category: category.id as any }))}
                 >
                   <MaterialIcons
                     name={category.icon as any}
                     size={20}
-                    color={formData.category === category.id ? "white" : "#666"}
+                    color={formData.category === category.id ? theme.colors.surface : theme.colors.textSecondary}
                   />
-                  <Text style={[styles.categoryText, formData.category === category.id && styles.selectedCategoryText]}>
+                  <Text style={[styles.categoryText, { color: theme.colors.textSecondary }, formData.category === category.id && [styles.selectedCategoryText, { color: theme.colors.surface }]]}>
                     {category.name}
                   </Text>
                 </TouchableOpacity>
@@ -284,33 +288,33 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
         </View>
 
         {/* Date and Time */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Date & Time</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Date & Time</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Event Date</Text>
-            <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-              <MaterialIcons name="event" size={20} color="#666" />
-              <Text style={styles.dateButtonText}>{selectedDate.toLocaleDateString()}</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Event Date</Text>
+            <TouchableOpacity style={[styles.dateButton, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder }]} onPress={() => setShowDatePicker(true)}>
+              <MaterialIcons name="event" size={20} color={theme.colors.textSecondary} />
+              <Text style={[styles.dateButtonText, { color: theme.colors.inputText }]}>{selectedDate.toLocaleDateString()}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.timeRow}>
             <View style={styles.timeInputGroup}>
-              <Text style={styles.inputLabel}>Start Time</Text>
-              <TouchableOpacity style={styles.timeButton} onPress={() => setShowStartTimePicker(true)}>
-                <MaterialIcons name="access-time" size={20} color="#666" />
-                <Text style={styles.timeButtonText}>
+              <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Start Time</Text>
+              <TouchableOpacity style={[styles.timeButton, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder }]} onPress={() => setShowStartTimePicker(true)}>
+                <MaterialIcons name="access-time" size={20} color={theme.colors.textSecondary} />
+                <Text style={[styles.timeButtonText, { color: theme.colors.inputText }]}>
                   {startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.timeInputGroup}>
-              <Text style={styles.inputLabel}>End Time</Text>
-              <TouchableOpacity style={styles.timeButton} onPress={() => setShowEndTimePicker(true)}>
-                <MaterialIcons name="access-time" size={20} color="#666" />
-                <Text style={styles.timeButtonText}>
+              <Text style={[styles.inputLabel, { color: theme.colors.text }]}>End Time</Text>
+              <TouchableOpacity style={[styles.timeButton, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder }]} onPress={() => setShowEndTimePicker(true)}>
+                <MaterialIcons name="access-time" size={20} color={theme.colors.textSecondary} />
+                <Text style={[styles.timeButtonText, { color: theme.colors.inputText }]}>
                   {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </Text>
               </TouchableOpacity>
@@ -319,47 +323,48 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
         </View>
 
         {/* Location */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Location</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Location</Text>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Virtual Event</Text>
+            <Text style={[styles.switchLabel, { color: theme.colors.text }]}>Virtual Event</Text>
             <Switch
               value={formData.is_virtual}
               onValueChange={(value) => { setFormData((prev) => ({ ...prev, is_virtual: value })); if (!value) { setVirtualPlatform(null) } }}
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={formData.is_virtual ? "#f5dd4b" : "#f4f3f4" }
+              trackColor={{ false: theme.colors.textTertiary, true: theme.colors.primary }}
+              thumbColor={formData.is_virtual ? theme.colors.accent : theme.colors.surface }
             />
           </View>
 
           {formData.is_virtual ? (
             <>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Platform *</Text>
+                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Platform *</Text>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity
-                    style={[styles.categoryButton, virtualPlatform === "zoom" && styles.selectedCategory]}
+                    style={[styles.categoryButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, virtualPlatform === "zoom" && [styles.selectedCategory, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]]}
                     onPress={() => setVirtualPlatform("zoom")}
                   >
-                    <MaterialIcons name="videocam" size={20} color={virtualPlatform === "zoom" ? "white" : "#666"} />
-                    <Text style={[styles.categoryText, virtualPlatform === "zoom" && styles.selectedCategoryText]}>Zoom</Text>
+                    <MaterialIcons name="videocam" size={20} color={virtualPlatform === "zoom" ? theme.colors.surface : theme.colors.textSecondary} />
+                    <Text style={[styles.categoryText, { color: theme.colors.textSecondary }, virtualPlatform === "zoom" && [styles.selectedCategoryText, { color: theme.colors.surface }]]}>Zoom</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.categoryButton, virtualPlatform === "google_meet" && styles.selectedCategory]}
+                    style={[styles.categoryButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, virtualPlatform === "google_meet" && [styles.selectedCategory, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]]}
                     onPress={() => setVirtualPlatform("google_meet")}
                   >
-                    <MaterialIcons name="video-call" size={20} color={virtualPlatform === "google_meet" ? "white" : "#666"} />
-                    <Text style={[styles.categoryText, virtualPlatform === "google_meet" && styles.selectedCategoryText]}>Google Meet</Text>
+                    <MaterialIcons name="video-call" size={20} color={virtualPlatform === "google_meet" ? theme.colors.surface : theme.colors.textSecondary} />
+                    <Text style={[styles.categoryText, { color: theme.colors.textSecondary }, virtualPlatform === "google_meet" && [styles.selectedCategoryText, { color: theme.colors.surface }]]}>Google Meet</Text>
                   </TouchableOpacity>
                 </View>
               </View>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Meeting Link *</Text>
+                <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Meeting Link *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
                   value={formData.virtual_link}
                   onChangeText={(text) => setFormData((prev) => ({ ...prev, virtual_link: text }))}
                   placeholder="Paste Zoom or Google Meet link"
+                  placeholderTextColor={theme.colors.placeholder}
                   keyboardType="url"
                   autoCapitalize="none"
                 />
@@ -367,99 +372,102 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
             </>
           ) : (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Venue Address *</Text>
+              <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Venue Address *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
                 value={formData.location}
                 onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
                 placeholder="Enter venue address"
+                placeholderTextColor={theme.colors.placeholder}
               />
             </View>
           )}
         </View>
 
         {/* Pricing */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pricing</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Pricing</Text>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Free Event</Text>
+            <Text style={[styles.switchLabel, { color: theme.colors.text }]}>Free Event</Text>
             <Switch
               value={formData.is_free}
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, is_free: value, price: value ? undefined : prev.price }))
               }
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={formData.is_free ? "#f5dd4b" : "#f4f3f4"}
+              trackColor={{ false: theme.colors.textTertiary, true: theme.colors.primary }}
+              thumbColor={formData.is_free ? theme.colors.accent : theme.colors.surface}
             />
           </View>
 
           {!formData.is_free && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Ticket Price *</Text>
+              <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Ticket Price *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
                 value={formData.price?.toString() || ""}
                 onChangeText={(text) =>
                   setFormData((prev) => ({ ...prev, price: text ? Number.parseFloat(text) : undefined }))
                 }
                 placeholder="Enter ticket price"
+                placeholderTextColor={theme.colors.placeholder}
                 keyboardType="numeric"
               />
             </View>
           )}
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Ticketed Event</Text>
+            <Text style={[styles.switchLabel, { color: theme.colors.text }]}>Ticketed Event</Text>
             <Switch
               value={formData.isTicketed}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, isTicketed: value }))}
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={formData.isTicketed ? "#f5dd4b" : "#f4f3f4"}
+              trackColor={{ false: theme.colors.textTertiary, true: theme.colors.primary }}
+              thumbColor={formData.isTicketed ? theme.colors.accent : theme.colors.surface}
             />
           </View>
         </View>
 
         {/* Event Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Event Settings</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Event Settings</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Maximum Attendees (Optional)</Text>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Maximum Attendees (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
               value={formData.max_attendees?.toString() || ""}
               onChangeText={(text) =>
                 setFormData((prev) => ({ ...prev, max_attendees: text ? Number.parseInt(text) : undefined }))
               }
               placeholder="Leave blank for unlimited"
+              placeholderTextColor={theme.colors.placeholder}
               keyboardType="numeric"
             />
           </View>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Require Approval to Join</Text>
+            <Text style={[styles.switchLabel, { color: theme.colors.text }]}>Require Approval to Join</Text>
             <Switch
               value={formData.requires_approval}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, requires_approval: value }))}
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={formData.requires_approval ? "#f5dd4b" : "#f4f3f4"}
+              trackColor={{ false: theme.colors.textTertiary, true: theme.colors.primary }}
+              thumbColor={formData.requires_approval ? theme.colors.accent : theme.colors.surface}
             />
           </View>
         </View>
 
         {/* Tags */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tags</Text>
-          <Text style={styles.sectionSubtitle}>Select tags that describe your event</Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Tags</Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>Select tags that describe your event</Text>
           <View style={styles.tagsContainer}>
             {availableTags.map((tag) => (
               <TouchableOpacity
                 key={tag}
-                style={[styles.tagButton, formData.tags.includes(tag) && styles.selectedTag]}
+                style={[styles.tagButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, formData.tags.includes(tag) && [styles.selectedTag, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]]}
                 onPress={() => toggleTag(tag)}
               >
-                <Text style={[styles.tagText, formData.tags.includes(tag) && styles.selectedTagText]}>{tag}</Text>
+                <Text style={[styles.tagText, { color: theme.colors.textSecondary }, formData.tags.includes(tag) && [styles.selectedTagText, { color: theme.colors.surface }]]}>{tag}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -489,7 +497,6 @@ export default function CreateEventScreen({ navigation }: CreateEventScreenProps
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
     paddingTop: 40,
@@ -507,26 +514,22 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "white",
     flex: 1,
     textAlign: "center",
     marginHorizontal: 20,
   },
   createButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
   createButtonText: {
-    color: "white",
     fontWeight: "600",
   },
   content: {
     flex: 1,
   },
   section: {
-    backgroundColor: "white",
     marginBottom: 20,
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -534,12 +537,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 5,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: "#666",
     marginBottom: 15,
   },
   inputGroup: {
@@ -548,17 +549,14 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
     borderRadius: 10,
     paddingHorizontal: 15,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: "white",
   },
   textArea: {
     height: 100,
