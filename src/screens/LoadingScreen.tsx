@@ -44,12 +44,12 @@ export default function LoadingScreen() {
       <View style={styles.content}>
         <Animated.View style={[styles.logo, { transform: [{ translateY: bounce }] }]}>
           <Image
-            source={require('../../assets/logoM.png')}
+            source={require('../../assets/logo.jpg')}
              style={styles.logo}
  />
 
         </Animated.View>
-        <Text style={[styles.title, { color: theme.colors.headerText }]}>Mirae App</Text>
+        <Text style={[styles.title, { color: theme.colors.headerText }]}>Mirae</Text>
       </View>
     </LinearGradient>
   )

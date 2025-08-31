@@ -6,9 +6,11 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { safeSpacesService } from "../../services/safeSpacesService"
 import AppModal from "../../components/AppModal"
+import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function SuggestSafeSpaceScreen({ navigation }: any) {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState("organization")
@@ -66,21 +68,31 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
-      <LinearGradient colors={["#FF6B6B", "#FF8E53"]} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <LinearGradient colors={[theme.colors.primary, theme.colors.primaryVariant]} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6, marginRight: 8 }}>
-            <MaterialIcons name="arrow-back" size={24} color="white" />
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.surface} />
           </TouchableOpacity>
-          <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>Recommend a Safe Location</Text>
+          <Text style={{ color: theme.colors.surface, fontSize: 18, fontWeight: "bold" }}>Recommend a Safe Location</Text>
         </View>
       </LinearGradient>
 
-      <ScrollView style={{ flex: 1, padding: 16 }}>
-        <Text style={styles.label}>Name</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Location name" />
+      <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Name</Text>
+        <TextInput
+          style={[styles.input, {
+            backgroundColor: theme.colors.inputBackground,
+            borderColor: theme.colors.inputBorder,
+            color: theme.colors.inputText
+          }]}
+          value={name}
+          onChangeText={setName}
+          placeholder="Location name"
+          placeholderTextColor={theme.colors.placeholder}
+        />
 
-        <Text style={styles.label}>Category</Text>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Category</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
           {[
             { id: "organization", name: "Organization" },
@@ -92,44 +104,123 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
           ].map((cat) => (
             <TouchableOpacity
               key={cat.id}
-              style={[styles.chip, category === cat.id && styles.chipActive]}
+              style={[styles.chip, {
+                backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface,
+                borderColor: theme.colors.border
+              }, category === cat.id && [styles.chipActive, { backgroundColor: theme.colors.primary }]]}
               onPress={() => setCategory(cat.id)}
             >
-              <Text style={[styles.chipText, category === cat.id && styles.chipTextActive]}>{cat.name}</Text>
+              <Text style={[styles.chipText, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }, category === cat.id && [styles.chipTextActive, { color: theme.colors.surface }]]}>{cat.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        <Text style={styles.label}>Description</Text>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Description</Text>
         <TextInput
-          style={[styles.input, { height: 90, textAlignVertical: "top" }]}
+          style={[styles.input, {
+            height: 90,
+            textAlignVertical: "top",
+            backgroundColor: theme.colors.inputBackground,
+            borderColor: theme.colors.inputBorder,
+            color: theme.colors.inputText
+          }]}
           value={description}
           onChangeText={setDescription}
           placeholder="Why is this a safe place?"
+          placeholderTextColor={theme.colors.placeholder}
           multiline
         />
 
-        <Text style={styles.label}>Address</Text>
-        <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Street, area" />
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Address</Text>
+        <TextInput
+          style={[styles.input, {
+            backgroundColor: theme.colors.inputBackground,
+            borderColor: theme.colors.inputBorder,
+            color: theme.colors.inputText
+          }]}
+          value={address}
+          onChangeText={setAddress}
+          placeholder="Street, area"
+          placeholderTextColor={theme.colors.placeholder}
+        />
 
         <View style={{ flexDirection: "row" }}>
           <View style={{ flex: 1, marginRight: 10 }}>
-            <Text style={styles.label}>City</Text>
-            <TextInput style={styles.input} value={city} onChangeText={setCity} placeholder="City" />
+            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>City</Text>
+            <TextInput
+              style={[styles.input, {
+                backgroundColor: theme.colors.inputBackground,
+                borderColor: theme.colors.inputBorder,
+                color: theme.colors.inputText
+              }]}
+              value={city}
+              onChangeText={setCity}
+              placeholder="City"
+              placeholderTextColor={theme.colors.placeholder}
+            />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Country</Text>
-            <TextInput style={styles.input} value={country} onChangeText={setCountry} placeholder="Country" />
+            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Country</Text>
+            <TextInput
+              style={[styles.input, {
+                backgroundColor: theme.colors.inputBackground,
+                borderColor: theme.colors.inputBorder,
+                color: theme.colors.inputText
+              }]}
+              value={country}
+              onChangeText={setCountry}
+              placeholder="Country"
+              placeholderTextColor={theme.colors.placeholder}
+            />
           </View>
         </View>
 
-        <Text style={styles.label}>Contact (optional)</Text>
-        <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone" />
-        <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" />
-        <TextInput style={styles.input} value={website} onChangeText={setWebsite} placeholder="Website" />
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Contact (optional)</Text>
+        <TextInput
+          style={[styles.input, {
+            backgroundColor: theme.colors.inputBackground,
+            borderColor: theme.colors.inputBorder,
+            color: theme.colors.inputText
+          }]}
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="Phone"
+          placeholderTextColor={theme.colors.placeholder}
+        />
+        <TextInput
+          style={[styles.input, {
+            backgroundColor: theme.colors.inputBackground,
+            borderColor: theme.colors.inputBorder,
+            color: theme.colors.inputText
+          }]}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Email"
+          placeholderTextColor={theme.colors.placeholder}
+        />
+        <TextInput
+          style={[styles.input, {
+            backgroundColor: theme.colors.inputBackground,
+            borderColor: theme.colors.inputBorder,
+            color: theme.colors.inputText
+          }]}
+          value={website}
+          onChangeText={setWebsite}
+          placeholder="Website"
+          placeholderTextColor={theme.colors.placeholder}
+        />
 
-        <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={submit} disabled={submitting}>
-          <Text style={styles.submitText}>{submitting ? "Submitting..." : "Submit Recommendation"}</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, {
+            backgroundColor: theme.colors.success,
+            shadowColor: theme.colors.shadow,
+            elevation: theme.isDark ? 4 : 2,
+            shadowOpacity: theme.isDark ? 0.2 : 0.1
+          }, submitting && { opacity: 0.6 }]}
+          onPress={submit}
+          disabled={submitting}
+        >
+          <Text style={[styles.submitText, { color: theme.colors.surface }]}>{submitting ? "Submitting..." : "Submit Recommendation"}</Text>
         </TouchableOpacity>
       </ScrollView>
       <AppModal
@@ -150,40 +241,39 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
           },
         }}
       >
-        <Text style={{ fontSize: 16, color: "#333" }}>{modal.message}</Text>
+        <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>
       </AppModal>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 12, color: "#666", marginBottom: 6, marginTop: 10 },
+  label: { fontSize: 12, marginBottom: 6, marginTop: 10 },
   input: {
-    backgroundColor: "white",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#eee",
   },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: "#eee",
     marginRight: 8,
+    borderWidth: 1,
   },
   chipActive: {
-    backgroundColor: "#FF6B6B",
+    // backgroundColor will be set inline
   },
-  chipText: { color: "#333", fontWeight: "600" },
-  chipTextActive: { color: "white" },
+  chipText: { fontWeight: "600" },
+  chipTextActive: {
+    // color will be set inline
+  },
   submitBtn: {
-    backgroundColor: "#4CAF50",
     paddingVertical: 14,
     alignItems: "center",
     borderRadius: 12,
     marginTop: 12,
   },
-  submitText: { color: "white", fontWeight: "bold" },
+  submitText: { fontWeight: "bold" },
 })

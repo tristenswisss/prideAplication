@@ -14,7 +14,7 @@ import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   const { user, signOut, refreshUser } = useAuth()
-  const { theme } = useTheme()
+  const { theme, toggleTheme, setSystemTheme, setThemePreference } = useTheme()
   const [stats, setStats] = useState({
     savedPlaces: 0,
     eventsAttended: 0,
@@ -109,6 +109,15 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
   const settingsOptions = [
     {
+      title: "Theme",
+      description: theme.isDark ? "Dark mode enabled" : "Light mode enabled",
+      icon: theme.isDark ? "brightness-3" : "brightness-7",
+      onPress: () => {}, // No action for the row itself
+      hasToggle: true,
+      toggleValue: theme.isDark,
+      onToggle: toggleTheme,
+    },
+    {
       title: "Notifications",
       description: "Manage your notification preferences",
       icon: "notifications",
@@ -134,8 +143,13 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     },
   ]
 
-  const renderOption = (option: (typeof profileOptions)[0]) => (
-    <TouchableOpacity key={option.title} style={[styles.option, { borderBottomColor: theme.colors.divider }]} onPress={option.onPress}>
+  const renderOption = (option: any) => (
+    <TouchableOpacity
+      key={option.title}
+      style={[styles.option, { borderBottomColor: theme.colors.divider }]}
+      onPress={option.onPress}
+      disabled={option.hasToggle}
+    >
       <View style={styles.optionIcon}>
         <MaterialIcons name={option.icon as any} size={24} color={theme.colors.text} />
       </View>
@@ -143,13 +157,23 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{option.title}</Text>
         <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>{option.description}</Text>
       </View>
-      <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
+      {option.hasToggle ? (
+        <TouchableOpacity
+          style={[styles.toggle, option.toggleValue && [styles.toggleActive, { backgroundColor: theme.colors.primary }]]}
+          onPress={option.onToggle}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.toggleThumb, option.toggleValue && styles.toggleThumbActive]} />
+        </TouchableOpacity>
+      ) : (
+        <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} />
+      )}
     </TouchableOpacity>
   )
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.isDark ? "black" : theme.colors.surface }]}>
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
                       <View style={styles.avatar}>
@@ -165,11 +189,11 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           </View>
 
           <View style={styles.profileInfo}>
-            <Text style={[styles.userName, { color: theme.colors.headerText }]}>{user?.name || "User"}</Text>
-            <Text style={[styles.userEmail, { color: theme.colors.headerText, opacity: 0.9 }]}>{user?.email || "user@example.com"}</Text>
+            <Text style={[styles.userName, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>{user?.name || "User"}</Text>
+            <Text style={[styles.userEmail, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>{user?.email || "user@example.com"}</Text>
             <View style={styles.verificationBadge}>
-              <MaterialIcons name="verified-user" size={16} color={theme.colors.headerText} />
-              <Text style={[styles.verificationText, { color: theme.colors.headerText }]}>Verified Member</Text>
+              <MaterialIcons name="verified-user" size={16} color={theme.isDark ? theme.colors.text : theme.colors.textSecondary} />
+              <Text style={[styles.verificationText, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Verified Member</Text>
             </View>
           </View>
         </View>
@@ -177,23 +201,23 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         {/* Stats */}
         <View style={styles.statsContainer}>
            <View style={styles.statItem}>
-             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.savedPlaces}</Text>
-             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Saved</Text>
+             <Text style={[styles.statNumber, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>{stats.savedPlaces}</Text>
+             <Text style={[styles.statLabel, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Saved</Text>
            </View>
            <View style={styles.statItem}>
-             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.eventsAttended}</Text>
-             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Events</Text>
+             <Text style={[styles.statNumber, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>{stats.eventsAttended}</Text>
+             <Text style={[styles.statLabel, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Events</Text>
            </View>
            <View style={styles.statItem}>
-             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.reviewsWritten}</Text>
-             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Reviews</Text>
+             <Text style={[styles.statNumber, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>{stats.reviewsWritten}</Text>
+             <Text style={[styles.statLabel, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Reviews</Text>
            </View>
            <View style={styles.statItem}>
-             <Text style={[styles.statNumber, { color: theme.colors.headerText }]}>{stats.buddyConnections}</Text>
-             <Text style={[styles.statLabel, { color: theme.colors.headerText, opacity: 0.9 }]}>Buddies</Text>
+             <Text style={[styles.statNumber, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>{stats.buddyConnections}</Text>
+             <Text style={[styles.statLabel, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Buddies</Text>
            </View>
          </View>
-      </LinearGradient>
+     </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Options */}
@@ -233,9 +257,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    paddingTop: 40,
-    paddingBottom: 30,
+    paddingTop: 60,
+    paddingBottom: 15,
     paddingHorizontal: 20,
+    borderBottomColor:"black",
+    borderBottomWidth: 1,
   },
   profileSection: {
     flexDirection: "row",
@@ -301,6 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     backgroundColor: "rgba(255,255,255,0.1)",
+   
     borderRadius: 15,
     paddingVertical: 20,
   },
@@ -398,5 +425,30 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     lineHeight: 20,
+  },
+  toggle: {
+    width: 50,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#ddd",
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
+  toggleActive: {
+    backgroundColor: "#FF6B6B",
+  },
+  toggleThumb: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleThumbActive: {
+    alignSelf: "flex-end",
   },
 })

@@ -150,7 +150,7 @@ export default function SafetyScreen({ navigation }: SafetyScreenProps) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={[theme.colors.primary, theme.colors.primaryVariant]} style={styles.header}>
+      <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color={theme.colors.surface} />
@@ -158,7 +158,7 @@ export default function SafetyScreen({ navigation }: SafetyScreenProps) {
           <Text style={[styles.headerTitle, { color: theme.colors.surface }]}>Safety Center</Text>
           <View style={styles.placeholder} />
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         style={styles.content}
@@ -241,6 +241,7 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 40,
     paddingBottom: 20,
+    backgroundColor: "black",
   },
   headerContent: {
     flexDirection: "row",

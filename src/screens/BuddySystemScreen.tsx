@@ -359,17 +359,19 @@ export default function BuddySystemScreen({ navigation }: any) {
       {/* Header */}
       <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
         <View style={styles.headerContent}>
+          <View style={{ display: "flex", flexDirection: "row" }}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <MaterialIcons name="arrow-back" size={24} color={theme.colors.headerText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Buddy System</Text>
+          </View>
           <View style={{ flexDirection: "row" }}>
             <TouchableOpacity onPress={() => setShowFindModal(true)} style={{ marginRight: 12 }}>
-              <MaterialIcons name="person-add" size={24} color={theme.colors.headerText} />
+              <MaterialIcons name="person-add" size={28} color={theme.colors.headerText} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSafetyCheckIn}>
+            {/* <TouchableOpacity onPress={handleSafetyCheckIn}>
               <MaterialIcons name="security" size={24} color={theme.colors.headerText} />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
         <Text style={[styles.headerSubtitle, { color: theme.colors.headerText, opacity: 0.9 }]}>Find safe companions for your adventures</Text>
@@ -622,13 +624,15 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 10,
+    paddingTop: 30,
+    paddingBottom: 30,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: "white",
+    marginLeft: 15,
   },
   headerSubtitle: {
     fontSize: 16,

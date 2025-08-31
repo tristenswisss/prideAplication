@@ -68,14 +68,14 @@ export default function SuggestionReviewScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+      {/* <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6, marginRight: 8 }}>
             <MaterialIcons name="arrow-back" size={24} color={theme.colors.surface} />
           </TouchableOpacity>
           <Text style={{ color: theme.colors.surface, fontSize: 18, fontWeight: "bold" }}>Review Suggestions</Text>
         </View>
-      </LinearGradient>
+      </LinearGradient> */}
       <FlatList
         data={pending}
         refreshing={loading}

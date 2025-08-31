@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, TextInput, SafeAreaView, Image } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import type { Message } from "../types/messaging"
+import { useTheme } from "../Contexts/ThemeContext"
 
 interface ThreadMessage extends Message {
   parent_id: string
@@ -17,6 +18,7 @@ interface MessageThreadsProps {
 }
 
 export default function MessageThreads({ parentMessage, visible, onClose, onSendReply }: MessageThreadsProps) {
+  const { theme } = useTheme()
   const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([])
   const [replyText, setReplyText] = useState("")
   const [loading, setLoading] = useState(false)
@@ -107,79 +109,85 @@ export default function MessageThreads({ parentMessage, visible, onClose, onSend
       />
       <View style={styles.threadMessageContent}>
         <View style={styles.threadMessageHeader}>
-          <Text style={styles.threadSenderName}>{item.sender?.name || "Unknown"}</Text>
-          <Text style={styles.threadMessageTime}>{formatTime(item.sent_at)}</Text>
+          <Text style={[styles.threadSenderName, { color: theme.colors.transFriendly }]}>{item.sender?.name || "Unknown"}</Text>
+          <Text style={[styles.threadMessageTime, { color: theme.colors.textTertiary }]}>{formatTime(item.sent_at)}</Text>
         </View>
-        <Text style={styles.threadMessageText}>{item.content}</Text>
+        <Text style={[styles.threadMessageText, { color: theme.colors.text }]}>{item.content}</Text>
       </View>
     </View>
   )
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <MaterialIcons name="close" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Thread</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        {/* Original Message */}
-        <View style={styles.originalMessage}>
-          <Image
-            source={{ uri: parentMessage.sender?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
-            style={styles.originalAvatar}
-          />
-          <View style={styles.originalMessageContent}>
-            <View style={styles.originalMessageHeader}>
-              <Text style={styles.originalSenderName}>{parentMessage.sender?.name || "Unknown"}</Text>
-              <Text style={styles.originalMessageTime}>{formatTime(parentMessage.sent_at)}</Text>
-            </View>
-            <Text style={styles.originalMessageText}>{parentMessage.content}</Text>
+      <View style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
+        <SafeAreaView style={[styles.container, { height: '75%' }]}>
+          {/* Header */}
+          <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <MaterialIcons name="close" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Thread</Text>
+            <View style={styles.headerSpacer} />
           </View>
-        </View>
 
-        <View style={styles.threadDivider} />
+          {/* Original Message */}
+          <View style={[styles.originalMessage, { backgroundColor: theme.colors.surface }]}>
+            <Image
+              source={{ uri: parentMessage.sender?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
+              style={styles.originalAvatar}
+            />
+            <View style={styles.originalMessageContent}>
+              <View style={styles.originalMessageHeader}>
+                <Text style={[styles.originalSenderName, { color: theme.colors.text }]}>{parentMessage.sender?.name || "Unknown"}</Text>
+                <Text style={[styles.originalMessageTime, { color: theme.colors.textSecondary }]}>{formatTime(parentMessage.sent_at)}</Text>
+              </View>
+              <Text style={[styles.originalMessageText, { color: theme.colors.text }]}>{parentMessage.content}</Text>
+            </View>
+          </View>
 
-        {/* Thread Messages */}
-        <FlatList
-          data={threadMessages}
-          renderItem={renderThreadMessage}
-          keyExtractor={(item) => item.id}
-          style={styles.threadList}
-          contentContainerStyle={styles.threadListContent}
-        />
+          <View style={[styles.threadDivider, { backgroundColor: theme.colors.border }]} />
 
-        {/* Reply Input */}
-        <View style={styles.replyContainer}>
-          <TextInput
-            style={styles.replyInput}
-            placeholder="Reply to thread..."
-            value={replyText}
-            onChangeText={setReplyText}
-            multiline
-            maxLength={500}
+          {/* Thread Messages */}
+          <FlatList
+            data={threadMessages}
+            renderItem={renderThreadMessage}
+            keyExtractor={(item) => item.id}
+            style={styles.threadList}
+            contentContainerStyle={styles.threadListContent}
           />
-          <TouchableOpacity
-            style={[styles.sendButton, !replyText.trim() && styles.sendButtonDisabled]}
-            onPress={handleSendReply}
-            disabled={!replyText.trim()}
-          >
-            <MaterialIcons name="send" size={20} color={replyText.trim() ? "#4ECDC4" : "#ccc"} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+
+          {/* Reply Input */}
+          <View style={[styles.replyContainer, { borderTopColor: theme.colors.border }]}>
+            <TextInput
+              style={[styles.replyInput, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.inputBorder, color: theme.colors.inputText }]}
+              placeholder="Reply to thread..."
+              placeholderTextColor={theme.colors.placeholder}
+              value={replyText}
+              onChangeText={setReplyText}
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, !replyText.trim() && styles.sendButtonDisabled]}
+              onPress={handleSendReply}
+              disabled={!replyText.trim()}
+            >
+              <MaterialIcons name="send" size={20} color={replyText.trim() ? theme.colors.transFriendly : theme.colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
     </Modal>
   )
 }
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   container: {
     flex: 1,
-    backgroundColor: "white",
   },
   header: {
     flexDirection: "row",
@@ -188,7 +196,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   closeButton: {
     padding: 5,
@@ -196,7 +203,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
   },
   headerSpacer: {
     width: 34,
@@ -204,7 +210,6 @@ const styles = StyleSheet.create({
   originalMessage: {
     flexDirection: "row",
     padding: 20,
-    backgroundColor: "#f8f9fa",
   },
   originalAvatar: {
     width: 40,
@@ -223,21 +228,17 @@ const styles = StyleSheet.create({
   originalSenderName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
     marginRight: 8,
   },
   originalMessageTime: {
     fontSize: 12,
-    color: "#666",
   },
   originalMessageText: {
     fontSize: 16,
-    color: "#333",
     lineHeight: 20,
   },
   threadDivider: {
     height: 1,
-    backgroundColor: "#e0e0e0",
     marginHorizontal: 20,
   },
   threadList: {
@@ -267,16 +268,13 @@ const styles = StyleSheet.create({
   threadSenderName: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#4ECDC4",
     marginRight: 8,
   },
   threadMessageTime: {
     fontSize: 11,
-    color: "#999",
   },
   threadMessageText: {
     fontSize: 14,
-    color: "#333",
     lineHeight: 18,
   },
   replyContainer: {
@@ -285,17 +283,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
   },
   replyInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#333",
     maxHeight: 80,
   },
   sendButton: {

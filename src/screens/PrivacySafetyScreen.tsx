@@ -21,11 +21,10 @@ interface PrivacySettings {
   locationTracking: boolean
   twoFactorAuth: boolean
   loginAlerts: boolean
-  themePreference: "system" | "light" | "dark"
 }
 
 export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenProps) {
-  const { theme, toggleTheme, setSystemTheme, setThemePreference } = useTheme()
+  const { theme } = useTheme()
   const [settings, setSettings] = useState<PrivacySettings>({
     profileVisibility: "public",
     showLocation: true,
@@ -37,7 +36,6 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     locationTracking: true,
     twoFactorAuth: false,
     loginAlerts: true,
-    themePreference: "system",
   })
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
@@ -50,16 +48,9 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     try {
       // Load settings from storage
       const savedSettings = await AsyncStorage.getItem("privacySettings")
-      const savedThemePreference = await AsyncStorage.getItem("themePreference")
-
       if (savedSettings) {
         const parsedSettings = JSON.parse(savedSettings)
-        setSettings({
-          ...parsedSettings,
-          themePreference: savedThemePreference || parsedSettings.themePreference || "system"
-        })
-      } else if (savedThemePreference) {
-        setSettings(prev => ({ ...prev, themePreference: savedThemePreference as "system" | "light" | "dark" }))
+        setSettings(parsedSettings)
       }
     } catch (error) {
       console.error("Error loading privacy settings:", error)
@@ -72,7 +63,6 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
       // Save to storage and API
       await AsyncStorage.setItem("privacySettings", JSON.stringify(settings))
       await AsyncStorage.setItem("twoFactorAuthEnabled", settings.twoFactorAuth ? "1" : "0")
-      await AsyncStorage.setItem("themePreference", settings.themePreference)
 
       // Persist to Supabase profile
       if (user?.id) {
@@ -112,18 +102,6 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
     setSettings((prev) => ({ ...prev, allowDirectMessages: value }))
   }
 
-  const updateThemePreference = (value: PrivacySettings["themePreference"]) => {
-    setSettings((prev) => ({ ...prev, themePreference: value }))
-
-    // Apply theme change immediately
-    if (value === "system") {
-      setSystemTheme()
-    } else if (value === "light") {
-      setThemePreference(false)
-    } else if (value === "dark") {
-      setThemePreference(true)
-    }
-  }
 
   const handleBlockedUsers = () => {
     navigation.navigate("BlockedUsers" as any)
@@ -243,23 +221,6 @@ export default function PrivacySafetyScreen({ navigation }: PrivacySafetyScreenP
           )}
         </View>
 
-        {/* Appearance */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Appearance</Text>
-
-          {renderSelectOption(
-            "Theme",
-            "Choose your preferred theme",
-            "palette",
-            [
-              { label: "System", value: "system" },
-              { label: "Light", value: "light" },
-              { label: "Dark", value: "dark" },
-            ],
-            settings.themePreference,
-            updateThemePreference,
-          )}
-        </View>
 
         {/* Communication */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>

@@ -151,7 +151,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   }, [route?.params?.focusLat, route?.params?.focusLng])
 
   const categories: Category[] = [
-    { id: "all", name: "All", icon: "apps", color: "black" },
+    { id: "all", name: "All", icon: "apps", color: "grey" },
     { id: "transport", name: "Transport", icon: "directions-car", color: "#F7DC6F" },
     { id: "education", name: "Education", icon: "school", color: "red" },
     { id: "restaurant", name: "Food", icon: "restaurant", color: "#4ECDC4" },
@@ -326,19 +326,26 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
         </MapView>
 
         {/* Legend */}
-        <View style={[styles.legend, { backgroundColor: theme.colors.surface }]}>
+        <View style={[styles.legend, {
+          backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface,
+          shadowColor: theme.colors.shadow,
+          elevation: theme.isDark ? 6 : 3,
+          shadowOpacity: theme.isDark ? 0.3 : 0.1,
+          borderWidth: 1,
+          borderColor: theme.colors.border
+        }]}>
           <Text style={[styles.legendTitle, { color: theme.colors.text }]}>Legend</Text>
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: theme.colors.lgbtqFriendly }]} />
-            <Text style={[styles.legendText, { color: theme.colors.textSecondary }]}>LGBTQ+ & Trans Friendly</Text>
+            <Text style={[styles.legendText, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>LGBTQ+ & Trans Friendly</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: theme.colors.transFriendly }]} />
-            <Text style={[styles.legendText, { color: theme.colors.textSecondary }]}>LGBTQ+ Friendly</Text>
+            <Text style={[styles.legendText, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>LGBTQ+ Friendly</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: "#95E1D3" }]} />
-            <Text style={[styles.legendText, { color: theme.colors.textSecondary }]}>Other Safe Spaces</Text>
+            <Text style={[styles.legendText, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Other Safe Spaces</Text>
           </View>
         </View>
 
@@ -356,23 +363,27 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface }] }>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
-        <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>SafePlaces</Text>
-        <Text style={[styles.headerSubtitle, { color: theme.colors.headerText }]}>Find LGBTQ+ friendly spaces</Text>
+      <View style={[styles.header, { backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface }]}>
+        <Text style={[styles.headerTitle, { color: theme.isDark ? theme.colors.text : theme.colors.primary  }]}>Mirae SafePlaces</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Find LGBTQ+ friendly spaces</Text>
       </View>
 
       {/* View Toggle */}
-      <View style={[styles.toggleContainer, { backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.toggleContainer, {
+        backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border
+      }]}>
         <TouchableOpacity
           style={[styles.toggleButton, showMap && [styles.activeToggle, { backgroundColor: theme.colors.primary }]]}
           onPress={() => setShowMap(true)}
           accessibilityRole="button"
           accessibilityLabel="Switch to map view"
         >
-          <MaterialIcons name="map" size={18} color={showMap ? theme.colors.surface : theme.colors.textSecondary} />
-          <Text style={[styles.toggleText, { color: theme.colors.textSecondary }, showMap && [styles.activeToggleText, { color: theme.colors.surface }]]}>Map</Text>
+          <MaterialIcons name="map" size={18} color={showMap ? theme.colors.surface : (theme.isDark ? theme.colors.text : theme.colors.textSecondary)} />
+          <Text style={[styles.toggleText, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }, showMap && [styles.activeToggleText, { color: theme.colors.surface }]]}>Map</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.toggleButton, !showMap && [styles.activeToggle, { backgroundColor: theme.colors.primary }]]}
@@ -380,8 +391,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           accessibilityRole="button"
           accessibilityLabel="Switch to list view"
         >
-          <MaterialIcons name="list" size={18} color={!showMap ? theme.colors.surface : theme.colors.textSecondary} />
-          <Text style={[styles.toggleText, { color: theme.colors.textSecondary }, !showMap && [styles.activeToggleText, { color: theme.colors.surface }]]}>List</Text>
+          <MaterialIcons name="list" size={18} color={!showMap ? theme.colors.surface : (theme.isDark ? theme.colors.text : theme.colors.textSecondary)} />
+          <Text style={[styles.toggleText, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }, !showMap && [styles.activeToggleText, { color: theme.colors.surface }]]}>List</Text>
         </TouchableOpacity>
       </View>
 
@@ -395,7 +406,13 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           {categories.map((category) => (
             <TouchableOpacity
               key={category.id}
-              style={[styles.categoryTab, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, selectedCategory === category.id && { backgroundColor: category.color }]}
+              style={[styles.categoryTab, {
+                backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface,
+                borderColor: theme.colors.border,
+                shadowColor: theme.colors.shadow,
+                elevation: theme.isDark ? 4 : 2,
+                shadowOpacity: theme.isDark ? 0.2 : 0.1
+              }, selectedCategory === category.id && { backgroundColor: category.color }]}
               onPress={() => setSelectedCategory(category.id)}
               accessibilityRole="button"
               accessibilityLabel={`Filter by ${category.name}`}
@@ -404,14 +421,14 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
               <MaterialIcons
                 name={category.icon as any}
                 size={16}
-                color={selectedCategory === category.id ? theme.colors.surface : category.color}
+                color={selectedCategory === category.id ? theme.colors.surface : (theme.isDark ? theme.colors.text : category.color)}
               />
               <Text
                 style={[
                   styles.categoryTabText,
-                  { color: theme.colors.textSecondary },
+                  { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary },
                   selectedCategory === category.id && { color: theme.colors.surface },
-                  selectedCategory !== category.id && { color: category.color },
+                  selectedCategory !== category.id && { color: theme.isDark ? theme.colors.text : category.color },
                 ]}
               >
                 {category.name}
@@ -419,7 +436,12 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
             </TouchableOpacity>
           ))}
           <TouchableOpacity
-            style={[styles.categoryTab, { backgroundColor: theme.colors.success }]}
+            style={[styles.categoryTab, {
+              backgroundColor: theme.colors.success,
+              shadowColor: theme.colors.shadow,
+              elevation: theme.isDark ? 4 : 2,
+              shadowOpacity: theme.isDark ? 0.2 : 0.1
+            }]}
             onPress={() => navigation.navigate("SuggestSafeSpace" as never)}
             accessibilityRole="button"
             accessibilityLabel="Recommend a safe space"
@@ -435,20 +457,20 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
         <FlatList
           data={Object.keys(groupedByCategory)}
           renderItem={({ item: cat }) => (
-            <View style={{ marginBottom: 16 }}>
+            <View style={{ marginBottom: 16, backgroundColor: theme.colors.background }}>
               <Text style={{ fontSize: 18, fontWeight: "700", marginHorizontal: 16, marginBottom: 8, color: theme.colors.text }}>
                 {cat.toUpperCase()}
               </Text>
               {groupedByCategory[cat].map((biz: Business) => (
-                <View key={biz.id} style={{ marginHorizontal: 16, marginBottom: 10 }}>
+                <View key={biz.id} style={{ marginHorizontal: 16, marginBottom: 10, backgroundColor: theme.colors.background }}>
                   {renderBusinessCard({ item: biz })}
                 </View>
               ))}
             </View>
           )}
           keyExtractor={(cat) => cat}
-          style={styles.businessList}
-          contentContainerStyle={styles.businessListContent}
+          style={[styles.businessList, { backgroundColor: theme.colors.background }]}
+          contentContainerStyle={[styles.businessListContent, { backgroundColor: theme.colors.background }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -463,7 +485,15 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       {/* Loading indicator */}
       {loading && (
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: theme.colors.textSecondary, backgroundColor: theme.colors.surface }]}>Loading businesses...</Text>
+          <Text style={[styles.loadingText, {
+            color: theme.isDark ? theme.colors.text : theme.colors.textSecondary,
+            backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            shadowColor: theme.colors.shadow,
+            elevation: theme.isDark ? 6 : 3,
+            shadowOpacity: theme.isDark ? 0.3 : 0.1
+          }]}>Loading businesses...</Text>
         </View>
       )}
     </SafeAreaView>
@@ -475,9 +505,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 30,
-    paddingBottom: 15,
+    paddingTop: 60,
     paddingHorizontal: 20,
+   
   },
   headerTitle: {
     fontSize: 28,
@@ -645,6 +675,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   categoryTabsContainer: {
+    backgroundColor: 'transparent',
     height: 50,
     paddingHorizontal: 10,
     justifyContent: "center",

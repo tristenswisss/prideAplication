@@ -28,6 +28,7 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   const [searchResults, setSearchResults] = useState<UserProfile[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [conversationSearchQuery, setConversationSearchQuery] = useState("")
 
   const { user } = useAuth()
   const { theme } = useTheme()
@@ -296,6 +297,24 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
     return `${diffDay}d ago`
   }
 
+  const getFilteredConversations = () => {
+    if (!conversationSearchQuery.trim()) {
+      return conversations
+    }
+
+    const lowerQuery = conversationSearchQuery.toLowerCase()
+    return conversations.filter((conversation) => {
+      const conversationName = getConversationName(conversation).toLowerCase()
+      const otherProfile = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+      const username = otherProfile?.username?.toLowerCase() || ""
+      const name = otherProfile?.name?.toLowerCase() || ""
+
+      return conversationName.includes(lowerQuery) ||
+             username.includes(lowerQuery) ||
+             name.includes(lowerQuery)
+    })
+  }
+
   const handleDeleteConversation = async (conversationId: string) => {
     const ok = await messagingService.deleteConversation(conversationId)
     if (ok) {
@@ -399,18 +418,29 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Messages</Text>
-          <TouchableOpacity onPress={() => setShowNewMessage(true)} style={styles.newMessageButton}>
-            <MaterialIcons name="edit" size={24} color={theme.colors.headerText} />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      {/* <View style={[styles.header, { backgroundColor: theme.isDark ? "black" : theme.colors.surface }]}>
+        <Text style={[styles.headerTitle, { color: theme.isDark ? theme.colors.text : theme.colors.primary }]}>Messages</Text>
+        <TouchableOpacity onPress={() => setShowNewMessage(true)} style={[styles.newMessageButton, { backgroundColor: theme.isDark ? theme.colors.card : "rgba(255,255,255,0.2)" }]}>
+          <MaterialIcons name="edit" size={24} color={theme.isDark ? theme.colors.text : theme.colors.headerText} />
+        </TouchableOpacity>
+      </View> */}
+
+      {/* Search Bar */}
+      <View style={[styles.searchBar, { backgroundColor: theme.isDark ? theme.colors.card : "rgba(255,255,255,0.2)" }]}>
+        <MaterialIcons name="search" size={20} color={theme.colors.textSecondary} />
+        <TextInput
+          style={[styles.searchInput, { color: theme.colors.text }]}
+          placeholder="Search conversations by name or username"
+          placeholderTextColor={theme.colors.textSecondary}
+          value={conversationSearchQuery}
+          onChangeText={setConversationSearchQuery}
+          returnKeyType="search"
+        />
+      </View>
 
       {/* Conversations List */}
       <FlatList
-        data={conversations}
+        data={getFilteredConversations()}
         renderItem={renderConversation}
         keyExtractor={(item) => item.id}
         style={styles.conversationsList}
@@ -505,14 +535,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    paddingTop: 40,
-    paddingBottom: 20,
+    paddingTop: 30,
+    paddingBottom: 15,
     paddingHorizontal: 20,
   },
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 28,
@@ -762,4 +793,19 @@ const styles = StyleSheet.create({
     marginTop: 15,
     lineHeight: 22,
   },
+  searchBar: {
+    marginTop: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 25,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  // searchInput: {
+  //   flex: 1,
+  //   marginLeft: 8,
+  //   color: "white",
+  // },
 })

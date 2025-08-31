@@ -201,32 +201,23 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Events</Text>
-          <Text style={[styles.headerSubtitle, { color: theme.colors.headerText, opacity: 0.9 }]}>Discover LGBTQ+ community events</Text>
-        </View>
+      <View style={[styles.header, { backgroundColor: theme.isDark ? "black" : theme.colors.surface }]}>
+        <Text style={[styles.headerTitle, { color: theme.isDark ? theme.colors.text : theme.colors.primary }]}>Events</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Discover LGBTQ+ community events</Text>
+      </View>
 
-        <View style={styles.searchBar}>
-          <MaterialIcons name="search" size={20} color={theme.colors.textSecondary} />
-          <TextInput
-            style={[styles.searchInput, { color: theme.colors.headerText }]}
-            placeholder="Search by category, name, or location"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
-        </View>
-
-        <View style={styles.headerButtons}>
-          {/* Live events removed */}
-          <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate("CreateEvent") }>
-            <MaterialIcons name="add" size={24} color={theme.colors.headerText} />
-            <Text style={[styles.createButtonText, { color: theme.colors.headerText }]}>Create Event</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      {/* Search Bar */}
+      <View style={[styles.searchBar, { backgroundColor: theme.isDark ? theme.colors.card : "rgba(255,255,255,0.2)" }]}>
+        <MaterialIcons name="search" size={20} color={theme.colors.textSecondary} />
+        <TextInput
+          style={[styles.searchInput, { color: theme.colors.text }]}
+          placeholder="Search by category, name, or location"
+          placeholderTextColor={theme.colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+        />
+      </View>
 
       {/* Filter Tabs */}
       <View style={[styles.filterContainer, { backgroundColor: theme.colors.surface }]}>
@@ -291,8 +282,8 @@ const styles = StyleSheet.create({
     backgroundColor: "grey",
   },
   header: {
-    paddingTop: 40,
-    paddingBottom: 28,
+    paddingTop: 30,
+    paddingBottom: 15,
     paddingHorizontal: 20,
   },
   searchBar: {

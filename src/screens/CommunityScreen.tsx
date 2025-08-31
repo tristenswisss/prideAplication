@@ -654,13 +654,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <LinearGradient colors={[theme.colors.headerBackground, theme.colors.headerBackground]} style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.colors.headerText }]}>Community</Text>
-        <Text style={[styles.headerSubtitle, { color: theme.colors.headerText, opacity: 0.9 }]}>Connect with your Pride family</Text>
-        <TouchableOpacity style={styles.messagesButton} onPress={() => navigation.navigate("Messages")}>
-          <MaterialIcons name="message" size={24} color={theme.colors.headerText} />
+      <View style={[styles.header, { backgroundColor: theme.isDark ? "black" : theme.colors.surface }]}>
+        <Text style={[styles.headerTitle, { color: theme.isDark ? theme.colors.text : theme.colors.primary }]}>Community</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Connect with your Pride family</Text>
+        <TouchableOpacity style={[styles.messagesButton, { backgroundColor: theme.isDark ? theme.colors.card : "rgba(255,255,255,0.2)" }]} onPress={() => navigation.navigate("Messages")}>
+          <MaterialIcons name="message" size={24} color={theme.isDark ? theme.colors.text : theme.colors.primary} />
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       {/* Posts Feed */}
       <FlatList
@@ -824,8 +824,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    paddingTop: 40,
-    paddingBottom: 20,
+    paddingTop: 30,
+    paddingBottom: 15,
     paddingHorizontal: 20,
   },
   headerTitle: {
