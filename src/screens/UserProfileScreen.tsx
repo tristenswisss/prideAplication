@@ -12,6 +12,7 @@ import { supabase } from "../../lib/supabase"
 import { profileService } from "../../services/profileService"
 import type { Post, UserProfile } from "../../types/social"
 import AppModal from "../../components/AppModal"
+import ReportUserModal from "../../components/ReportUserModal"
 import { useTheme } from "../../Contexts/ThemeContext"
 
 export default function UserProfileScreen({ navigation, route }: any) {
@@ -27,6 +28,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
   )
   const [userEvents, setUserEvents] = useState<any[]>([])
   const [showMoreOptions, setShowMoreOptions] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   const { user: currentUser } = useAuth()
   const isOwnProfile = currentUser?.id === userId
@@ -232,6 +234,10 @@ export default function UserProfileScreen({ navigation, route }: any) {
     }
   }
 
+  const handleReportUser = () => {
+    setShowReportModal(true)
+  }
+
   const handleBlockUser = async () => {
     if (!currentUser) return
     try {
@@ -428,6 +434,12 @@ export default function UserProfileScreen({ navigation, route }: any) {
             </TouchableOpacity>
           )}
           {!isOwnProfile && (
+            <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleReportUser() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="report" size={22} color={theme.colors.error} />
+              <Text style={{ fontSize: 16, color: theme.colors.error }}>Report User</Text>
+            </TouchableOpacity>
+          )}
+          {!isOwnProfile && (
             <TouchableOpacity onPress={() => { setShowMoreOptions(false); handleBlockUser() }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <MaterialIcons name="block" size={22} color={theme.colors.error} />
               <Text style={{ fontSize: 16, color: theme.colors.error }}>Block User</Text>
@@ -439,6 +451,13 @@ export default function UserProfileScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
       </AppModal>
+
+      <ReportUserModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        reportedUserId={userId}
+        reportedUserName={profile?.name || "User"}
+      />
     </SafeAreaView>
   )
 }

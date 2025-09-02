@@ -14,6 +14,7 @@ import type { UserProfile } from "../../types"
 import AppModal from "../../components/AppModal"
 import { storage } from "../../lib/storage"
 import { useTheme } from "../../Contexts/ThemeContext"
+import ReportUserModal from "../../components/ReportUserModal"
 
 interface MessagesScreenProps {
   navigation: any
@@ -29,6 +30,9 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   const [searchLoading, setSearchLoading] = useState(false)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [conversationSearchQuery, setConversationSearchQuery] = useState("")
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportedUserId, setReportedUserId] = useState<string>("")
+  const [reportedUserName, setReportedUserName] = useState<string>("")
 
   const { user } = useAuth()
   const { theme } = useTheme()
@@ -325,12 +329,54 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
   }
 
   const openConversationMenu = (item: Conversation) => {
-    setModal({
-      type: "confirm",
-      title: getConversationName(item),
-      message: "Delete conversation?",
-      onConfirm: () => handleDeleteConversation(item.id),
-    })
+    if (!item.is_group) {
+      // For direct conversations, show options including report
+      const otherUser = item.participant_profiles?.find((p) => p.id !== user?.id)
+      if (otherUser) {
+        setModal({
+          type: "confirm",
+          title: getConversationName(item),
+          message: "Choose an action:",
+          onConfirm: () => {}, // This will be overridden by custom actions
+        })
+        // We'll handle this differently - show custom modal with options
+        setTimeout(() => {
+          setModal({ type: "none" })
+          Alert.alert(
+            getConversationName(item),
+            "Choose an action",
+            [
+              {
+                text: "Report User",
+                style: "destructive",
+                onPress: () => {
+                  setReportedUserId(otherUser.id)
+                  setReportedUserName(otherUser.name || "User")
+                  setShowReportModal(true)
+                }
+              },
+              {
+                text: "Delete Conversation",
+                style: "destructive",
+                onPress: () => handleDeleteConversation(item.id)
+              },
+              {
+                text: "Cancel",
+                style: "cancel"
+              }
+            ]
+          )
+        }, 100)
+      }
+    } else {
+      // For group conversations, just show delete option
+      setModal({
+        type: "confirm",
+        title: getConversationName(item),
+        message: "Delete conversation?",
+        onConfirm: () => handleDeleteConversation(item.id),
+      })
+    }
   }
 
   const renderConversation = ({ item }: { item: Conversation }) => (
@@ -525,6 +571,13 @@ export default function MessagesScreen({ navigation }: MessagesScreenProps) {
       >
         {modal.type !== "none" && <Text style={{ fontSize: 16, color: theme.colors.text }}>{modal.message}</Text>}
       </AppModal>
+
+      <ReportUserModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        reportedUserId={reportedUserId}
+        reportedUserName={reportedUserName}
+      />
     </SafeAreaView>
   )
 }

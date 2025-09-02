@@ -11,6 +11,7 @@ import { businessService } from "../../services/businessService"
 import { reviewService } from "../../services/reviewService"
 import { buddySystemService } from "../../services/buddySystemService"
 import { useTheme } from "../../Contexts/ThemeContext"
+import { adminService } from "../../services/adminService"
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   const { user, signOut, refreshUser } = useAuth()
@@ -21,6 +22,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     reviewsWritten: 0,
     buddyConnections: 0,
   })
+  const [isAdmin, setIsAdmin] = useState(false)
 
   // Refresh user when returning to this screen
   // @ts-ignore navigation has addListener
@@ -34,7 +36,13 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
   useEffect(() => {
     loadStats()
+    checkAdminStatus()
   }, [user?.id])
+
+  const checkAdminStatus = async () => {
+    const adminStatus = await adminService.isCurrentUserAdmin()
+    setIsAdmin(adminStatus)
+  }
 
   const loadStats = async () => {
     if (!user?.id) return
@@ -135,12 +143,18 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       icon: "help",
       onPress: () => navigation.navigate("HelpSupport"),
     },
+    ...(isAdmin ? [{
+      title: "Admin Panel",
+      description: "Manage user reports and moderation",
+      icon: "admin-panel-settings",
+      onPress: () => navigation.navigate("AdminReports"),
+    },
     {
       title: "Review Suggestions",
-      description: "Approve or reject community recommendations",
+      description: "Approve or reject community place recommendations",
       icon: "approval",
-      onPress: () => navigation.navigate("SuggestionReview" as any),
-    },
+      onPress: () => navigation.navigate("AdminReports"),
+    }] : []),
   ]
 
   const renderOption = (option: any) => (

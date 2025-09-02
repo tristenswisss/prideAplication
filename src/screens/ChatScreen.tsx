@@ -28,6 +28,7 @@ import { useIsFocused } from "@react-navigation/native"
 import { events } from "../../lib/events"
 import { storage } from "../../lib/storage"
 import { useTheme } from "../../Contexts/ThemeContext"
+import ReportUserModal from "../../components/ReportUserModal"
 
 interface ChatScreenProps {
   navigation: any
@@ -57,6 +58,9 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: any[] }>({})
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
   const [showAttachModal, setShowAttachModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportedUserId, setReportedUserId] = useState<string>("")
+  const [reportedUserName, setReportedUserName] = useState<string>("")
   const isFocused = useIsFocused()
 
   const [modal, setModal] = useState<
@@ -403,19 +407,58 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
   }
 
   const handleMoreActions = () => {
-    setModal({
-      type: "confirm",
-      title: "Conversation options",
-      message: "Delete conversation?",
-      onConfirm: async () => {
-        const ok = await messagingService.deleteConversation(conversation.id)
-        if (ok) {
-          navigation.goBack()
-        } else {
-          setModal({ type: "info", title: "Error", message: "Failed to delete conversation" })
-        }
-      },
-    })
+    if (!conversation.is_group) {
+      // For direct conversations, show options including report
+      const otherUser = conversation.participant_profiles?.find((p) => p.id !== user?.id)
+      if (otherUser) {
+        Alert.alert(
+          getConversationName(),
+          "Choose an action",
+          [
+            {
+              text: "Report User",
+              style: "destructive",
+              onPress: () => {
+                setReportedUserId(otherUser.id)
+                setReportedUserName(otherUser.name || "User")
+                setShowReportModal(true)
+              }
+            },
+            {
+              text: "Delete Conversation",
+              style: "destructive",
+              onPress: async () => {
+                const ok = await messagingService.deleteConversation(conversation.id)
+                if (ok) {
+                  navigation.goBack()
+                } else {
+                  setModal({ type: "info", title: "Error", message: "Failed to delete conversation" })
+                }
+              }
+            },
+            {
+              text: "Cancel",
+              style: "cancel"
+            }
+          ]
+        )
+      }
+    } else {
+      // For group conversations, just show delete option
+      setModal({
+        type: "confirm",
+        title: "Conversation options",
+        message: "Delete conversation?",
+        onConfirm: async () => {
+          const ok = await messagingService.deleteConversation(conversation.id)
+          if (ok) {
+            navigation.goBack()
+          } else {
+            setModal({ type: "info", title: "Error", message: "Failed to delete conversation" })
+          }
+        },
+      })
+    }
   }
 
   const renderHeaderActions = () => {
@@ -846,6 +889,13 @@ export default function ChatScreen({ navigation, route }: ChatScreenProps) {
           </TouchableOpacity>
         </View>
       </AppModal>
+
+      <ReportUserModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        reportedUserId={reportedUserId}
+        reportedUserName={reportedUserName}
+      />
     </SafeAreaView>
   )
 }

@@ -19,6 +19,7 @@ CREATE TABLE users (
   post_count INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  role VARCHAR(20) DEFAULT 'user', -- user, admin
 );
 
 -- Profiles Table (for additional user profile information)
@@ -245,10 +246,25 @@ CREATE TABLE notifications (
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_notifications_read ON notifications(read);
 
+-- User Reports Table
+CREATE TABLE user_reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reporter_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  reported_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  reason VARCHAR(255) NOT NULL,
+  details TEXT,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, reviewed, resolved
+  admin_notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Blocked Users Table
 CREATE TABLE blocked_users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT,
+  blocked_by_admin BOOLEAN DEFAULT FALSE,
   blocked_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(user_id, blocked_user_id)
@@ -273,6 +289,7 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_reports ENABLE ROW LEVEL SECURITY;
 
 -- Create Policies for Row Level Security
 -- Users can view and update their own profiles
@@ -401,6 +418,64 @@ CREATE POLICY "Users can block other users" ON blocked_users
 CREATE POLICY "Users can unblock users they've blocked" ON blocked_users
   FOR DELETE USING (auth.uid() = user_id);
 
+-- Admins can view all blocked users
+CREATE POLICY "Admins can view all blocked users" ON blocked_users
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND (users.role = 'admin' OR users.is_admin = true)
+    )
+  );
+
+-- Admins can block users
+CREATE POLICY "Admins can block users" ON blocked_users
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND (users.role = 'admin' OR users.is_admin = true)
+    )
+  );
+
+-- Admins can unblock users they've blocked
+CREATE POLICY "Admins can unblock users" ON blocked_users
+  FOR DELETE USING (
+    blocked_by_admin = true AND
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND (users.role = 'admin' OR users.is_admin = true)
+    )
+  );
+
+-- Users can create user reports
+CREATE POLICY "Users can create user reports" ON user_reports
+  FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+
+-- Users can view their own user reports
+CREATE POLICY "Users can view their own user reports" ON user_reports
+  FOR SELECT USING (auth.uid() = reporter_id);
+
+-- Admins can view all user reports
+CREATE POLICY "Admins can view all user reports" ON user_reports
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND (users.role = 'admin' OR users.is_admin = true)
+    )
+  );
+
+-- Admins can update user reports
+CREATE POLICY "Admins can update user reports" ON user_reports
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND (users.role = 'admin' OR users.is_admin = true)
+    )
+  );
 -- Buddy System Tables
 -- Buddy Requests Table
 CREATE TABLE buddy_requests (

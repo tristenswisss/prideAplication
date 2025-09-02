@@ -44,6 +44,7 @@ import PrivacySafetyScreen from "./src/screens/PrivacySafetyScreen"
 import HelpSupportScreen from "./src/screens/HelpSupportScreen"
 import CreateEventScreen from "./src/screens/CreateEventScreen"
 import BlockedUsersScreen from "./src/screens/BlockedUsersScreen"
+import AdminReportsScreen from "./src/screens/AdminReportsScreen"
 
 // Components
 import OfflineStatus from "./components/OfflineStatus"
@@ -192,6 +193,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="PrivacySafety" component={PrivacySafetyScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="HelpSupport" component={HelpSupportScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="BlockedUsers" component={BlockedUsersScreen} options={{ title: "Blocked Users" }} />
+      <ProfileStack.Screen name="AdminReports" component={AdminReportsScreen} options={{ title: "User Reports" }} />
       <ProfileStack.Screen
         name="BusinessDetails"
         component={BusinessDetailScreen}
