@@ -348,10 +348,6 @@ export default function AuthScreen() {
                   )}
                 </LinearGradient>
               </TouchableOpacity>
-
-              <Text style={styles.bottomTermsText}>
-                By continuing, you agree to create a safe and inclusive space for the LGBTQ+ community
-              </Text>
             </View>
           </View>
         </ScrollView>
@@ -580,12 +576,5 @@ const styles = StyleSheet.create({
     color: "#DAA520",
     fontWeight: "500",
     textDecorationLine: "underline",
-  },
-  bottomTermsText: {
-    fontSize: 12,
-    color: "#888",
-    textAlign: "center",
-    lineHeight: 18,
-    paddingHorizontal: 10,
-  },
+  }
 })

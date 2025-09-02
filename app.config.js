@@ -83,7 +83,7 @@ module.exports = () => {
         supabaseAnonKey:
           " eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dmtkdGxranVsdnV0enl6YXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzI2NzIsImV4cCI6MjA3MDA0ODY3Mn0.xDn8Wyq_hVwC6gUwaRn94Nt6VKAYWowEju6AQWBvhKI",
         eas: {
-        "projectId": "0013a8cd-8d09-47fe-8b1b-36e85ccc37be"
+        "projectId": "6b9b14cf-9738-47f6-9cd6-a8ff08da9737"
       }
       },
     },
