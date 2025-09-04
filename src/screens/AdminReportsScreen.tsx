@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Alert, TextInput } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Alert, TextInput, ScrollView } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useTheme } from "../../Contexts/ThemeContext"
 import { useAuth } from "../../Contexts/AuthContexts"
@@ -160,11 +160,17 @@ export default function AdminReportsScreen({ navigation }: any) {
         throw new Error(result.error)
       }
 
-      setReports(prev => prev.map(report =>
-        report.id === reportId
-          ? { ...report, status, admin_notes: adminNotes }
-          : report
-      ))
+      if (status === 'resolved') {
+        // Remove resolved report from the list to keep the page clean
+        setReports(prev => prev.filter(report => report.id !== reportId))
+      } else {
+        // Update in place for other statuses
+        setReports(prev => prev.map(report =>
+          report.id === reportId
+            ? { ...report, status, admin_notes: adminNotes }
+            : report
+        ))
+      }
 
       Alert.alert('Success', `Report status updated to ${status}`)
       setShowDetails(false)
@@ -608,7 +614,8 @@ export default function AdminReportsScreen({ navigation }: any) {
             </View>
 
             <View style={styles.detailsContent}>
-              <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Name:</Text>
+              <ScrollView contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={true}>
+                <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Name:</Text>
               <Text style={[styles.detailValue, { color: theme.colors.textSecondary }]}>{selectedSuggestion.name}</Text>
 
               <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Category:</Text>
@@ -681,6 +688,7 @@ export default function AdminReportsScreen({ navigation }: any) {
                   <Text style={styles.actionButtonText}>Reject</Text>
                 </TouchableOpacity>
               </View>
+              </ScrollView>
             </View>
           </View>
         </View>

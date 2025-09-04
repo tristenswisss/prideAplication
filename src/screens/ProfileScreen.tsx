@@ -148,12 +148,6 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       description: "Manage user reports and moderation",
       icon: "admin-panel-settings",
       onPress: () => navigation.navigate("AdminReports"),
-    },
-    {
-      title: "Review Suggestions",
-      description: "Approve or reject community place recommendations",
-      icon: "approval",
-      onPress: () => navigation.navigate("AdminReports"),
     }] : []),
   ]
 

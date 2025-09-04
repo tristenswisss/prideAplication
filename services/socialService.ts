@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase"
 import type { Post, Comment, UserProfile } from "../types/social"
+import { adminService } from "./adminService"
 
 export interface CreatePostData {
   user_id: string
@@ -271,7 +272,10 @@ export const socialService: SocialService = {
   // Delete a post
   deletePost: async (postId: string, userId: string): Promise<void> => {
     try {
-      const { error } = await supabase.from("posts").delete().eq("id", postId).eq("user_id", userId)
+      // If current user is admin, allow deleting any post without user_id match
+      const isAdmin = await adminService.isCurrentUserAdmin()
+      const query = supabase.from("posts").delete().eq("id", postId)
+      const { error } = isAdmin ? await query : await query.eq("user_id", userId)
 
       if (error) {
         console.error("Error deleting post:", error)

@@ -199,12 +199,7 @@ function ProfileNavigator() {
         component={BusinessDetailScreen}
         options={{ title: "Business Details" }}
       />
-      <ProfileStack.Screen
-        name="SuggestionReview"
-        component={require("./src/screens/SuggestionReviewScreen").default}
-        options={{ title: "Review Suggestions" }}
-      />
-    </ProfileStack.Navigator>
+          </ProfileStack.Navigator>
   )
 }
 

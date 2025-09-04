@@ -7,6 +7,7 @@ import * as Location from "expo-location"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { businessService } from "../../services/businessService"
+import { safeSpacesService } from "../../services/safeSpacesService"
 import type { Business } from "../../types"
 import type { HomeScreenProps } from "../../types/navigation"
 import React from "react"
@@ -198,17 +199,84 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const loadBusinesses = async () => {
     try {
       setLoading(true)
-      
-      const response = await businessService.getBusinesses()
 
-      if (response.success && response.businesses) {
-        setBusinesses(response.businesses)
-        setFilteredBusinesses(response.businesses)
+      // Fetch businesses and verified safe spaces in parallel
+      const [bizResp, ssResp] = await Promise.all([
+        businessService.getBusinesses(),
+        safeSpacesService.getAllSafeSpaces(),
+      ])
+
+      let list: Business[] = []
+      if (bizResp.success && bizResp.businesses) {
+        list = bizResp.businesses
+      } else if (!bizResp.success) {
+        console.warn("Failed loading businesses:", bizResp.error)
+      }
+
+      if (ssResp.success && ssResp.data) {
+        const mapCategory = (cat: string | undefined): Business["category"] => {
+          switch ((cat || "other").toLowerCase()) {
+            case "healthcare":
+              return "healthcare"
+            case "restaurant":
+              return "restaurant"
+            case "organization":
+            case "drop_in_center":
+            case "community_center":
+            case "other":
+            default:
+              return "service"
+          }
+        }
+        const toNumber = (v: any): number | undefined => {
+          if (v === null || v === undefined) return undefined
+          if (typeof v === "number") return Number.isFinite(v) ? v : undefined
+          if (typeof v === "string") {
+            if (v.trim() === "" || v.toLowerCase() === "null") return undefined
+            const parsed = parseFloat(v)
+            return Number.isFinite(parsed) ? parsed : undefined
+          }
+          const parsed = parseFloat(String(v))
+          return Number.isFinite(parsed) ? parsed : undefined
+        }
+        const mapped = ssResp.data.map((ss: any): Business => ({
+          id: ss.id,
+          name: ss.name,
+          description: ss.description || "",
+          category: mapCategory(ss.category),
+          address: ss.address || "",
+          latitude: toNumber(ss.latitude),
+          longitude: toNumber(ss.longitude),
+          phone: ss.phone || undefined,
+          website: ss.website || undefined,
+          image_url: undefined,
+          rating: undefined,
+          review_count: undefined,
+          lgbtq_friendly: !!ss.lgbtq_friendly,
+          trans_friendly: !!ss.trans_friendly,
+          wheelchair_accessible: !!ss.wheelchair_accessible,
+          verified: !!ss.verified,
+          owner_id: undefined,
+          hours: undefined,
+          price_range: undefined,
+          created_at: ss.created_at || new Date().toISOString(),
+          updated_at: ss.updated_at || ss.created_at || new Date().toISOString(),
+        }))
+        list = list.concat(mapped)
+      } else if (!ssResp.success) {
+        console.warn("Failed loading safe spaces:", ssResp.error)
+      }
+
+      if (list.length > 0) {
+        setBusinesses(list)
+        setFilteredBusinesses(list)
       } else {
-        Alert.alert("Error", response.error || "Failed to load businesses")
+        Alert.alert("Info", "No places available yet.")
+        setBusinesses([])
+        setFilteredBusinesses([])
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to load businesses")
+      Alert.alert("Error", "Failed to load places")
       setBusinesses([])
       setFilteredBusinesses([])
     } finally {

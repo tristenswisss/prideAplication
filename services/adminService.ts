@@ -204,6 +204,16 @@ export const adminService = {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return false
 
+      // Prefer admin_users membership (avoids users policy recursion and is explicit)
+      const { data: adminRow, error: adminErr } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!adminErr && adminRow) return true
+
+      // Fallback to users flags for backward compatibility
       const { data, error } = await supabase
         .from('users')
         .select('role, is_admin')
@@ -215,13 +225,8 @@ export const adminService = {
         return false
       }
 
-      // Check both role and is_admin fields
       const isAdmin = (data?.role === 'admin' || data?.is_admin === true)
-
-      if (isAdmin) {
-        console.log("User is admin:", user.email)
-      }
-
+      if (isAdmin) console.log("User is admin:", user.email)
       return isAdmin
     } catch (error) {
       console.error("Error in isCurrentUserAdmin:", error)
@@ -266,11 +271,32 @@ export const adminService = {
         return { success: false, error: fetchError?.message || "Suggestion not found" }
       }
 
+      const normalizeCategory = (cat?: string | null) => {
+        const c = (cat || '').toLowerCase().trim()
+        switch (c) {
+          case 'organization':
+            return 'organization'
+          case 'clinic':
+          case 'healthcare':
+            return 'clinic'
+          case 'restaurant':
+            return 'restaurant'
+          case 'cafe':
+            return 'cafe'
+          case 'drop_in_center':
+            return 'drop_in_center'
+          case 'community_center':
+          case 'other':
+          default:
+            return 'organization'
+        }
+      }
+
       // Create the approved safe space
       const safeSpacePayload = {
         name: suggestion.name,
         description: suggestion.description,
-        category: suggestion.category,
+        category: normalizeCategory(suggestion.category),
         address: suggestion.address,
         city: suggestion.city,
         country: suggestion.country,
@@ -346,14 +372,20 @@ export const adminService = {
         return { success: false, error: "Not authenticated" }
       }
 
+      // Build payload and include report_id only if it's a valid UUID
+      const payload: any = {
+        user_id: user.id,
+        reason,
+        created_at: new Date().toISOString()
+      }
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      if (reportId && uuidRegex.test(reportId)) {
+        payload.report_id = reportId
+      }
+
       const { error } = await supabase
         .from('unblock_requests')
-        .insert({
-          user_id: user.id,
-          report_id: reportId,
-          reason,
-          created_at: new Date().toISOString()
-        })
+        .insert(payload)
 
       if (error) {
         console.error("Error creating unblock request:", error)
@@ -424,19 +456,22 @@ export const adminService = {
         return { success: false, error: unblockError.message }
       }
 
-      // Update report status back to 'reviewed'
-      const { error: reportError } = await supabase
-        .from('user_reports')
-        .update({
-          status: 'reviewed',
-          admin_notes: 'User unblocked upon request approval',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', request.report_id)
+      // Update report status back to 'reviewed' only if report_id is a valid UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      if (request.report_id && uuidRegex.test(request.report_id)) {
+        const { error: reportError } = await supabase
+          .from('user_reports')
+          .update({
+            status: 'reviewed',
+            admin_notes: 'User unblocked upon request approval',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', request.report_id)
 
-      if (reportError) {
-        console.error("Error updating report:", reportError)
-        return { success: false, error: reportError.message }
+        if (reportError) {
+          console.error("Error updating report:", reportError)
+          return { success: false, error: reportError.message }
+        }
       }
 
       // Update the unblock request status

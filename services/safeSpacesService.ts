@@ -224,10 +224,31 @@ class SafeSpacesService {
       const { data: suggestion, error: fetchError } = await supabase.from("safe_space_suggestions").select("*").eq("id", suggestionId).single()
       if (fetchError || !suggestion) return { success: false, error: fetchError?.message || "Not found" }
 
+      const normalizeCategory = (cat?: string | null) => {
+        const c = (cat || "").toLowerCase()
+        switch (c) {
+          case "organization":
+            return "organization"
+          case "clinic":
+          case "healthcare":
+            return "clinic"
+          case "restaurant":
+            return "restaurant"
+          case "cafe":
+            return "cafe"
+          case "drop_in_center":
+            return "drop_in_center"
+          case "community_center":
+          case "other":
+          default:
+            return "organization"
+        }
+      }
+
       const insertPayload = {
         name: suggestion.name,
         description: suggestion.description,
-        category: suggestion.category,
+        category: normalizeCategory(suggestion.category),
         address: suggestion.address,
         city: suggestion.city,
         country: suggestion.country,

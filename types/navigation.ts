@@ -88,8 +88,7 @@ export type ProfileStackParamList = {
   HelpSupport: undefined
   PrivacySafety: undefined
   NotificationSettings: undefined
-  SuggestionReview: undefined
-  BlockedUsers: undefined
+    BlockedUsers: undefined
   AdminReports: undefined
 }
 

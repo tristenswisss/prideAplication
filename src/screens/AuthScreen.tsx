@@ -114,7 +114,6 @@ export default function AuthScreen() {
             ]
           )
         } else {
-          // Email was confirmed immediately (shouldn't happen in most setups)
           Alert.alert("Success", "Account created successfully!")
           setIsLogin(true)
           setEmail("")
@@ -123,20 +122,21 @@ export default function AuthScreen() {
           setAcceptedTerms(false) // Reset terms acceptance
         }
       } else if (isLogin && result.data) {
-        // Check if user is blocked before proceeding
-        console.log("Checking if user is blocked:", result.data.user.id, result.data.user.email)
-        const blockCheck = await adminService.checkIfUserIsBlocked(result.data.user.id)
-        console.log("Block check result:", blockCheck)
-
-        if (blockCheck.isBlocked) {
-          console.log("User is blocked, showing blocked screen")
-          setIsBlocked(true)
-          setBlockReason(blockCheck.reason || "Your account has been blocked")
-          setReportId(blockCheck.reportId || "")
-          setLoading(false)
-          return
-        } else {
-          console.log("User is not blocked, proceeding with login")
+        // Local blocked check to drive overlay UI promptly
+        try {
+          const userId = result.data.user?.id
+          if (userId) {
+            const blockCheck = await adminService.checkIfUserIsBlocked(userId)
+            if (blockCheck.isBlocked) {
+              setIsBlocked(true)
+              setBlockReason(blockCheck.reason || "Your account has been blocked")
+              setReportId(blockCheck.reportId || "")
+              setLoading(false)
+              return
+            }
+          }
+        } catch (e) {
+          // If this fails due to sign-out race, the context will still keep the app on Auth stack
         }
 
         // After successful login, if user has 2FA enabled, prompt biometric/PIN
@@ -433,14 +433,9 @@ export default function AuthScreen() {
         visible={showForgotPasswordModal}
         onClose={handleForgotPasswordClose}
       />
-    </SafeAreaView>
-  )
 
-  // Render blocked user screen as separate component (outside main SafeAreaView)
-  if (isBlocked) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        {/* Blocked User Screen - Full Screen Overlay */}
+      {/* Blocked User Overlay */}
+      {isBlocked && (
         <View style={[styles.blockedOverlay, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
           <View style={[styles.blockedContainer, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.blockedHeader}>
@@ -479,235 +474,56 @@ export default function AuthScreen() {
             </View>
           </View>
         </View>
+      )}
 
-        {/* Unblock Request Modal */}
-        {showUnblockRequest && (
-          <View style={[styles.blockedOverlay, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>
-            <View style={[styles.blockedContainer, { backgroundColor: theme.colors.surface }]}>
-              <View style={styles.blockedHeader}>
-                <MaterialIcons name="edit" size={48} color="#007BFF" />
-                <Text style={[styles.blockedTitle, { color: theme.colors.text }]}>Request Unblock</Text>
-              </View>
-
-              <Text style={[styles.blockedMessage, { color: theme.colors.textSecondary }]}>
-                Please provide a detailed reason for why you should be unblocked.
-              </Text>
-
-              <TextInput
-                style={[styles.unblockInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
-                placeholder="Explain why you should be unblocked..."
-                placeholderTextColor={theme.colors.textTertiary}
-                value={unblockReason}
-                onChangeText={setUnblockReason}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-
-              <View style={styles.blockedActions}>
-                <TouchableOpacity
-                  style={[styles.requestButton, { backgroundColor: '#28A745' }]}
-                  onPress={handleUnblockRequest}
-                  disabled={loading || !unblockReason.trim()}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text style={styles.requestButtonText}>Submit Request</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.backButton, { borderColor: theme.colors.border }]}
-                  onPress={() => setShowUnblockRequest(false)}
-                  disabled={loading}
-                >
-                  <Text style={[styles.backButtonText, { color: theme.colors.text }]}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
+      {/* Unblock Request Modal */}
+      {isBlocked && showUnblockRequest && (
+        <View style={[styles.blockedOverlay, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>
+          <View style={[styles.blockedContainer, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.blockedHeader}>
+              <MaterialIcons name="edit" size={48} color="#007BFF" />
+              <Text style={[styles.blockedTitle, { color: theme.colors.text }]}>Request Unblock</Text>
             </View>
-          </View>
-        )}
-      </SafeAreaView>
-    )
-  }
 
-  // Return main login/signup screen
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <View style={styles.logoWrapper}>
-                <Image
-                  source={require('../../assets/logo.jpg')}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.appTitle}>Mirae</Text>
-              {/* <Text style={styles.appSubtitle}>SafePlaces</Text> */}
-            </View>
-          </View>
+            <Text style={[styles.blockedMessage, { color: theme.colors.textSecondary }]}>
+              Please provide a detailed reason for why you should be unblocked.
+            </Text>
 
-          <View style={styles.formContainer}>
-            <View style={styles.tabContainer}>
+            <TextInput
+              style={[styles.unblockInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
+              placeholder="Explain why you should be unblocked..."
+              placeholderTextColor={theme.colors.textTertiary}
+              value={unblockReason}
+              onChangeText={setUnblockReason}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.blockedActions}>
               <TouchableOpacity
-                style={[styles.tab, isLogin && styles.activeTab]}
-                onPress={() => switchAuthMode(true)}
+                style={[styles.requestButton, { backgroundColor: '#28A745' }]}
+                onPress={handleUnblockRequest}
+                disabled={loading || !unblockReason.trim()}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={styles.requestButtonText}>Submit Request</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.backButton, { borderColor: theme.colors.border }]}
+                onPress={() => setShowUnblockRequest(false)}
                 disabled={loading}
               >
-                <Text style={[styles.tabText, isLogin && styles.activeTabText]}>
-                  Sign In
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, !isLogin && styles.activeTab]}
-                onPress={() => switchAuthMode(false)}
-                disabled={loading}
-              >
-                <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>
-                  Sign Up
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.form}>
-              {!isLogin && (
-                <View style={styles.inputContainer}>
-                  <MaterialIcons name="person" size={20} color="#666" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Full Name"
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                    editable={!loading}
-                  />
-                </View>
-              )}
-
-              <View style={styles.inputContainer}>
-                <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  editable={!loading}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <MaterialIcons name="lock" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete={isLogin ? "current-password" : "new-password"}
-                  editable={!loading}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                  disabled={loading}
-                >
-                  <MaterialIcons
-                    name={showPassword ? "visibility" : "visibility-off"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {/* Terms and Conditions Checkbox for Sign Up */}
-              {!isLogin && (
-                <View style={styles.termsContainer}>
-                  <TouchableOpacity
-                    style={styles.checkboxContainer}
-                    onPress={toggleCheckbox}
-                    disabled={loading}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-                      {acceptedTerms && (
-                        <MaterialIcons name="check" size={16} color="white" />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                  <View style={styles.termsTextContainer}>
-                    <Text style={styles.termsTextPrefix}>I agree to the </Text>
-                    <TouchableOpacity onPress={handleTermsPress} disabled={loading}>
-                      <Text style={styles.termsLink}>Terms and Conditions</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {/* Forgot Password Link for Sign In */}
-              {isLogin && (
-                <TouchableOpacity
-                  onPress={handleForgotPasswordPress}
-                  style={styles.forgotPasswordContainer}
-                  disabled={loading}
-                >
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[
-                  styles.authButton,
-                  loading && styles.disabledButton,
-                  !isLogin && !acceptedTerms && styles.disabledButton
-                ]}
-                onPress={handleAuth}
-                disabled={loading || (!isLogin && !acceptedTerms)}
-              >
-                <LinearGradient colors={["#000000", "#DAA520"]} style={styles.authButtonGradient}>
-                  {loading ? (
-                    <View style={styles.loadingContainer}>
-                      <ActivityIndicator size="small" color="white" />
-                      <Text style={styles.loadingText}>
-                        {isLogin ? "Signing In..." : "Creating Account..."}
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.authButtonText}>
-                      {isLogin ? "Sign In" : "Sign Up"}
-                    </Text>
-                  )}
-                </LinearGradient>
+                <Text style={[styles.backButtonText, { color: theme.colors.text }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Terms and Conditions Modal */}
-      <TermsAndConditionsModal
-        visible={showTermsModal}
-        onClose={handleTermsClose}
-        onAccept={handleTermsAcceptedFromModal}
-      />
-
-      {/* Forgot Password Modal */}
-      <ForgotPasswordModal
-        visible={showForgotPasswordModal}
-        onClose={handleForgotPasswordClose}
-      />
+        </View>
+      )}
     </SafeAreaView>
   )
 }

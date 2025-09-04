@@ -29,6 +29,7 @@ import { buddySystemService } from "../../services/buddySystemService"
 import AppModal from "../../components/AppModal"
 import { notificationService } from "../../services/notificationService"
 import { useTheme } from "../../Contexts/ThemeContext"
+import { adminService } from "../../services/adminService"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -47,6 +48,10 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePost, setSharePost] = useState<Post | null>(null)
   const [buddyList, setBuddyList] = useState<UserProfile[]>([])
+  const [isPosting, setIsPosting] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [showOptionsModal, setShowOptionsModal] = useState(false)
+  const [optionsPost, setOptionsPost] = useState<Post | null>(null)
 
   const { user } = useAuth()
   const { theme } = useTheme()
@@ -64,6 +69,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     initializePushNotifications()
     getCurrentLocation()
     loadBuddyList()
+    const checkAdmin = async () => {
+      try {
+        const ok = await adminService.isCurrentUserAdmin()
+        setIsAdmin(!!ok)
+      } catch {}
+    }
+    checkAdmin()
     const unsubPosts = realtime.subscribeToPosts((row: any) => {
       setPosts((prev) => {
         if (prev.some((p) => p.id === row.id)) return prev
@@ -158,15 +170,17 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     } finally {
       setLoading(false)
       setRefreshing(false)
+      setIsPosting(false)
     }
   }
 
   const handleCreatePost = async () => {
-    if (!newPostContent.trim() || !user) return
+    if (!newPostContent.trim() || !user || isPosting) return
 
+    setIsPosting(true)
     try {
       // Upload images if selected
-      const uploadedImages = []
+      const uploadedImages: string[] = []
       for (const imageUri of newPostImages) {
         const result = await imageUploadService.uploadImage(imageUri, user.id, "posts")
         if (result.success && result.url) {
@@ -204,7 +218,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       }
 
       const newPost = await socialService.createPost(postData)
-      setPosts([newPost, ...posts])
+      setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]))
       setNewPostContent("")
       setNewPostImages([])
       setShowCreatePost(false)
@@ -282,8 +296,23 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     if (!user) return
 
     try {
+      const target = posts.find((p) => p.id === postId)
+      const wasSaved = !!target?.is_saved
+
       await socialService.savePost(postId, user.id)
       setPosts(posts.map((post) => (post.id === postId ? { ...post, is_saved: !post.is_saved } : post)))
+
+      // Notify post owner only when a save is newly added (not on unsave)
+      if (!wasSaved && target && target.user_id !== user.id) {
+        await notificationService.createNotification({
+          user_id: target.user_id,
+          title: "Post Saved",
+          message: `${user.name} saved your post`,
+          type: "general",
+          data: { post_id: postId, actor_id: user.id, action: "post_save" },
+          read: false,
+        } as any)
+      }
     } catch (error) {
       console.error("Error saving post:", error)
     }
@@ -326,6 +355,18 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       setPosts(
         posts.map((post) => (post.id === sharePost.id ? { ...post, shares_count: post.shares_count + 1 } : post)),
       )
+
+      // Notify post owner about the share (if not sharing own post)
+      if (sharePost.user_id && sharePost.user_id !== user.id) {
+        await notificationService.createNotification({
+          user_id: sharePost.user_id,
+          title: "Post Shared",
+          message: `${user.name} shared your post`,
+          type: "general",
+          data: { post_id: sharePost.id, actor_id: user.id, action: "post_share" },
+          read: false,
+        } as any)
+      }
 
       setShowShareModal(false)
       setSharePost(null)
@@ -491,33 +532,9 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     ])
   }
 
-  const handleMoreOptions = async (post: Post) => {
-    const isOwner = post.user_id === user?.id
-    const posterName = post.user?.name || "User"
-    const saveLabel = post.is_saved ? "Unsave" : "Save"
-    const actions: any[] = [{ text: "Cancel", style: "cancel" }]
-
-    if (!isOwner) {
-      // Only show Message if allowed by target's settings (appear_in_search && allow_direct_messages)
-      const canDM = post.user?.allow_direct_messages !== false
-      if (canDM) {
-        actions.push({ text: "Message", onPress: () => handleMessageUser(post) })
-      }
-      actions.push({ text: "Request Buddy", onPress: () => handleRequestBuddy(post) })
-      actions.push({ text: "Block User", style: "destructive", onPress: () => handleBlockUser(post) })
-    } else {
-      actions.push({ text: "Delete", style: "destructive", onPress: () => handleDeletePost(post.id) })
-    }
-
-    actions.push({ text: "Hide", onPress: () => handleHidePost(post) })
-    actions.push({ text: saveLabel, onPress: () => handleSavePost(post.id) })
-    actions.push({ text: "Share to Contacts", onPress: () => handleSharePost(post) })
-
-    Alert.alert(
-      "Post Options",
-      isOwner ? "Manage your post" : `Options for @${post.user?.username || posterName.toLowerCase().replace(/\s+/g, "")}`,
-      actions,
-    )
+  const handleMoreOptions = (post: Post) => {
+    setOptionsPost(post)
+    setShowOptionsModal(true)
   }
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -693,7 +710,7 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
         onClose={() => setShowCreatePost(false)}
         title="Create Post"
         leftAction={{ label: "Cancel", onPress: () => setShowCreatePost(false) }}
-        rightAction={{ label: "Post", onPress: handleCreatePost, disabled: !newPostContent.trim() }}
+        rightAction={{ label: "Post", onPress: handleCreatePost, disabled: !newPostContent.trim() || isPosting }}
         variant="sheet"
       >
         <View style={styles.createPostContent}>
@@ -813,6 +830,63 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             </View>
           }
         />
+      </AppModal>
+
+      {/* Post Options Modal */}
+      <AppModal
+        visible={showOptionsModal}
+        onClose={() => setShowOptionsModal(false)}
+        title={optionsPost && optionsPost.user ? `Options for @${optionsPost.user.username || optionsPost.user.name?.toLowerCase().replace(/\s+/g, "")}` : "Post Options"}
+        leftAction={{ label: "Close", onPress: () => setShowOptionsModal(false) }}
+        variant="sheet"
+      >
+        {optionsPost && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+            {/* Non-owner actions */}
+            {optionsPost.user_id !== user?.id && (
+              <>
+                {optionsPost.user?.allow_direct_messages !== false && (
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleMessageUser(optionsPost) }}>
+                    <MaterialIcons name="message" size={20} color={theme.colors.text} />
+                    <Text style={{ marginLeft: 10, color: theme.colors.text }}>Message</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleRequestBuddy(optionsPost) }}>
+                  <MaterialIcons name="person-add" size={20} color={theme.colors.text} />
+                  <Text style={{ marginLeft: 10, color: theme.colors.text }}>Request Buddy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleBlockUser(optionsPost) }}>
+                  <MaterialIcons name="block" size={20} color={theme.colors.error} />
+                  <Text style={{ marginLeft: 10, color: theme.colors.error }}>Block User</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Owner/Admin delete */}
+            {(optionsPost.user_id === user?.id || isAdmin) && (
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleDeletePost(optionsPost.id) }}>
+                <MaterialIcons name="delete" size={20} color={theme.colors.error} />
+                <Text style={{ marginLeft: 10, color: theme.colors.error }}>Delete</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Always available */}
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleHidePost(optionsPost) }}>
+              <MaterialIcons name="visibility-off" size={20} color={theme.colors.text} />
+              <Text style={{ marginLeft: 10, color: theme.colors.text }}>Hide</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleSavePost(optionsPost.id) }}>
+              <MaterialIcons name={optionsPost.is_saved ? "bookmark" : "bookmark-border"} size={20} color={theme.colors.text} />
+              <Text style={{ marginLeft: 10, color: theme.colors.text }}>{optionsPost.is_saved ? "Unsave" : "Save"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleSharePost(optionsPost) }}>
+              <MaterialIcons name="share" size={20} color={theme.colors.text} />
+              <Text style={{ marginLeft: 10, color: theme.colors.text }}>Share to Contacts</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </AppModal>
     </SafeAreaView>
   )

@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { AppState, AppStateStatus } from "react-native"
 import { auth, supabase } from "../lib/supabase"
 import { profileService } from "../services/profileService"
+import { adminService } from "../services/adminService"
 import { messagingService } from "../services/messagingService"
 
 interface User {
@@ -52,6 +53,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           error,
         } = await auth.getCurrentUser()
         if (!error && user) {
+          // Enforce blocked-user check before setting authenticated state
+          try {
+            const block = await adminService.checkIfUserIsBlocked(user.id)
+            if (block.isBlocked) {
+              setUser(null)
+              return
+            }
+          } catch (e) {
+            console.error("Error checking blocked status:", e)
+          }
+
           try {
             const result = await profileService.getProfile(user.id)
             if (result.success && result.data) {
@@ -95,6 +107,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Auth state changed:", event, session?.user?.email)
 
       if (event === "SIGNED_IN" && session?.user) {
+        // Enforce blocked-user check before setting user or navigating
+        try {
+          const block = await adminService.checkIfUserIsBlocked(session.user.id)
+          if (block.isBlocked) {
+            setUser(null)
+            setLoading(false)
+            return
+          }
+        } catch (e) {
+          console.error("Error checking blocked status:", e)
+        }
+
         try {
           const result = await profileService.getProfile(session.user.id)
           if (result.success && result.data) {
@@ -129,6 +153,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setUser(null)
       } else if (session?.user) {
+        // Session exists but not a fresh sign-in (e.g., token refresh) — still enforce block
+        try {
+          const block = await adminService.checkIfUserIsBlocked(session.user.id)
+          if (block.isBlocked) {
+            setUser(null)
+            setLoading(false)
+            return
+          }
+        } catch (e) {
+          console.error("Error checking blocked status:", e)
+        }
+
         try {
           const result = await profileService.getProfile(session.user.id)
           if (result.success && result.data) {
