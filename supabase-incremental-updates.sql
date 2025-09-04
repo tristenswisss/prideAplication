@@ -74,7 +74,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policy 
-    WHERE polname = 'Users can view public profiles' 
+    WHERE policyname = 'Users can view public profiles' 
       AND tablename = 'profiles'
   ) THEN
     CREATE POLICY "Users can view public profiles" ON profiles
@@ -176,7 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_buddy_ratings_meetup ON buddy_ratings(meetup_id);
 -- Blocked Users Policies
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own blocked users') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own blocked users') THEN
     CREATE POLICY "Users can view their own blocked users" ON blocked_users
       FOR SELECT USING (auth.uid() = user_id);
   END IF;
@@ -184,7 +184,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can block other users') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can block other users') THEN
     CREATE POLICY "Users can block other users" ON blocked_users
       FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
@@ -192,7 +192,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can unblock users they''ve blocked') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can unblock users they''ve blocked') THEN
     CREATE POLICY "Users can unblock users they've blocked" ON blocked_users
       FOR DELETE USING (auth.uid() = user_id);
   END IF;
@@ -201,7 +201,7 @@ END $$;
 -- Buddy Requests Policies
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own buddy requests') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own buddy requests') THEN
     CREATE POLICY "Users can view their own buddy requests" ON buddy_requests
       FOR SELECT USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);
   END IF;
@@ -209,7 +209,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can create buddy requests') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can create buddy requests') THEN
     CREATE POLICY "Users can create buddy requests" ON buddy_requests
       FOR INSERT WITH CHECK (auth.uid() = from_user_id);
   END IF;
@@ -217,7 +217,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can update their own buddy requests') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can update their own buddy requests') THEN
     CREATE POLICY "Users can update their own buddy requests" ON buddy_requests
       FOR UPDATE USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);
   END IF;
@@ -226,7 +226,7 @@ END $$;
 -- Buddy Matches Policies
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own buddy matches') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own buddy matches') THEN
     CREATE POLICY "Users can view their own buddy matches" ON buddy_matches
       FOR SELECT USING (auth.uid() = user1_id OR auth.uid() = user2_id);
   END IF;
@@ -235,7 +235,7 @@ END $$;
 -- Safety Check-ins Policies
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own safety check-ins') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own safety check-ins') THEN
     CREATE POLICY "Users can view their own safety check-ins" ON safety_check_ins
       FOR SELECT USING (auth.uid() = user_id OR auth.uid() = buddy_id);
   END IF;
@@ -243,7 +243,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can create safety check-ins') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can create safety check-ins') THEN
     CREATE POLICY "Users can create safety check-ins" ON safety_check_ins
       FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
@@ -252,7 +252,7 @@ END $$;
 -- Meetups Policies
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own meetups') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own meetups') THEN
     CREATE POLICY "Users can view their own meetups" ON meetups
       FOR SELECT USING (auth.uid() = organizer_id OR auth.uid() = buddy_id);
   END IF;
@@ -260,7 +260,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can create meetups they organize') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can create meetups they organize') THEN
     CREATE POLICY "Users can create meetups they organize" ON meetups
       FOR INSERT WITH CHECK (auth.uid() = organizer_id);
   END IF;
@@ -268,7 +268,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can update meetups they organize') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can update meetups they organize') THEN
     CREATE POLICY "Users can update meetups they organize" ON meetups
       FOR UPDATE USING (auth.uid() = organizer_id);
   END IF;
@@ -277,7 +277,7 @@ END $$;
 -- Buddy Ratings Policies
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own buddy ratings') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own buddy ratings') THEN
     CREATE POLICY "Users can view their own buddy ratings" ON buddy_ratings
       FOR SELECT USING (auth.uid() = rater_id OR auth.uid() = buddy_id);
   END IF;
@@ -285,7 +285,7 @@ END $$;
 
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can create their own buddy ratings') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can create their own buddy ratings') THEN
     CREATE POLICY "Users can create their own buddy ratings" ON buddy_ratings
       FOR INSERT WITH CHECK (auth.uid() = rater_id);
   END IF;
@@ -407,35 +407,35 @@ ALTER TABLE saved_posts ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can like posts') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can like posts') THEN
     CREATE POLICY "Users can like posts" ON post_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can unlike their likes') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can unlike their likes') THEN
     CREATE POLICY "Users can unlike their likes" ON post_likes FOR DELETE USING (auth.uid() = user_id);
   END IF;
 END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can share posts') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can share posts') THEN
     CREATE POLICY "Users can share posts" ON post_shares FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can save posts') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can save posts') THEN
     CREATE POLICY "Users can save posts" ON saved_posts FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can unsave their posts') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can unsave their posts') THEN
     CREATE POLICY "Users can unsave their posts" ON saved_posts FOR DELETE USING (auth.uid() = user_id);
   END IF;
 END $$;
@@ -456,25 +456,132 @@ CREATE TABLE IF NOT EXISTS user_reports (
   reported_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   reason TEXT NOT NULL,
   details TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  status VARCHAR(20) DEFAULT 'pending',
+  admin_notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add missing columns to user_reports if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_reports' AND column_name = 'status'
+  ) THEN
+    ALTER TABLE user_reports ADD COLUMN status VARCHAR(20) DEFAULT 'pending';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_reports' AND column_name = 'admin_notes'
+  ) THEN
+    ALTER TABLE user_reports ADD COLUMN admin_notes TEXT;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_reports' AND column_name = 'updated_at'
+  ) THEN
+    ALTER TABLE user_reports ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+  END IF;
+END $$;
+
+-- Unblock Requests Table
+CREATE TABLE IF NOT EXISTS unblock_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  report_id UUID REFERENCES user_reports(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  admin_notes TEXT,
+  reviewed_by UUID REFERENCES users(id),
+  reviewed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add missing columns to blocked_users if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'blocked_users' AND column_name = 'reason'
+  ) THEN
+    ALTER TABLE blocked_users ADD COLUMN reason TEXT;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'blocked_users' AND column_name = 'blocked_by_admin'
+  ) THEN
+    ALTER TABLE blocked_users ADD COLUMN blocked_by_admin BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
 
 ALTER TABLE user_reports ENABLE ROW LEVEL SECURITY;
 
--- Policies: reporters can insert and view their own reports; admins can view all (admin policy not included here)
+-- Policies: reporters can insert and view their own reports; admins can view all
 DO $$ BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE polname = 'Users can create user reports' AND tablename = 'user_reports'
+    SELECT 1 FROM pg_policies WHERE policyname = 'Users can create user reports' AND tablename = 'user_reports'
   ) THEN
     CREATE POLICY "Users can create user reports" ON user_reports
       FOR INSERT WITH CHECK (auth.uid() = reporter_id);
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE polname = 'Users can view own user reports' AND tablename = 'user_reports'
+    SELECT 1 FROM pg_policies WHERE policyname = 'Users can view own user reports' AND tablename = 'user_reports'
   ) THEN
     CREATE POLICY "Users can view own user reports" ON user_reports
       FOR SELECT USING (auth.uid() = reporter_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Admins can view all user reports' AND tablename = 'user_reports'
+  ) THEN
+    CREATE POLICY "Admins can view all user reports" ON user_reports
+      FOR SELECT USING (auth.jwt() ->> 'role' = 'admin');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Admins can update user reports' AND tablename = 'user_reports'
+  ) THEN
+    CREATE POLICY "Admins can update user reports" ON user_reports
+      FOR UPDATE USING (auth.jwt() ->> 'role' = 'admin');
+  END IF;
+END $$;
+
+-- Enable RLS and add policies for unblock_requests
+ALTER TABLE unblock_requests ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Users can create unblock requests' AND tablename = 'unblock_requests'
+  ) THEN
+    CREATE POLICY "Users can create unblock requests" ON unblock_requests
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own unblock requests' AND tablename = 'unblock_requests'
+  ) THEN
+    CREATE POLICY "Users can view their own unblock requests" ON unblock_requests
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Admins can view all unblock requests' AND tablename = 'unblock_requests'
+  ) THEN
+    CREATE POLICY "Admins can view all unblock requests" ON unblock_requests
+      FOR SELECT USING (auth.jwt() ->> 'role' = 'admin');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Admins can update unblock requests' AND tablename = 'unblock_requests'
+  ) THEN
+    CREATE POLICY "Admins can update unblock requests" ON unblock_requests
+      FOR UPDATE USING (auth.jwt() ->> 'role' = 'admin');
   END IF;
 END $$;
 
@@ -507,22 +614,22 @@ ALTER TABLE safe_space_suggestions ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can insert their own suggestions') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can insert their own suggestions') THEN
     CREATE POLICY "Users can insert their own suggestions" ON safe_space_suggestions
       FOR INSERT WITH CHECK (auth.uid() = suggested_by);
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own suggestions') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own suggestions') THEN
     CREATE POLICY "Users can view their own suggestions" ON safe_space_suggestions
       FOR SELECT USING (auth.uid() = suggested_by);
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Admins can review all suggestions') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Admins can review all suggestions') THEN
     CREATE POLICY "Admins can review all suggestions" ON safe_space_suggestions
       FOR SELECT USING (true);
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Admins can update suggestions status') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Admins can update suggestions status') THEN
     CREATE POLICY "Admins can update suggestions status" ON safe_space_suggestions
       FOR UPDATE USING (true);
   END IF;
@@ -551,7 +658,7 @@ ALTER TABLE hidden_posts ENABLE ROW LEVEL SECURITY;
 -- Policies for hidden_posts
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can view their own hidden posts' AND tablename = 'hidden_posts') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can view their own hidden posts' AND tablename = 'hidden_posts') THEN
     CREATE POLICY "Users can view their own hidden posts" ON hidden_posts
       FOR SELECT USING (auth.uid() = user_id);
   END IF;
@@ -559,7 +666,7 @@ END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can hide posts' AND tablename = 'hidden_posts') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can hide posts' AND tablename = 'hidden_posts') THEN
     CREATE POLICY "Users can hide posts" ON hidden_posts
       FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
@@ -567,7 +674,7 @@ END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE polname = 'Users can unhide their hidden posts' AND tablename = 'hidden_posts') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policy WHERE policyname = 'Users can unhide their hidden posts' AND tablename = 'hidden_posts') THEN
     CREATE POLICY "Users can unhide their hidden posts" ON hidden_posts
       FOR DELETE USING (auth.uid() = user_id);
   END IF;

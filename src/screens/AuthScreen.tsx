@@ -22,6 +22,7 @@ import { Image } from 'react-native'
 import * as LocalAuthentication from "expo-local-authentication"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { profileService } from "../../services/profileService"
+import { adminService } from "../../services/adminService"
 import TermsAndConditionsModal from "../../components/TermsAndConditionsModal"
 import ForgotPasswordModal from "../../components/ForgotPasswordModal"
 import { useTheme } from "../../Contexts/ThemeContext"
@@ -37,6 +38,11 @@ export default function AuthScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false)
+  const [isBlocked, setIsBlocked] = useState(false)
+  const [blockReason, setBlockReason] = useState("")
+  const [reportId, setReportId] = useState("")
+  const [showUnblockRequest, setShowUnblockRequest] = useState(false)
+  const [unblockReason, setUnblockReason] = useState("")
 
   const { signIn, signUp } = useAuth()
 
@@ -117,6 +123,22 @@ export default function AuthScreen() {
           setAcceptedTerms(false) // Reset terms acceptance
         }
       } else if (isLogin && result.data) {
+        // Check if user is blocked before proceeding
+        console.log("Checking if user is blocked:", result.data.user.id, result.data.user.email)
+        const blockCheck = await adminService.checkIfUserIsBlocked(result.data.user.id)
+        console.log("Block check result:", blockCheck)
+
+        if (blockCheck.isBlocked) {
+          console.log("User is blocked, showing blocked screen")
+          setIsBlocked(true)
+          setBlockReason(blockCheck.reason || "Your account has been blocked")
+          setReportId(blockCheck.reportId || "")
+          setLoading(false)
+          return
+        } else {
+          console.log("User is not blocked, proceeding with login")
+        }
+
         // After successful login, if user has 2FA enabled, prompt biometric/PIN
         try {
           let twoFactorEnabled = false
@@ -188,6 +210,52 @@ export default function AuthScreen() {
 
   const handleForgotPasswordClose = () => {
     setShowForgotPasswordModal(false)
+  }
+
+  const handleUnblockRequest = async () => {
+    if (!unblockReason.trim()) {
+      Alert.alert("Error", "Please provide a reason for your unblock request")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const result = await adminService.createUnblockRequest(reportId, unblockReason.trim())
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      Alert.alert(
+        "Request Submitted",
+        "Your unblock request has been submitted to the administrators. You will be notified once it's reviewed.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setIsBlocked(false)
+              setShowUnblockRequest(false)
+              setUnblockReason("")
+              setBlockReason("")
+              setReportId("")
+            }
+          }
+        ]
+      )
+    } catch (error) {
+      console.error('Error submitting unblock request:', error)
+      Alert.alert("Error", "Failed to submit unblock request. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBackToLogin = () => {
+    setIsBlocked(false)
+    setShowUnblockRequest(false)
+    setUnblockReason("")
+    setBlockReason("")
+    setReportId("")
   }
 
   return (
@@ -353,7 +421,282 @@ export default function AuthScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      
+      {/* Terms and Conditions Modal */}
+      <TermsAndConditionsModal
+        visible={showTermsModal}
+        onClose={handleTermsClose}
+        onAccept={handleTermsAcceptedFromModal}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        visible={showForgotPasswordModal}
+        onClose={handleForgotPasswordClose}
+      />
+    </SafeAreaView>
+  )
+
+  // Render blocked user screen as separate component (outside main SafeAreaView)
+  if (isBlocked) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        {/* Blocked User Screen - Full Screen Overlay */}
+        <View style={[styles.blockedOverlay, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
+          <View style={[styles.blockedContainer, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.blockedHeader}>
+              <MaterialIcons name="block" size={48} color={theme.colors.error} />
+              <Text style={[styles.blockedTitle, { color: theme.colors.text }]}>Account Blocked</Text>
+            </View>
+
+            <Text style={[styles.blockedMessage, { color: theme.colors.textSecondary }]}>
+              Your account has been blocked by an administrator.
+            </Text>
+
+            <Text style={[styles.blockReason, { color: theme.colors.text }]}>
+              Reason: {blockReason}
+            </Text>
+
+            <Text style={[styles.blockedInfo, { color: theme.colors.textTertiary }]}>
+              You can request to be unblocked by providing a reason below. An administrator will review your request.
+            </Text>
+
+            <View style={styles.blockedActions}>
+              <TouchableOpacity
+                style={[styles.requestButton, { backgroundColor: '#007BFF' }]}
+                onPress={() => setShowUnblockRequest(true)}
+                disabled={loading}
+              >
+                <Text style={styles.requestButtonText}>Request Unblock</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.backButton, { borderColor: theme.colors.border }]}
+                onPress={handleBackToLogin}
+                disabled={loading}
+              >
+                <Text style={[styles.backButtonText, { color: theme.colors.text }]}>Back to Login</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Unblock Request Modal */}
+        {showUnblockRequest && (
+          <View style={[styles.blockedOverlay, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>
+            <View style={[styles.blockedContainer, { backgroundColor: theme.colors.surface }]}>
+              <View style={styles.blockedHeader}>
+                <MaterialIcons name="edit" size={48} color="#007BFF" />
+                <Text style={[styles.blockedTitle, { color: theme.colors.text }]}>Request Unblock</Text>
+              </View>
+
+              <Text style={[styles.blockedMessage, { color: theme.colors.textSecondary }]}>
+                Please provide a detailed reason for why you should be unblocked.
+              </Text>
+
+              <TextInput
+                style={[styles.unblockInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
+                placeholder="Explain why you should be unblocked..."
+                placeholderTextColor={theme.colors.textTertiary}
+                value={unblockReason}
+                onChangeText={setUnblockReason}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              <View style={styles.blockedActions}>
+                <TouchableOpacity
+                  style={[styles.requestButton, { backgroundColor: '#28A745' }]}
+                  onPress={handleUnblockRequest}
+                  disabled={loading || !unblockReason.trim()}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text style={styles.requestButtonText}>Submit Request</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.backButton, { borderColor: theme.colors.border }]}
+                  onPress={() => setShowUnblockRequest(false)}
+                  disabled={loading}
+                >
+                  <Text style={[styles.backButtonText, { color: theme.colors.text }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      </SafeAreaView>
+    )
+  }
+
+  // Return main login/signup screen
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoWrapper}>
+                <Image
+                  source={require('../../assets/logo.jpg')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.appTitle}>Mirae</Text>
+              {/* <Text style={styles.appSubtitle}>SafePlaces</Text> */}
+            </View>
+          </View>
+
+          <View style={styles.formContainer}>
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, isLogin && styles.activeTab]}
+                onPress={() => switchAuthMode(true)}
+                disabled={loading}
+              >
+                <Text style={[styles.tabText, isLogin && styles.activeTabText]}>
+                  Sign In
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, !isLogin && styles.activeTab]}
+                onPress={() => switchAuthMode(false)}
+                disabled={loading}
+              >
+                <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>
+                  Sign Up
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.form}>
+              {!isLogin && (
+                <View style={styles.inputContainer}>
+                  <MaterialIcons name="person" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Full Name"
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    editable={!loading}
+                  />
+                </View>
+              )}
+
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!loading}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="lock" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                  disabled={loading}
+                >
+                  <MaterialIcons
+                    name={showPassword ? "visibility" : "visibility-off"}
+                    size={20}
+                    color="#666"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Terms and Conditions Checkbox for Sign Up */}
+              {!isLogin && (
+                <View style={styles.termsContainer}>
+                  <TouchableOpacity
+                    style={styles.checkboxContainer}
+                    onPress={toggleCheckbox}
+                    disabled={loading}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+                      {acceptedTerms && (
+                        <MaterialIcons name="check" size={16} color="white" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.termsTextContainer}>
+                    <Text style={styles.termsTextPrefix}>I agree to the </Text>
+                    <TouchableOpacity onPress={handleTermsPress} disabled={loading}>
+                      <Text style={styles.termsLink}>Terms and Conditions</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Forgot Password Link for Sign In */}
+              {isLogin && (
+                <TouchableOpacity
+                  onPress={handleForgotPasswordPress}
+                  style={styles.forgotPasswordContainer}
+                  disabled={loading}
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.authButton,
+                  loading && styles.disabledButton,
+                  !isLogin && !acceptedTerms && styles.disabledButton
+                ]}
+                onPress={handleAuth}
+                disabled={loading || (!isLogin && !acceptedTerms)}
+              >
+                <LinearGradient colors={["#000000", "#DAA520"]} style={styles.authButtonGradient}>
+                  {loading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="white" />
+                      <Text style={styles.loadingText}>
+                        {isLogin ? "Signing In..." : "Creating Account..."}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.authButtonText}>
+                      {isLogin ? "Sign In" : "Sign Up"}
+                    </Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Terms and Conditions Modal */}
       <TermsAndConditionsModal
         visible={showTermsModal}
         onClose={handleTermsClose}
@@ -576,5 +919,93 @@ const styles = StyleSheet.create({
     color: "#DAA520",
     fontWeight: "500",
     textDecorationLine: "underline",
+  },
+  blockedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  blockedContainer: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+  },
+  blockedHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  blockedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 15,
+  },
+  blockedMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 15,
+    lineHeight: 22,
+  },
+  blockReason: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 15,
+    padding: 15,
+    backgroundColor: '#FFF3CD',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFEAA7',
+  },
+  blockedInfo: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 20,
+  },
+  blockedActions: {
+    width: '100%',
+    gap: 15,
+  },
+  requestButton: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '100%',
+  },
+  requestButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backButton: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  unblockInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    minHeight: 100,
+    width: '100%',
+    textAlignVertical: 'top',
+    marginBottom: 20,
   }
 })

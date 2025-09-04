@@ -14,7 +14,7 @@ export interface UserReport {
   reported_user_id: string
   reason: string
   details?: string
-  status: 'pending' | 'reviewed' | 'resolved'
+  status: 'pending' | 'reviewed' | 'resolved' | 'blocked'
   admin_notes?: string
   created_at: string
   updated_at?: string
@@ -50,7 +50,7 @@ export const adminService = {
   // Update report status and admin notes
   updateReport: async (
     reportId: string,
-    status: 'pending' | 'reviewed' | 'resolved',
+    status: 'pending' | 'reviewed' | 'resolved' | 'blocked',
     adminNotes?: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -78,15 +78,32 @@ export const adminService = {
   // Block a user (admin action)
   blockUser: async (
     userIdToBlock: string,
+    reportId: string,
     reason: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log("Starting blockUser process for user:", userIdToBlock)
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
+        console.error("Block user failed: Not authenticated")
         return { success: false, error: "Not authenticated" }
       }
 
-      const { error } = await supabase
+      console.log("Admin user authenticated:", user.email)
+
+      // Check if admin has permission
+      const isAdmin = await adminService.isCurrentUserAdmin()
+      if (!isAdmin) {
+        console.error("Block user failed: User is not admin")
+        return { success: false, error: "Insufficient permissions" }
+      }
+
+      console.log("Admin permission confirmed")
+
+      // First, block the user
+      console.log("Inserting into blocked_users table...")
+      const { error: blockError } = await supabase
         .from('blocked_users')
         .insert({
           user_id: user.id, // Admin's ID (who is doing the blocking)
@@ -96,15 +113,40 @@ export const adminService = {
           created_at: new Date().toISOString()
         })
 
-      if (error && !error.message.includes('duplicate key')) {
-        console.error("Error blocking user:", error)
-        return { success: false, error: error.message }
+      if (blockError) {
+        if (blockError.message.includes('duplicate key')) {
+          console.log("User already blocked, continuing...")
+        } else {
+          console.error("Error blocking user:", blockError)
+          return { success: false, error: `Failed to block user: ${blockError.message}` }
+        }
+      } else {
+        console.log("User successfully added to blocked_users table")
       }
+
+      // Then, update the report status to 'blocked'
+      console.log("Updating report status...")
+      const { error: reportError } = await supabase
+        .from('user_reports')
+        .update({
+          status: 'blocked',
+          admin_notes: `User blocked by admin ${user.email} for: ${reason}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reportId)
+
+      if (reportError) {
+        console.error("Error updating report status:", reportError)
+        return { success: false, error: `Failed to update report: ${reportError.message}` }
+      }
+
+      console.log("Report status updated successfully")
+      console.log("Block user process completed successfully")
 
       return { success: true }
     } catch (error: any) {
       console.error("Error in blockUser:", error)
-      return { success: false, error: error.message }
+      return { success: false, error: `Unexpected error: ${error.message}` }
     }
   },
 
@@ -173,7 +215,14 @@ export const adminService = {
         return false
       }
 
-      return (data?.role === 'admin' || data?.is_admin === true)
+      // Check both role and is_admin fields
+      const isAdmin = (data?.role === 'admin' || data?.is_admin === true)
+
+      if (isAdmin) {
+        console.log("User is admin:", user.email)
+      }
+
+      return isAdmin
     } catch (error) {
       console.error("Error in isCurrentUserAdmin:", error)
       return false
@@ -283,6 +332,275 @@ export const adminService = {
     } catch (error: any) {
       console.error("Error in rejectPlaceSuggestion:", error)
       return { success: false, error: error.message }
+    }
+  },
+
+  // Unblock Request Management
+  createUnblockRequest: async (
+    reportId: string,
+    reason: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return { success: false, error: "Not authenticated" }
+      }
+
+      const { error } = await supabase
+        .from('unblock_requests')
+        .insert({
+          user_id: user.id,
+          report_id: reportId,
+          reason,
+          created_at: new Date().toISOString()
+        })
+
+      if (error) {
+        console.error("Error creating unblock request:", error)
+        return { success: false, error: error.message }
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      console.error("Error in createUnblockRequest:", error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  getUnblockRequests: async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+    try {
+      const { data, error } = await supabase
+        .from('unblock_requests')
+        .select(`
+          *,
+          user:users!user_id(name, email),
+          report:user_reports!report_id(reason, details)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error("Error fetching unblock requests:", error)
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, data: data || [] }
+    } catch (error: any) {
+      console.error("Error in getUnblockRequests:", error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  approveUnblockRequest: async (
+    requestId: string,
+    adminNotes?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return { success: false, error: "Not authenticated" }
+      }
+
+      // Get the request details first
+      const { data: request, error: fetchError } = await supabase
+        .from('unblock_requests')
+        .select('user_id, report_id')
+        .eq('id', requestId)
+        .single()
+
+      if (fetchError || !request) {
+        return { success: false, error: fetchError?.message || "Request not found" }
+      }
+
+      // Unblock the user
+      const { error: unblockError } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('blocked_user_id', request.user_id)
+        .eq('blocked_by_admin', true)
+
+      if (unblockError) {
+        console.error("Error unblocking user:", unblockError)
+        return { success: false, error: unblockError.message }
+      }
+
+      // Update report status back to 'reviewed'
+      const { error: reportError } = await supabase
+        .from('user_reports')
+        .update({
+          status: 'reviewed',
+          admin_notes: 'User unblocked upon request approval',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', request.report_id)
+
+      if (reportError) {
+        console.error("Error updating report:", reportError)
+        return { success: false, error: reportError.message }
+      }
+
+      // Update the unblock request status
+      const { error: requestError } = await supabase
+        .from('unblock_requests')
+        .update({
+          status: 'approved',
+          admin_notes: adminNotes,
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+
+      if (requestError) {
+        console.error("Error updating unblock request:", requestError)
+        return { success: false, error: requestError.message }
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      console.error("Error in approveUnblockRequest:", error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  denyUnblockRequest: async (
+    requestId: string,
+    adminNotes?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return { success: false, error: "Not authenticated" }
+      }
+
+      const { error } = await supabase
+        .from('unblock_requests')
+        .update({
+          status: 'denied',
+          admin_notes: adminNotes,
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+
+      if (error) {
+        console.error("Error denying unblock request:", error)
+        return { success: false, error: error.message }
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      console.error("Error in denyUnblockRequest:", error)
+      return { success: false, error: error.message }
+    }
+  },
+
+
+
+  // Check if user is blocked
+  checkIfUserIsBlocked: async (userId: string): Promise<{ isBlocked: boolean; reason?: string; reportId?: string }> => {
+    try {
+      console.log("checkIfUserIsBlocked called for user:", userId)
+
+      // First, check the is_blocked column in users table (if it exists)
+      console.log("Checking is_blocked column in users table...")
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('is_blocked')
+        .eq('id', userId)
+        .single()
+
+      console.log("User is_blocked check result:", { userData, userError })
+
+      // If user has is_blocked = true, they're blocked
+      if (userData?.is_blocked === true) {
+        console.log("✅ User is blocked according to is_blocked column")
+
+        // Try to get blocking details from blocked_users table
+        const { data: blockData, error: blockError } = await supabase
+          .from('blocked_users')
+          .select('reason')
+          .eq('blocked_user_id', userId)
+          .eq('blocked_by_admin', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        console.log("Block details query result:", { blockData, blockError })
+
+        // Get associated report
+        const { data: reportData, error: reportError } = await supabase
+          .from('user_reports')
+          .select('id')
+          .eq('reported_user_id', userId)
+          .eq('status', 'blocked')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        console.log("Report query result:", { reportData, reportError })
+
+        const result = {
+          isBlocked: true,
+          reason: blockData?.reason || "Account blocked by administrator",
+          reportId: reportData?.id
+        }
+
+        console.log("✅ checkIfUserIsBlocked returning (blocked):", result)
+        return result
+      } else if (userData?.is_blocked === false) {
+        console.log("User is not blocked according to is_blocked column (false)")
+      } else {
+        console.log("is_blocked column not found or null:", userData?.is_blocked)
+      }
+
+      // Fallback: Check blocked_users table directly (for backward compatibility)
+      console.log("Checking blocked_users table as fallback...")
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('reason')
+        .eq('blocked_user_id', userId)
+        .eq('blocked_by_admin', true)
+        .single()
+
+      console.log("Blocked users fallback query result:", { data, error })
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error("Error checking blocked_users table:", error)
+        return { isBlocked: false }
+      }
+
+      if (data) {
+        console.log("User is blocked according to blocked_users table")
+
+        // Get the associated report
+        const { data: reportData, error: reportError } = await supabase
+          .from('user_reports')
+          .select('id')
+          .eq('reported_user_id', userId)
+          .eq('status', 'blocked')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        console.log("Report query result:", { reportData, reportError })
+
+        const result = {
+          isBlocked: true,
+          reason: data.reason,
+          reportId: reportData?.id
+        }
+
+        console.log("checkIfUserIsBlocked returning (blocked from table):", result)
+        return result
+      }
+
+      console.log("User is not blocked")
+      return { isBlocked: false }
+    } catch (error: any) {
+      console.error("Error in checkIfUserIsBlocked:", error)
+      return { isBlocked: false }
     }
   }
 }

@@ -253,8 +253,24 @@ CREATE TABLE user_reports (
   reported_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   reason VARCHAR(255) NOT NULL,
   details TEXT,
-  status VARCHAR(20) DEFAULT 'pending', -- pending, reviewed, resolved
+  status VARCHAR(20) DEFAULT 'pending', -- pending, reviewed, resolved, blocked
   admin_notes TEXT,
+  blocked_at TIMESTAMP WITH TIME ZONE,
+  blocked_by UUID REFERENCES users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Unblock Requests Table
+CREATE TABLE unblock_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  report_id UUID REFERENCES user_reports(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  admin_notes TEXT,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, approved, denied
+  reviewed_by UUID REFERENCES users(id),
+  reviewed_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -290,6 +306,7 @@ ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE unblock_requests ENABLE ROW LEVEL SECURITY;
 
 -- Create Policies for Row Level Security
 -- Users can view and update their own profiles
@@ -469,6 +486,34 @@ CREATE POLICY "Admins can view all user reports" ON user_reports
 
 -- Admins can update user reports
 CREATE POLICY "Admins can update user reports" ON user_reports
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND (users.role = 'admin' OR users.is_admin = true)
+    )
+  );
+
+-- Users can create unblock requests for themselves
+CREATE POLICY "Users can create unblock requests" ON unblock_requests
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Users can view their own unblock requests
+CREATE POLICY "Users can view their own unblock requests" ON unblock_requests
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Admins can view all unblock requests
+CREATE POLICY "Admins can view all unblock requests" ON unblock_requests
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND (users.role = 'admin' OR users.is_admin = true)
+    )
+  );
+
+-- Admins can update unblock requests
+CREATE POLICY "Admins can update unblock requests" ON unblock_requests
   FOR UPDATE USING (
     EXISTS (
       SELECT 1 FROM users

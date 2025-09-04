@@ -11,7 +11,7 @@ interface UserReport {
   reported_user_id: string
   reason: string
   details?: string
-  status: 'pending' | 'reviewed' | 'resolved'
+  status: 'pending' | 'reviewed' | 'resolved' | 'blocked'
   admin_notes?: string
   created_at: string
   reporter?: { name: string; email: string }
@@ -19,6 +19,21 @@ interface UserReport {
 }
 
 type AdminItem = UserReport | PlaceSuggestion
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return { backgroundColor: '#FFA500' }
+    case 'reviewed':
+      return { backgroundColor: '#007BFF' }
+    case 'resolved':
+      return { backgroundColor: '#28A745' }
+    case 'blocked':
+      return { backgroundColor: '#DC3545' }
+    default:
+      return { backgroundColor: '#6C757D' }
+  }
+}
 
 interface PlaceSuggestion {
   id: string
@@ -40,9 +55,10 @@ interface PlaceSuggestion {
 export default function AdminReportsScreen({ navigation }: any) {
   const { theme } = useTheme()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<'reports' | 'suggestions'>('reports')
+  const [activeTab, setActiveTab] = useState<'reports' | 'suggestions' | 'unblock_requests'>('reports')
   const [reports, setReports] = useState<UserReport[]>([])
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([])
+  const [unblockRequests, setUnblockRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedReport, setSelectedReport] = useState<UserReport | null>(null)
   const [selectedSuggestion, setSelectedSuggestion] = useState<PlaceSuggestion | null>(null)
@@ -108,11 +124,31 @@ export default function AdminReportsScreen({ navigation }: any) {
     }
   }
 
+  const loadUnblockRequests = async () => {
+    try {
+      setLoading(true)
+      const result = await adminService.getUnblockRequests()
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      setUnblockRequests(result.data || [])
+    } catch (error) {
+      console.error('Error loading unblock requests:', error)
+      Alert.alert('Error', 'Failed to load unblock requests')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const loadData = async () => {
     if (activeTab === 'reports') {
       await loadReports()
-    } else {
+    } else if (activeTab === 'suggestions') {
       await loadSuggestions()
+    } else {
+      await loadUnblockRequests()
     }
   }
 
@@ -140,18 +176,47 @@ export default function AdminReportsScreen({ navigation }: any) {
     }
   }
 
-  const blockUser = async (userId: string, reason: string) => {
+  const blockUser = async (reportId: string, userId: string, reason: string) => {
     try {
-      const result = await adminService.blockUser(userId, reason)
+      const result = await adminService.blockUser(userId, reportId, reason)
 
       if (!result.success) {
         throw new Error(result.error)
       }
 
-      Alert.alert('Success', 'User has been blocked')
+      // Update the local report status
+      setReports(prev => prev.map(report =>
+        report.id === reportId
+          ? { ...report, status: 'blocked' as const }
+          : report
+      ))
+
+      Alert.alert('Success', 'User has been blocked and report status updated')
     } catch (error) {
       console.error('Error blocking user:', error)
       Alert.alert('Error', 'Failed to block user')
+    }
+  }
+
+  const unblockUser = async (userId: string) => {
+    try {
+      const result = await adminService.unblockUser(userId)
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      // Update the local report status back to 'reviewed'
+      setReports(prev => prev.map(report =>
+        report.reported_user_id === userId && report.status === 'blocked'
+          ? { ...report, status: 'reviewed' as const }
+          : report
+      ))
+
+      Alert.alert('Success', 'User has been unblocked')
+    } catch (error) {
+      console.error('Error unblocking user:', error)
+      Alert.alert('Error', 'Failed to unblock user')
     }
   }
 
@@ -192,6 +257,39 @@ export default function AdminReportsScreen({ navigation }: any) {
     }
   }
 
+  const approveUnblockRequest = async (requestId: string) => {
+    try {
+      const result = await adminService.approveUnblockRequest(requestId)
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      setUnblockRequests(prev => prev.filter(r => r.id !== requestId))
+      Alert.alert('Success', 'User has been unblocked')
+    } catch (error) {
+      console.error('Error approving unblock request:', error)
+      Alert.alert('Error', 'Failed to approve unblock request')
+    }
+  }
+
+  const denyUnblockRequest = async (requestId: string) => {
+    try {
+      const result = await adminService.denyUnblockRequest(requestId, adminNotes)
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      setUnblockRequests(prev => prev.filter(r => r.id !== requestId))
+      Alert.alert('Success', 'Unblock request has been denied')
+      setAdminNotes("")
+    } catch (error) {
+      console.error('Error denying unblock request:', error)
+      Alert.alert('Error', 'Failed to deny unblock request')
+    }
+  }
+
   const renderReportItem = ({ item }: { item: UserReport }) => (
     <TouchableOpacity
       style={[styles.reportItem, { backgroundColor: theme.colors.surface }]}
@@ -203,11 +301,8 @@ export default function AdminReportsScreen({ navigation }: any) {
     >
       <View style={styles.reportHeader}>
         <Text style={[styles.reportReason, { color: theme.colors.text }]}>{item.reason}</Text>
-        <View style={[styles.statusBadge, {
-          backgroundColor: item.status === 'pending' ? '#FFA500' :
-                          item.status === 'reviewed' ? '#007BFF' : '#28A745'
-        }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
+        <View style={[styles.statusBadge, getStatusColor(item.status)]}>
+          <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
         </View>
       </View>
 
@@ -251,14 +346,69 @@ export default function AdminReportsScreen({ navigation }: any) {
       <Text style={[styles.reportDate, { color: theme.colors.textTertiary }]}>
         {new Date(item.created_at).toLocaleDateString()}
       </Text>
+
+      {activeTab === 'reports' && 'reported_user_id' in item && (item as unknown as UserReport).status === 'blocked' && (
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#28A745', marginTop: 8 }]}
+          onPress={() => unblockUser((item as unknown as UserReport).reported_user_id)}
+        >
+          <Text style={styles.actionButtonText}>Unblock User</Text>
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  )
+
+  const renderUnblockRequestItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[styles.reportItem, { backgroundColor: theme.colors.surface }]}
+      onPress={() => {
+        setSelectedReport(item)
+        setAdminNotes("")
+        setShowDetails(true)
+      }}
+    >
+      <View style={styles.reportHeader}>
+        <Text style={[styles.reportReason, { color: theme.colors.text }]}>Unblock Request</Text>
+        <View style={[styles.statusBadge, { backgroundColor: '#FFA500' }]}>
+          <Text style={styles.statusText}>Pending</Text>
+        </View>
+      </View>
+
+      <Text style={[styles.reportDetails, { color: theme.colors.textSecondary }]}>
+        User: {item.user?.name} ({item.user?.email})
+      </Text>
+      <Text style={[styles.reportDetails, { color: theme.colors.textSecondary }]}>
+        Reason: {item.reason}
+      </Text>
+      <Text style={[styles.reportDate, { color: theme.colors.textTertiary }]}>
+        {new Date(item.created_at).toLocaleDateString()}
+      </Text>
+
+      <View style={styles.actionButtons}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#28A745' }]}
+          onPress={() => approveUnblockRequest(item.id)}
+        >
+          <Text style={styles.actionButtonText}>Approve</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#DC3545' }]}
+          onPress={() => denyUnblockRequest(item.id)}
+        >
+          <Text style={styles.actionButtonText}>Deny</Text>
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   )
 
   const renderItem = ({ item }: { item: AdminItem }) => {
     if (activeTab === 'reports') {
       return renderReportItem({ item: item as UserReport })
-    } else {
+    } else if (activeTab === 'suggestions') {
       return renderSuggestionItem({ item: item as PlaceSuggestion })
+    } else {
+      return renderUnblockRequestItem({ item })
     }
   }
 
@@ -279,7 +429,7 @@ export default function AdminReportsScreen({ navigation }: any) {
           <MaterialIcons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-          {activeTab === 'reports' ? 'User Reports' : 'Place Suggestions'}
+          {activeTab === 'reports' ? 'User Reports' : activeTab === 'suggestions' ? 'Place Suggestions' : 'Unblock Requests'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -304,22 +454,31 @@ export default function AdminReportsScreen({ navigation }: any) {
             Suggestions ({suggestions.length})
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'unblock_requests' && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
+          onPress={() => setActiveTab('unblock_requests')}
+        >
+          <MaterialIcons name="person" size={20} color={activeTab === 'unblock_requests' ? theme.colors.primary : theme.colors.textSecondary} />
+          <Text style={[styles.tabText, { color: theme.colors.textSecondary }, activeTab === 'unblock_requests' && [styles.activeTabText, { color: theme.colors.primary }]]}>
+            Unblock ({unblockRequests.length})
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
-        data={(activeTab === 'reports' ? reports : suggestions) as AdminItem[]}
+        data={(activeTab === 'reports' ? reports : activeTab === 'suggestions' ? suggestions : unblockRequests) as any[]}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <MaterialIcons
-              name={activeTab === 'reports' ? "report" : "place"}
+              name={activeTab === 'reports' ? "report" : activeTab === 'suggestions' ? "place" : "person"}
               size={48}
               color={theme.colors.textTertiary}
             />
             <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-              {activeTab === 'reports' ? 'No reports found' : 'No pending suggestions'}
+              {activeTab === 'reports' ? 'No reports found' : activeTab === 'suggestions' ? 'No pending suggestions' : 'No unblock requests'}
             </Text>
           </View>
         }
@@ -390,26 +549,49 @@ export default function AdminReportsScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={[styles.blockButton, { borderColor: theme.colors.error }]}
-                onPress={() => {
-                  Alert.alert(
-                    'Block User',
-                    `Are you sure you want to block ${selectedReport.reported_user?.name}?`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Block',
-                        style: 'destructive',
-                        onPress: () => blockUser(selectedReport.reported_user_id, selectedReport.reason)
-                      }
-                    ]
-                  )
-                }}
-              >
-                <MaterialIcons name="block" size={20} color={theme.colors.error} />
-                <Text style={[styles.blockButtonText, { color: theme.colors.error }]}>Block User</Text>
-              </TouchableOpacity>
+              {selectedReport.status !== 'blocked' ? (
+                <TouchableOpacity
+                  style={[styles.blockButton, { borderColor: theme.colors.error }]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Block User',
+                      `Are you sure you want to block ${selectedReport.reported_user?.name}?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Block',
+                          style: 'destructive',
+                          onPress: () => blockUser(selectedReport.id, selectedReport.reported_user_id, selectedReport.reason)
+                        }
+                      ]
+                    )
+                  }}
+                >
+                  <MaterialIcons name="block" size={20} color={theme.colors.error} />
+                  <Text style={[styles.blockButtonText, { color: theme.colors.error }]}>Block User</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.blockButton, { borderColor: '#28A745', backgroundColor: '#28A745' }]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Unblock User',
+                      `Are you sure you want to unblock ${selectedReport.reported_user?.name}?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Unblock',
+                          style: 'default',
+                          onPress: () => unblockUser(selectedReport.reported_user_id)
+                        }
+                      ]
+                    )
+                  }}
+                >
+                  <MaterialIcons name="check-circle" size={20} color="white" />
+                  <Text style={[styles.blockButtonText, { color: 'white' }]}>Unblock User</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -673,13 +855,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   activeTab: {
     borderBottomWidth: 2,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 12,
     marginLeft: 5,
     fontWeight: '600',
   },
