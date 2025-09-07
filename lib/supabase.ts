@@ -76,12 +76,12 @@ export const auth = {
 				}
 			}
 
-			if (userData?.is_blocked) {
-				return {
-					data: null,
-					error: { message: "Your account has been blocked. Please contact support for assistance." }
-				}
-			}
+			// if (userData?.is_blocked) {
+			// 	return {
+			// 		data: null,
+			// 		error: { message: "Your account has been blocked. Please contact support for assistance." }
+			// 	}
+			// }
 
 			const { data, error } = await supabase.auth.signInWithPassword({
 				email,
