@@ -456,6 +456,17 @@ export const adminService = {
         return { success: false, error: unblockError.message }
       }
 
+      // Explicitly update the user's is_blocked status to false
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ is_blocked: false })
+        .eq('id', request.user_id)
+
+      if (updateError) {
+        console.error("Error updating user blocked status:", updateError)
+        return { success: false, error: updateError.message }
+      }
+
       // Update report status back to 'reviewed' only if report_id is a valid UUID
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
       if (request.report_id && uuidRegex.test(request.report_id)) {

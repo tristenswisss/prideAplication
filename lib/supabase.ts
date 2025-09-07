@@ -62,6 +62,27 @@ export const auth = {
 
 	signIn: async (email: string, password: string) => {
 		try {
+			// First check if user is blocked
+			const { data: userData, error: userError } = await supabase
+				.from('users')
+				.select('is_blocked')
+				.eq('email', email)
+				.single()
+
+			if (userError && userError.code !== 'PGRST116') { // PGRST116 is "not found"
+				return {
+					data: null,
+					error: { message: "An error occurred while checking account status" }
+				}
+			}
+
+			if (userData?.is_blocked) {
+				return {
+					data: null,
+					error: { message: "Your account has been blocked. Please contact support for assistance." }
+				}
+			}
+
 			const { data, error } = await supabase.auth.signInWithPassword({
 				email,
 				password,
