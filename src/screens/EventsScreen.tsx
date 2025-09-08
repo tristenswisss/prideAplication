@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert, Image, TextInput } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
@@ -64,7 +64,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
     }
   }
 
-  const getFilteredEvents = () => {
+  const filteredEvents = useMemo(() => {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -102,7 +102,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
           tags.includes(lower)
         )
       })
-  }
+  }, [events, filter, searchQuery])
 
   const renderEvent = ({ item }: { item: Event }) => {
     const eventDate = new Date(item.date)
@@ -197,7 +197,6 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
     )
   }
 
-  const filteredEvents = getFilteredEvents()
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -270,6 +269,11 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
           showsVerticalScrollIndicator={false}
           refreshing={loading}
           onRefresh={loadEvents}
+          // Performance optimizations
+          initialNumToRender={8}
+          maxToRenderPerBatch={5}
+          windowSize={10}
+          removeClippedSubviews={true}
         />
       )}
     </SafeAreaView>

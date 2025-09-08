@@ -24,12 +24,28 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-	auth: {
-		storage: AsyncStorage,
-		autoRefreshToken: true,
-		persistSession: true,
-		detectSessionInUrl: false,
-	},
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+  // Performance optimizations
+  global: {
+    headers: {
+      'x-client-info': 'mirae-app',
+    },
+  },
+  // Enable connection pooling and keep-alive
+  db: {
+    schema: 'public',
+  },
+  // Optimize real-time connections
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
 })
 
 // Proper Supabase authentication functions

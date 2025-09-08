@@ -53,7 +53,10 @@ export const businessService = {
     try {
       const { data, error } = await supabase
         .from("businesses")
-        .select("*")
+        .select(`
+          *,
+          review_count:reviews(count)
+        `)
         .order("created_at", { ascending: false })
 
       if (error) {
@@ -72,7 +75,10 @@ export const businessService = {
   // Search businesses
   searchBusinesses: async (params: BusinessSearchParams): Promise<BusinessResponse> => {
     try {
-      let query = supabase.from("businesses").select("*", { count: "exact" })
+      let query = supabase.from("businesses").select(`
+        *,
+        review_count:reviews(count)
+      `, { count: "exact" })
 
       // Apply text search
       if (params.query) {
@@ -173,7 +179,10 @@ export const businessService = {
 
       const { data, error } = await supabase
         .from("businesses")
-        .select("*")
+        .select(`
+          *,
+          review_count:reviews(count)
+        `)
         .eq("category", normalized)
         .order("rating", { ascending: false })
 
@@ -350,11 +359,22 @@ function normalizeBusiness(input: any): Business {
     return input
   }
 
+  // Handle review count from joined query
+  let reviewCount = input.review_count
+  if (Array.isArray(reviewCount)) {
+    reviewCount = reviewCount.length
+  } else if (typeof reviewCount === 'number') {
+    // Already a number, use as is
+  } else {
+    reviewCount = 0
+  }
+
   const normalized = {
     ...input,
     latitude: toNumber(input?.latitude),
     longitude: toNumber(input?.longitude),
     rating: toNumber(input?.rating),
+    review_count: reviewCount,
   } as Business
 
   return normalized

@@ -72,20 +72,21 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const validMarkers = useMemo(() => {
     return (filteredBusinesses || []).filter(
       (b): b is Business & { latitude: number; longitude: number } => {
-        return typeof b.latitude === "number" && 
-               Number.isFinite(b.latitude) && 
-               typeof b.longitude === "number" && 
+        return typeof b.latitude === "number" &&
+               Number.isFinite(b.latitude) &&
+               typeof b.longitude === "number" &&
                Number.isFinite(b.longitude) &&
-               b.latitude !== 0 && 
+               b.latitude !== 0 &&
                b.longitude !== 0
       }
     )
   }, [filteredBusinesses])
 
-  const initialMarkers = useMemo(() => validMarkers.slice(0, CONSTANTS.MAX_INITIAL_MARKERS), [validMarkers])
+  // Limit markers for better performance - only show first 50
+  const initialMarkers = useMemo(() => validMarkers.slice(0, 50), [validMarkers])
 
   // Calculate initial region - prioritize user location, fallback to markers, then default
-  const calculateInitialRegion = () => {
+  const initialRegion = useMemo(() => {
     // Always prefer user location if available
     if (userLocation) {
       return {
@@ -96,33 +97,33 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       }
     }
 
-    // If no user location but have markers, center on markers
+    // If no user location but have markers, center on first 20 markers for performance
     if (validMarkers.length === 0) {
       return CONSTANTS.DEFAULT_REGION
     }
 
-    const lats = validMarkers.map(m => m.latitude)
-    const lngs = validMarkers.map(m => m.longitude)
-    
+    // Use only first 20 markers to reduce calculation overhead
+    const markers = validMarkers.slice(0, 20)
+    const lats = markers.map(m => m.latitude)
+    const lngs = markers.map(m => m.longitude)
+
     const minLat = Math.min(...lats)
     const maxLat = Math.max(...lats)
     const minLng = Math.min(...lngs)
     const maxLng = Math.max(...lngs)
-    
+
     const centerLat = (minLat + maxLat) / 2
     const centerLng = (minLng + maxLng) / 2
     const deltaLat = Math.max((maxLat - minLat) * 1.5, 0.01)
     const deltaLng = Math.max((maxLng - minLng) * 1.5, 0.01)
-    
+
     return {
       latitude: centerLat,
       longitude: centerLng,
       latitudeDelta: deltaLat,
       longitudeDelta: deltaLng,
     }
-  }
-
-  const initialRegion = useMemo(() => calculateInitialRegion(), [userLocation, validMarkers])
+  }, [userLocation, validMarkers])
 
   const mapKey = `${Platform.OS}-${userLocation ? 'withLoc' : 'noLoc'}-${validMarkers.length}`
 
@@ -267,10 +268,6 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     >
       <View style={styles.businessHeader}>
         <Text style={[styles.businessName, { color: theme.colors.text }]}>{item.name}</Text>
-        <View style={styles.businessRating}>
-          <MaterialIcons name="star" size={16} color={theme.colors.accent} />
-          <Text style={[styles.ratingText, { color: theme.colors.text }]}>{item.rating || "N/A"}</Text>
-        </View>
       </View>
       <Text style={[styles.businessCategory, { color: theme.colors.primary }]}>{item.category.toUpperCase()}</Text>
       <Text style={[styles.businessDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
@@ -472,6 +469,11 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           style={[styles.businessList, { backgroundColor: theme.colors.background }]}
           contentContainerStyle={[styles.businessListContent, { backgroundColor: theme.colors.background }]}
           showsVerticalScrollIndicator={false}
+          // Performance optimizations
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={10}
+          removeClippedSubviews={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <MaterialIcons name="business" size={64} color={theme.colors.textTertiary} />
@@ -617,11 +619,6 @@ const styles = StyleSheet.create({
   businessRating: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  ratingText: {
-    marginLeft: 4,
-    fontSize: 14,
-    fontWeight: "bold",
   },
   businessCategory: {
     fontSize: 12,

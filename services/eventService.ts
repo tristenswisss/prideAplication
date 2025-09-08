@@ -1,10 +1,19 @@
 import { notificationService } from "./notificationService"
 import type { Event, EventAttendee } from "../types"
 import { supabase } from "../lib/supabase"
+import { queryCache } from "../lib/queryCache"
 
 export const eventService = {
-  // Get all events
+  // Get all events with caching
   getAllEvents: async (): Promise<Event[]> => {
+    const cacheKey = 'getAllEvents'
+
+    // Try to get from cache first
+    const cached = await queryCache.get<Event[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const { data, error } = await supabase
       .from('events')
       .select(`
@@ -44,7 +53,79 @@ export const eventService = {
       } as Event
     })
 
+    // Cache the result for 10 minutes
+    await queryCache.set(cacheKey, events, undefined, 10 * 60 * 1000)
+
     return events;
+  },
+
+  // Get events with pagination
+  getEventsPaginated: async (page: number = 1, limit: number = 20): Promise<{ events: Event[], total: number, hasMore: boolean }> => {
+    const offset = (page - 1) * limit
+    const cacheKey = `getEventsPaginated_${page}_${limit}`
+
+    // Try to get from cache first
+    const cached = await queryCache.get<{ events: Event[], total: number, hasMore: boolean }>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
+    // Get total count
+    const { count: totalCount } = await supabase
+      .from('events')
+      .select('*', { count: 'exact', head: true })
+
+    // Get paginated events
+    const { data, error } = await supabase
+      .from('events')
+      .select(`
+        *,
+        organizer:users!events_organizer_id_fkey (id, name, avatar_url, profiles(username))
+      `)
+      .order('date', { ascending: true })
+      .range(offset, offset + limit - 1)
+
+    if (error) {
+      console.error('Error fetching paginated events:', error);
+      return { events: [], total: 0, hasMore: false };
+    }
+
+    const events: Event[] = (data || []).map((row: any) => {
+      const organizer = row.organizer || null
+      const profile = Array.isArray(organizer?.profiles) ? organizer.profiles[0] : organizer?.profiles
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        date: row.date,
+        time: row.start_time,
+        start_time: row.start_time,
+        end_time: row.end_time,
+        location: row.location,
+        organizer_id: row.organizer_id,
+        organizer: organizer ? { id: organizer.id, name: organizer.name, avatar_url: organizer.avatar_url, verified: false, created_at: row.created_at, updated_at: row.updated_at, email: "" , username: profile?.username } as any : undefined,
+        category: row.category,
+        tags: row.tags || [],
+        is_free: row.is_free,
+        price: row.price,
+        max_attendees: row.max_attendees,
+        attendee_count: row.attendee_count || 0,
+        current_attendees: row.attendee_count || 0,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      } as Event
+    })
+
+    const result = {
+      events,
+      total: totalCount || 0,
+      hasMore: (offset + limit) < (totalCount || 0)
+    }
+
+    // Cache the result for 5 minutes
+    await queryCache.set(cacheKey, result, undefined, 5 * 60 * 1000)
+
+    return result;
   },
 
   // Get events by category
@@ -130,6 +211,11 @@ export const eventService = {
       console.error('Error upserting RSVP:', error);
       throw error;
     }
+
+    // Invalidate related caches
+    await queryCache.invalidatePattern('getAllEvents')
+    await queryCache.invalidatePattern('getEventsPaginated')
+    await queryCache.invalidatePattern(`getUserEvents_${userId}`)
 
     // attendee_count trigger in DB handles counts for status = 'going'
   },

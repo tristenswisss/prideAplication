@@ -13,6 +13,8 @@ module.exports = () => {
       icon: "./assets/logo.jpg",
       userInterfaceStyle: "light",
       platforms: ["ios", "android", "web"],
+      developmentClient: false,
+      jsEngine: "hermes",
       splash: {
         image: "./assets/logo.jpg",
         resizeMode: "contain",

@@ -1,5 +1,6 @@
 import type { Message, Conversation, UserProfile } from "../types/messaging"
 import { supabase } from "../lib/supabase"
+import { queryCache } from "../lib/queryCache"
 
 // Helper function to remove phone numbers from text
 const removePhoneNumbers = (text: string): string => {
@@ -10,8 +11,16 @@ const removePhoneNumbers = (text: string): string => {
 }
 
 export const messagingService = {
-  // Conversations
+  // Conversations with caching
   getConversations: async (userId: string): Promise<Conversation[]> => {
+    const cacheKey = `getConversations_${userId}`
+
+    // Try to get from cache first
+    const cached = await queryCache.get<Conversation[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const { data, error } = await supabase
       .from("conversations")
       .select("*")
@@ -133,6 +142,10 @@ export const messagingService = {
     const sorted = withProfiles.sort(
       (a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
     )
+
+    // Cache the result for 2 minutes
+    await queryCache.set(cacheKey, sorted as any, undefined, 2 * 60 * 1000)
+
     return sorted as any
   },
 
@@ -491,6 +504,10 @@ export const messagingService = {
     if (updateError) {
       console.error("Error updating conversation:", updateError)
     }
+
+    // Invalidate conversation caches
+    await queryCache.invalidatePattern('getConversations')
+    await queryCache.invalidatePattern(`getConversationIds`)
 
     return data
   },

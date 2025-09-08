@@ -254,7 +254,7 @@ function TabNavigator() {
         setUnreadTotal(total)
         lastRefreshRef.current = Date.now()
       } catch (err) {
-        console.error("Failed to refresh unread counts:", err)
+        // Error handled silently
       } finally {
         setIsRefreshing(false)
       }
@@ -297,7 +297,6 @@ function TabNavigator() {
             if (delta > 0) setUnreadTotal((prev) => Math.max(0, prev - delta))
             setTimeout(() => refreshUnreadCounts(false), 50)
           } catch (err) {
-            console.error("Error updating unread count on conversation open:", err)
             refreshUnreadCounts(true)
           }
         })
@@ -312,7 +311,7 @@ function TabNavigator() {
 
         unsubscribers.push(offOpen, offUnread, offClosed)
       } catch (err) {
-        console.error("Error loading conversations:", err)
+        // Error handled silently
       }
     }
 
