@@ -7,7 +7,9 @@ import * as Location from "expo-location"
 import { LinearGradient } from "expo-linear-gradient"
 import { MaterialIcons } from "@expo/vector-icons"
 import { businessService } from "../../services/businessService"
+import { safeSpacesService } from "../../services/safeSpacesService"
 import type { Business } from "../../types"
+import type { SafeSpace } from "../../types"
 import type { HomeScreenProps } from "../../types/navigation"
 import React from "react"
 import { useTheme } from "../../Contexts/ThemeContext"
@@ -18,6 +20,17 @@ interface Category {
   name: string
   icon: string
   color: string
+}
+
+interface Place {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+  category: string
+  description?: string
+  type: 'business' | 'safe_space'
+  originalData: Business | SafeSpace
 }
 
 const CONSTANTS = {
@@ -31,26 +44,33 @@ const CONSTANTS = {
   }
 }
 
-const BusinessMarker = React.memo(({ 
-  business, 
-  navigation 
-}: { 
-  business: Business
+const BusinessMarker = React.memo(({
+  place,
+  navigation
+}: {
+  place: Place
   navigation: any
 }) => {
   return (
     <Marker
       coordinate={{
-        latitude: business.latitude as number,
-        longitude: business.longitude as number,
+        latitude: place.latitude,
+        longitude: place.longitude,
       }}
       onPress={() => {
-        navigation.navigate("BusinessDetails", { business })
+        if (place.type === 'business') {
+          navigation.navigate("BusinessDetails", { business: place.originalData })
+        } else {
+          // For safe spaces, we might want to navigate to a different screen or show details
+          // For now, let's navigate to BusinessDetails with the safe space data
+          navigation.navigate("BusinessDetails", { business: place.originalData })
+        }
       }}
       tracksViewChanges={false}
-      identifier={business.id}
-      title={business.name}
-      description={`${business.category} • ${business.rating ? business.rating + ' stars' : 'No rating'}`}
+      identifier={place.id}
+      title={place.name}
+      description={`${place.category}${place.type === 'safe_space' ? ' (Safe Space)' : ''}`}
+      pinColor={place.type === 'safe_space' ? '#4ECDC4' : '#FF6B6B'}
     />
   )
 })
@@ -58,7 +78,9 @@ const BusinessMarker = React.memo(({
 export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const { theme } = useTheme()
   const [businesses, setBusinesses] = useState<Business[]>([])
+  const [safeSpaces, setSafeSpaces] = useState<SafeSpace[]>([])
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([])
+  const [filteredSafeSpaces, setFilteredSafeSpaces] = useState<SafeSpace[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [loading, setLoading] = useState(false)
   const [showMap, setShowMap] = useState(true)
@@ -70,7 +92,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const mapRef = React.useRef<MapView | null>(null)
 
   const validMarkers = useMemo(() => {
-    return (filteredBusinesses || []).filter(
+    const businessMarkers: Place[] = (filteredBusinesses || []).filter(
       (b): b is Business & { latitude: number; longitude: number } => {
         return typeof b.latitude === "number" &&
                Number.isFinite(b.latitude) &&
@@ -79,8 +101,39 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
                b.latitude !== 0 &&
                b.longitude !== 0
       }
-    )
-  }, [filteredBusinesses])
+    ).map(b => ({
+      id: b.id,
+      name: b.name,
+      latitude: b.latitude,
+      longitude: b.longitude,
+      category: b.category,
+      description: b.description,
+      type: 'business' as const,
+      originalData: b
+    }))
+
+    const safeSpaceMarkers: Place[] = (filteredSafeSpaces || []).filter(
+      (s): s is SafeSpace & { latitude: number; longitude: number } => {
+        return typeof s.latitude === "number" &&
+               Number.isFinite(s.latitude) &&
+               typeof s.longitude === "number" &&
+               Number.isFinite(s.longitude) &&
+               s.latitude !== 0 &&
+               s.longitude !== 0
+      }
+    ).map(s => ({
+      id: s.id,
+      name: s.name,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      category: s.category,
+      description: s.description,
+      type: 'safe_space' as const,
+      originalData: s
+    }))
+
+    return [...businessMarkers, ...safeSpaceMarkers]
+  }, [filteredBusinesses, filteredSafeSpaces])
 
   // Limit markers for better performance - only show first 50
   const initialMarkers = useMemo(() => validMarkers.slice(0, 50), [validMarkers])
@@ -127,15 +180,44 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   const mapKey = `${Platform.OS}-${userLocation ? 'withLoc' : 'noLoc'}-${validMarkers.length}`
 
+  const categories: Category[] = [
+    { id: "all", name: "All", icon: "apps", color: "grey" },
+    { id: "transport", name: "Transport", icon: "directions-car", color: "#F7DC6F" },
+    { id: "education", name: "Education", icon: "school", color: "red" },
+    { id: "restaurant", name: "Food", icon: "restaurant", color: "#4ECDC4" },
+    { id: "finance", name: "Finance", icon: "business", color: "gold" },
+    { id: "healthcare", name: "Health", icon: "local-hospital", color: "green" },
+    { id: "shopping", name: "Shopping", icon: "shopping-bag", color: "#FFEAA7" },
+    { id: "service", name: "Services", icon: "build", color: "#DDA0DD" },
+    { id: "hotel", name: "Accommodation", icon: "hotel", color: "#98D8C8" },
+  ]
+
   const groupedByCategory = useMemo(() => {
-    const groups: Record<string, Business[]> = {}
+    const groups: Record<string, (Business | SafeSpace)[]> = {}
+
+    // Get allowed category IDs from the categories array
+    const allowedCategoryIds = categories.map(cat => cat.id.toLowerCase())
+
+    // Add businesses only if their category is in the allowed list
     for (const b of filteredBusinesses) {
       const cat = (b.category || "other").toLowerCase()
-      if (!groups[cat]) groups[cat] = []
-      groups[cat].push(b)
+      if (allowedCategoryIds.includes(cat)) {
+        if (!groups[cat]) groups[cat] = []
+        groups[cat].push(b)
+      }
     }
+
+    // Add safe spaces only if their category is in the allowed list
+    for (const s of filteredSafeSpaces) {
+      const cat = (s.category || "other").toLowerCase()
+      if (allowedCategoryIds.includes(cat)) {
+        if (!groups[cat]) groups[cat] = []
+        groups[cat].push(s)
+      }
+    }
+
     return groups
-  }, [filteredBusinesses])
+  }, [filteredBusinesses, filteredSafeSpaces, categories])
 
   useEffect(() => {
     const lat = route?.params?.focusLat
@@ -151,18 +233,6 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     }
   }, [route?.params?.focusLat, route?.params?.focusLng])
 
-  const categories: Category[] = [
-    { id: "all", name: "All", icon: "apps", color: "grey" },
-    { id: "transport", name: "Transport", icon: "directions-car", color: "#F7DC6F" },
-    { id: "education", name: "Education", icon: "school", color: "red" },
-    { id: "restaurant", name: "Food", icon: "restaurant", color: "#4ECDC4" },
-    { id: "finance", name: "Finance", icon: "business", color: "gold" },
-    { id: "healthcare", name: "Health", icon: "local-hospital", color: "green" },
-    { id: "shopping", name: "Shopping", icon: "shopping-bag", color: "#FFEAA7" },
-    { id: "service", name: "Services", icon: "build", color: "#DDA0DD" },
-    { id: "hotel", name: "Accommodation", icon: "hotel", color: "#98D8C8" },
-  ]
-
   useEffect(() => {
     loadBusinesses()
     getCurrentLocation()
@@ -170,7 +240,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   useEffect(() => {
     filterBusinesses()
-  }, [selectedCategory, businesses])
+  }, [selectedCategory, businesses, safeSpaces])
 
   const getCurrentLocation = async () => {
     try {
@@ -199,19 +269,36 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const loadBusinesses = async () => {
     try {
       setLoading(true)
-      
-      const response = await businessService.getBusinesses()
 
-      if (response.success && response.businesses) {
-        setBusinesses(response.businesses)
-        setFilteredBusinesses(response.businesses)
+      // Load businesses
+      const businessResponse = await businessService.getBusinesses()
+
+      // Load safe spaces
+      const safeSpacesResponse = await safeSpacesService.getAllSafeSpaces()
+
+      if (businessResponse.success && businessResponse.businesses) {
+        setBusinesses(businessResponse.businesses)
+        setFilteredBusinesses(businessResponse.businesses)
       } else {
-        Alert.alert("Error", response.error || "Failed to load businesses")
+        Alert.alert("Error", businessResponse.error || "Failed to load businesses")
+        setBusinesses([])
+        setFilteredBusinesses([])
+      }
+
+      if (safeSpacesResponse.success && safeSpacesResponse.data) {
+        setSafeSpaces(safeSpacesResponse.data)
+        setFilteredSafeSpaces(safeSpacesResponse.data)
+      } else {
+        console.warn("Failed to load safe spaces:", safeSpacesResponse.error)
+        setSafeSpaces([])
+        setFilteredSafeSpaces([])
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to load businesses")
+      Alert.alert("Error", "Failed to load places")
       setBusinesses([])
       setFilteredBusinesses([])
+      setSafeSpaces([])
+      setFilteredSafeSpaces([])
     } finally {
       setLoading(false)
     }
@@ -219,80 +306,112 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   const filterBusinesses = async () => {
     try {
-      let filtered: Business[] = []
+      let filteredBusinessesList: Business[] = []
+      let filteredSafeSpacesList: SafeSpace[] = []
 
       if (selectedCategory === "all") {
-        filtered = businesses
+        filteredBusinessesList = businesses
+        filteredSafeSpacesList = safeSpaces
       } else {
-        // First try client-side filtering from cached data
+        // Filter businesses
         const categoryMap: Record<string, string[]> = {
-          finance: ["organization", "finance"],
-          service: ["organization", "service"],
-          hotel: ["other", "hotel"],
-          restaurant: ["restaurant", "bar"],
-          shopping: ["other", "shopping"],
-          education: ["organization", "education"],
-          entertainment: ["other", "entertainment"],
+          finance: ["finance"],
+          service: ["service"],
+          hotel: ["hotel"],
+          restaurant: ["restaurant"],
+          shopping: ["shopping"],
+          education: ["education"],
+          entertainment: ["entertainment"],
           transport: ["transport"],
           healthcare: ["healthcare"]
         }
-        
+
         const allowedCategories = categoryMap[selectedCategory] || [selectedCategory]
-        filtered = businesses.filter(b => 
+
+        // Filter businesses
+        filteredBusinessesList = businesses.filter(b =>
           allowedCategories.includes(b.category?.toLowerCase()) ||
           b.category?.toLowerCase() === selectedCategory
         )
-        
-        // If client-side filtering gives no results, try server-side
-        if (filtered.length === 0) {
+
+        // Filter safe spaces
+        filteredSafeSpacesList = safeSpaces.filter(s =>
+          allowedCategories.includes(s.category?.toLowerCase()) ||
+          s.category?.toLowerCase() === selectedCategory
+        )
+
+        // If client-side filtering gives no results for businesses, try server-side
+        if (filteredBusinessesList.length === 0) {
           const resp = await businessService.getBusinessesByCategory(selectedCategory)
-          filtered = resp.success && resp.businesses ? resp.businesses : []
+          filteredBusinessesList = resp.success && resp.businesses ? resp.businesses : []
+        }
+
+        // If client-side filtering gives no results for safe spaces, try server-side
+        if (filteredSafeSpacesList.length === 0) {
+          const resp = await safeSpacesService.getSafeSpacesByCategory(selectedCategory)
+          filteredSafeSpacesList = resp.success && resp.data ? resp.data : []
         }
       }
 
-      setFilteredBusinesses(filtered)
+      setFilteredBusinesses(filteredBusinessesList)
+      setFilteredSafeSpaces(filteredSafeSpacesList)
     } catch (error) {
       setFilteredBusinesses([])
+      setFilteredSafeSpaces([])
     }
   }
 
-  const renderBusinessCard = ({ item }: { item: Business }) => (
-    <TouchableOpacity
-      style={[styles.businessCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}
-      onPress={() => {
-        navigation.navigate("BusinessDetails", { business: item })
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ${item.category}`}
-      accessibilityHint="Double tap to view business details"
-    >
-      <View style={styles.businessHeader}>
-        <Text style={[styles.businessName, { color: theme.colors.text }]}>{item.name}</Text>
-      </View>
-      <Text style={[styles.businessCategory, { color: theme.colors.primary }]}>{item.category.toUpperCase()}</Text>
-      <Text style={[styles.businessDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
-        {item.description}
-      </Text>
-      <View style={styles.businessTags}>
-        {item.lgbtq_friendly && (
-          <View style={[styles.tag, { backgroundColor: theme.colors.lgbtqFriendly }]}>
-            <Text style={[styles.tagText, { color: theme.colors.surface }]}>LGBTQ+ Friendly</Text>
-          </View>
-        )}
-        {item.trans_friendly && (
-          <View style={[styles.tag, { backgroundColor: theme.colors.transFriendly }]}>
-            <Text style={[styles.tagText, { color: theme.colors.surface }]}>Trans Friendly</Text>
-          </View>
-        )}
-        {item.verified && (
-          <View style={[styles.tag, { backgroundColor: theme.colors.verified }]}>
-            <MaterialIcons name="verified" size={12} color={theme.colors.surface} />
-            <Text style={[styles.tagText, { color: theme.colors.surface }]}>Verified</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  )
+  const renderPlaceCard = ({ item }: { item: Business | SafeSpace }) => {
+    const isSafeSpace = 'verified' in item && item.verified !== undefined
+    const isBusiness = !isSafeSpace
+
+    return (
+      <TouchableOpacity
+        style={[styles.businessCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}
+        onPress={() => {
+          // For now, navigate to BusinessDetails with the item data
+          // In the future, we might want a separate SafeSpaceDetails screen
+          navigation.navigate("BusinessDetails", { business: item as any })
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.name}, ${item.category}${isSafeSpace ? ' (Safe Space)' : ''}`}
+        accessibilityHint="Double tap to view details"
+      >
+        <View style={styles.businessHeader}>
+          <Text style={[styles.businessName, { color: theme.colors.text }]}>{item.name}</Text>
+
+        </View>
+        <Text style={[styles.businessCategory, { color: theme.colors.primary }]}>{item.category.toUpperCase()}</Text>
+        <Text style={[styles.businessDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+          {item.description}
+        </Text>
+        <View style={styles.businessTags}>
+          {item.lgbtq_friendly && (
+            <View style={[styles.tag, { backgroundColor: theme.colors.lgbtqFriendly }]}>
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>LGBTQ+ Friendly</Text>
+            </View>
+          )}
+          {item.trans_friendly && (
+            <View style={[styles.tag, { backgroundColor: theme.colors.transFriendly }]}>
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>Trans Friendly</Text>
+            </View>
+          )}
+          {isSafeSpace && item.verified && (
+            <View style={[styles.tag, { backgroundColor: theme.colors.verified }]}>
+              <MaterialIcons name="verified" size={12} color={theme.colors.surface} />
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>Verified</Text>
+            </View>
+          )}
+          {isBusiness && item.verified && (
+            <View style={[styles.tag, { backgroundColor: theme.colors.verified }]}>
+              <MaterialIcons name="verified" size={12} color={theme.colors.surface} />
+              <Text style={[styles.tagText, { color: theme.colors.surface }]}>Verified</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    )
+  }
 
   const renderMapView = () => {
     return (
@@ -313,10 +432,10 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           toolbarEnabled={true}
           mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
         >
-          {initialMarkers.map((business) => (
+          {initialMarkers.map((place) => (
             <BusinessMarker
-              key={business.id}
-              business={business}
+              key={place.id}
+              place={place}
               navigation={navigation}
             />
           ))}
@@ -364,7 +483,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.isDark ? theme.colors.card : theme.colors.surface }]}>
         <Text style={[styles.headerTitle, { color: theme.isDark ? theme.colors.text : theme.colors.primary  }]}>Mirae SafePlaces</Text>
-        <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Find LGBTQ+ friendly spaces</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.colors.text : theme.colors.textSecondary }]}>Find LGBTQ+ friendly businesses & safe spaces</Text>
       </View>
 
       {/* View Toggle */}
@@ -458,9 +577,9 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
               <Text style={{ fontSize: 18, fontWeight: "700", marginHorizontal: 16, marginBottom: 8, color: theme.colors.text }}>
                 {cat.toUpperCase()}
               </Text>
-              {groupedByCategory[cat].map((biz: Business) => (
-                <View key={biz.id} style={{ marginHorizontal: 16, marginBottom: 10, backgroundColor: theme.colors.background }}>
-                  {renderBusinessCard({ item: biz })}
+              {groupedByCategory[cat].map((place: Business | SafeSpace) => (
+                <View key={place.id} style={{ marginHorizontal: 16, marginBottom: 10, backgroundColor: theme.colors.background }}>
+                  {renderPlaceCard({ item: place })}
                 </View>
               ))}
             </View>
@@ -476,8 +595,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           removeClippedSubviews={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="business" size={64} color={theme.colors.textTertiary} />
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>{loading ? "Loading businesses..." : "No businesses found"}</Text>
+              <MaterialIcons name="place" size={64} color={theme.colors.textTertiary} />
+              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>{loading ? "Loading places..." : "No places found"}</Text>
               <Text style={[styles.emptySubtext, { color: theme.colors.textTertiary }]}>{!loading && "Try adjusting your category filter"}</Text>
             </View>
           }
@@ -495,7 +614,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
             shadowColor: theme.colors.shadow,
             elevation: theme.isDark ? 6 : 3,
             shadowOpacity: theme.isDark ? 0.3 : 0.1
-          }]}>Loading businesses...</Text>
+          }]}>Loading places...</Text>
         </View>
       )}
     </SafeAreaView>
@@ -732,5 +851,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
+  },
+  safeSpaceBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  safeSpaceBadgeText: {
+    fontSize: 8,
+    fontWeight: 'bold',
   },
 })

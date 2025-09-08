@@ -11,6 +11,7 @@ import {
   Image,
   Alert,
   TextInput,
+  Modal,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
@@ -260,6 +261,13 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
 
     try {
       const targetPost = posts.find((p) => p.id === postId)
+
+      // Prevent users from liking their own posts
+      if (targetPost?.user_id === user.id) {
+        Alert.alert("Cannot Like", "You cannot like your own posts")
+        return
+      }
+
       const wasLiked = !!targetPost?.is_liked
 
       await socialService.likePost(postId, user.id)
@@ -767,47 +775,57 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       </AppModal>
 
       {/* Comments Modal */}
-      <AppModal
+      <Modal
         visible={showComments}
-        onClose={() => setShowComments(false)}
-        title="Comments"
-        leftAction={{ label: "Close", onPress: () => setShowComments(false) }}
-        variant="sheet"
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowComments(false)}
       >
-        <FlatList
-          data={comments}
-          renderItem={renderComment}
-          keyExtractor={(item) => item.id}
-          style={styles.commentsList}
-          ListEmptyComponent={
-            <View style={styles.noComments}>
-              <Text style={[styles.noCommentsText, { color: theme.colors.textSecondary }]}>No comments yet</Text>
-              <Text style={[styles.noCommentsSubtext, { color: theme.colors.textTertiary }]}>Be the first to comment!</Text>
-            </View>
-          }
-        />
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border }]}>
+            <TouchableOpacity onPress={() => setShowComments(false)}>
+              <MaterialIcons name="close" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Comments</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-        <View style={[styles.addCommentContainer, { borderTopColor: theme.colors.divider }]}>
-          <Image
-            source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
-            style={styles.commentInputAvatar}
+          <FlatList
+            data={comments}
+            renderItem={renderComment}
+            keyExtractor={(item) => item.id}
+            style={[styles.commentsList, { backgroundColor: theme.colors.background }]}
+            contentContainerStyle={{ flexGrow: 1 }}
+            ListEmptyComponent={
+              <View style={styles.noComments}>
+                <Text style={[styles.noCommentsText, { color: theme.colors.textSecondary }]}>No comments yet</Text>
+                <Text style={[styles.noCommentsSubtext, { color: theme.colors.textTertiary }]}>Be the first to comment!</Text>
+              </View>
+            }
           />
-          <TextInput
-            style={[styles.commentInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
-            placeholder="Add a comment..."
-            value={newComment}
-            onChangeText={setNewComment}
-            placeholderTextColor={theme.colors.textSecondary}
-          />
-          <TouchableOpacity
-            onPress={handleAddComment}
-            disabled={!newComment.trim()}
-            style={[styles.sendCommentButton, !newComment.trim() && styles.sendCommentButtonDisabled]}
-          >
-            <MaterialIcons name="send" size={20} color={newComment.trim() ? theme.colors.accent : theme.colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
-      </AppModal>
+
+          <View style={[styles.addCommentContainer, { borderTopColor: theme.colors.divider }]}>
+            <Image
+              source={{ uri: user?.avatar_url || "/placeholder.svg?height=40&width=40&text=U" }}
+              style={styles.commentInputAvatar}
+            />
+            <TextInput
+              style={[styles.commentInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+              placeholder="Add a comment..."
+              value={newComment}
+              onChangeText={setNewComment}
+              placeholderTextColor={theme.colors.textSecondary}
+            />
+            <TouchableOpacity
+              onPress={handleAddComment}
+              disabled={!newComment.trim()}
+              style={[styles.sendCommentButton, !newComment.trim() && styles.sendCommentButtonDisabled]}
+            >
+              <MaterialIcons name="send" size={20} color={newComment.trim() ? theme.colors.accent : theme.colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       {/* Share Modal */}
       <AppModal

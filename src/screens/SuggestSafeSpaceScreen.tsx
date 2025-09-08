@@ -13,7 +13,7 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
   const { theme } = useTheme()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [category, setCategory] = useState("organization")
+  const [category, setCategory] = useState("restaurant")
   const [address, setAddress] = useState("")
   const [city, setCity] = useState("")
   const [country, setCountry] = useState("")
@@ -95,12 +95,15 @@ export default function SuggestSafeSpaceScreen({ navigation }: any) {
         <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Category</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
           {[
-            { id: "organization", name: "Organization" },
-            { id: "healthcare", name: "Healthcare" },
+            { id: "finance", name: "Finance" },
+            { id: "service", name: "Service" },
+            { id: "hotel", name: "Hotel" },
             { id: "restaurant", name: "Restaurant" },
-            { id: "drop_in_center", name: "Drop-in" },
-            { id: "community_center", name: "Community" },
-            { id: "other", name: "Other" },
+            { id: "shopping", name: "Shopping" },
+            { id: "education", name: "Education" },
+            { id: "entertainment", name: "Entertainment" },
+            { id: "transport", name: "Transport" },
+            { id: "healthcare", name: "Healthcare" },
           ].map((cat) => (
             <TouchableOpacity
               key={cat.id}
