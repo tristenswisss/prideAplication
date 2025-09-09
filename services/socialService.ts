@@ -27,6 +27,7 @@ export interface SocialService {
   getPosts: (userId?: string) => Promise<Post[]>
   getFeedPosts: (userId?: string) => Promise<Post[]>
   createPost: (postData: CreatePostData) => Promise<Post>
+  checkPostOwnership: (postId: string, userId: string) => Promise<boolean>
   likePost: (postId: string, userId: string) => Promise<void>
   savePost: (postId: string, userId: string) => Promise<void>
   hidePost: (postId: string, userId: string) => Promise<void>
@@ -220,126 +221,88 @@ export const socialService: SocialService = {
     }
   },
 
-  // Like a post
+  // Helper function to check if user owns the post
+  checkPostOwnership: async (postId: string, userId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("user_id")
+        .eq("id", postId)
+        .single()
+
+      if (error) {
+        console.error("Error checking post ownership:", error)
+        return false
+      }
+
+      return data.user_id === userId
+    } catch (error) {
+      console.error("Error in checkPostOwnership:", error)
+      return false
+    }
+  },
+
+  // Like a post - simplified version that works with database triggers
   likePost: async (postId: string, userId: string): Promise<void> => {
     try {
       console.log(`likePost called: postId=${postId}, userId=${userId}`)
 
-      // Check if already liked - handle the case where single() might throw
+      // Prevent users from liking their own posts
+      const isOwner = await socialService.checkPostOwnership(postId, userId)
+      if (isOwner) {
+        console.log(`User ${userId} attempted to like their own post ${postId}`)
+        throw new Error("You cannot like your own post")
+      }
+
+      // Check if already liked
       const { data: existingLike, error: checkError } = await supabase
         .from("post_likes")
         .select("id")
         .eq("post_id", postId)
         .eq("user_id", userId)
-        .maybeSingle() // Use maybeSingle instead of single to avoid errors
+        .maybeSingle()
 
-      console.log(`Existing like check: existingLike=${!!existingLike}, error=${checkError?.code}`)
-
-      // If there's an error other than "not found", throw it
       if (checkError && checkError.code !== 'PGRST116') {
         throw checkError
       }
 
       if (existingLike) {
         console.log(`Unliking post ${postId}`)
-        // Unlike - delete the like record
+        // Unlike - delete the like record (trigger will update count automatically)
         const { error: deleteError } = await supabase
           .from("post_likes")
           .delete()
           .eq("post_id", postId)
           .eq("user_id", userId)
 
-        if (deleteError) throw deleteError
-
-        // Get current likes count and decrement
-        const { data: postData, error: postError } = await supabase
-          .from("posts")
-          .select("likes_count")
-          .eq("id", postId)
-          .single()
-
-        if (postError) throw postError
-
-        if (postData) {
-          const newCount = Math.max((postData.likes_count || 0) - 1, 0)
-          console.log(`Decrementing likes count from ${postData.likes_count} to ${newCount}`)
-          const { error: updateError } = await supabase
-            .from("posts")
-            .update({ likes_count: newCount })
-            .eq("id", postId)
-
-          if (updateError) throw updateError
+        if (deleteError) {
+          console.error(`Error unliking post: ${deleteError.message}`)
+          throw deleteError
         }
+        console.log(`Successfully unliked post ${postId}`)
       } else {
         console.log(`Liking post ${postId}`)
-        // Like - insert new like record (handle potential race condition)
+        // Like - insert new like record (trigger will update count automatically)
         const { error: insertError } = await supabase
           .from("post_likes")
           .insert({ post_id: postId, user_id: userId })
 
         if (insertError) {
-          console.log(`Insert error: ${insertError.code} - ${insertError.message}`)
-          // If it's a duplicate key error, that means it was already liked
-          // This can happen due to race conditions
+          // If it's a unique constraint violation, the user already liked this post
+          // This can happen due to race conditions or if the check above missed it
           if (insertError.code === '23505') {
-            console.log(`Duplicate key error - post was already liked, unliking instead`)
-            // Already liked, so unlike instead
-            const { error: deleteError } = await supabase
-              .from("post_likes")
-              .delete()
-              .eq("post_id", postId)
-              .eq("user_id", userId)
-
-            if (deleteError) throw deleteError
-
-            // Decrement count
-            const { data: postData, error: postError } = await supabase
-              .from("posts")
-              .select("likes_count")
-              .eq("id", postId)
-              .single()
-
-            if (postError) throw postError
-
-            if (postData) {
-              const newCount = Math.max((postData.likes_count || 0) - 1, 0)
-              console.log(`Decrementing likes count from ${postData.likes_count} to ${newCount}`)
-              const { error: updateError } = await supabase
-                .from("posts")
-                .update({ likes_count: newCount })
-                .eq("id", postId)
-
-              if (updateError) throw updateError
-            }
+            console.log(`Duplicate like detected - post was already liked, doing nothing`)
+            // Post is already liked, so we're done
+            return
           } else {
+            console.error(`Error liking post: ${insertError.message}`)
             throw insertError
           }
-        } else {
-          console.log(`Successfully inserted like`)
-          // Successfully inserted, increment count
-          const { data: postData, error: postError } = await supabase
-            .from("posts")
-            .select("likes_count")
-            .eq("id", postId)
-            .single()
-
-          if (postError) throw postError
-
-          if (postData) {
-            const newCount = (postData.likes_count || 0) + 1
-            console.log(`Incrementing likes count from ${postData.likes_count} to ${newCount}`)
-            const { error: updateError } = await supabase
-              .from("posts")
-              .update({ likes_count: newCount })
-              .eq("id", postId)
-
-            if (updateError) throw updateError
-          }
         }
+        console.log(`Successfully liked post ${postId}`)
       }
-      console.log(`likePost completed successfully for post ${postId}`)
     } catch (error) {
-      console.error("Error liking post:", error)
+      console.error("Error in likePost:", error)
       throw error
     }
   },

@@ -123,4 +123,62 @@ export const realtime = {
       supabase.removeChannel(channel)
     }
   },
+
+  // Subscribe to post likes changes
+  subscribeToPostLikes: (postId: string, onLikeChange: (event: 'INSERT' | 'DELETE', row: any) => void): Unsubscribe => {
+    const channel = supabase
+      .channel(`post_likes:${postId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "post_likes", filter: `post_id=eq.${postId}` },
+        (payload) => onLikeChange('INSERT', payload.new),
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "post_likes", filter: `post_id=eq.${postId}` },
+        (payload) => onLikeChange('DELETE', payload.old),
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  },
+
+  // Subscribe to post updates (for likes_count changes)
+  subscribeToPostUpdates: (postId: string, onUpdate: (row: any) => void): Unsubscribe => {
+    const channel = supabase
+      .channel(`post_updates:${postId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "posts", filter: `id=eq.${postId}` },
+        (payload) => onUpdate(payload.new),
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  },
+
+  // Subscribe to all post likes for feed updates
+  subscribeToAllPostLikes: (onLikeChange: (event: 'INSERT' | 'DELETE', row: any) => void): Unsubscribe => {
+    const channel = supabase
+      .channel('post_likes:all')
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "post_likes" },
+        (payload) => onLikeChange('INSERT', payload.new),
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "post_likes" },
+        (payload) => onLikeChange('DELETE', payload.old),
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  },
 }

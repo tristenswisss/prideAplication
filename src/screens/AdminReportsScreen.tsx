@@ -4,6 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons"
 import { useTheme } from "../../Contexts/ThemeContext"
 import { useAuth } from "../../Contexts/AuthContexts"
 import { adminService } from "../../services/adminService"
+import { notificationService } from "../../services/notificationService"
 
 interface UserReport {
   id: string
@@ -49,7 +50,7 @@ interface PlaceSuggestion {
   status: 'pending' | 'approved' | 'rejected'
   rejection_reason?: string
   created_at: string
-  suggested_by_user?: { name: string; email: string }
+  suggested_by_user?: { id: string; name: string; email: string }
 }
 
 export default function AdminReportsScreen({ navigation }: any) {
@@ -160,6 +161,43 @@ export default function AdminReportsScreen({ navigation }: any) {
         throw new Error(result.error)
       }
 
+      // Send notification to reporter with feedback
+      if (selectedReport?.reporter_id && status === 'resolved') {
+        const feedbackMessage = adminNotes 
+          ? `Your report has been resolved. Admin notes: ${adminNotes}`
+          : 'Your report has been resolved. Thank you for helping keep our community safe.'
+        
+        await notificationService.createNotification({
+          user_id: selectedReport.reporter_id,
+          title: 'Report Resolved ✅',
+          message: feedbackMessage,
+          type: 'admin_feedback',
+          data: { 
+            report_id: reportId, 
+            action: 'resolved',
+            admin_notes: adminNotes || null
+          },
+          read: false,
+        } as any)
+      } else if (selectedReport?.reporter_id && status === 'reviewed') {
+        const feedbackMessage = adminNotes 
+          ? `Your report is being reviewed. Admin notes: ${adminNotes}`
+          : 'Your report is being reviewed by our team. We will take appropriate action.'
+        
+        await notificationService.createNotification({
+          user_id: selectedReport.reporter_id,
+          title: 'Report Under Review 👁️',
+          message: feedbackMessage,
+          type: 'admin_feedback',
+          data: { 
+            report_id: reportId, 
+            action: 'reviewed',
+            admin_notes: adminNotes || null
+          },
+          read: false,
+        } as any)
+      }
+
       if (status === 'resolved') {
         // Remove resolved report from the list to keep the page clean
         setReports(prev => prev.filter(report => report.id !== reportId))
@@ -172,7 +210,7 @@ export default function AdminReportsScreen({ navigation }: any) {
         ))
       }
 
-      Alert.alert('Success', `Report status updated to ${status}`)
+      Alert.alert('Success', `Report status updated to ${status}. Reporter has been notified.`)
       setShowDetails(false)
       setSelectedReport(null)
       setAdminNotes("")
@@ -197,7 +235,29 @@ export default function AdminReportsScreen({ navigation }: any) {
           : report
       ))
 
-      Alert.alert('Success', 'User has been blocked and report status updated')
+      // Send notification to reporter with feedback about the action taken
+      if (selectedReport?.reporter_id) {
+        const feedbackMessage = adminNotes 
+          ? `Action taken on your report: User has been blocked. Admin notes: ${adminNotes}`
+          : 'Action taken on your report: User has been blocked for violating community guidelines.'
+        
+        await notificationService.createNotification({
+          user_id: selectedReport.reporter_id,
+          title: 'Report Action Taken 🚫',
+          message: feedbackMessage,
+          type: 'admin_feedback',
+          data: { 
+            report_id: reportId, 
+            action: 'user_blocked',
+            blocked_user_id: userId,
+            reason: reason,
+            admin_notes: adminNotes || null
+          },
+          read: false,
+        } as any)
+      }
+
+      Alert.alert('Success', 'User has been blocked and reporter has been notified')
     } catch (error) {
       console.error('Error blocking user:', error)
       Alert.alert('Error', 'Failed to block user')
@@ -219,7 +279,28 @@ export default function AdminReportsScreen({ navigation }: any) {
           : report
       ))
 
-      Alert.alert('Success', 'User has been unblocked')
+      // Send notification to reporter about the unblock action
+      if (selectedReport?.reporter_id) {
+        const feedbackMessage = adminNotes 
+          ? `Update on your report: User has been unblocked after review. Admin notes: ${adminNotes}`
+          : 'Update on your report: User has been unblocked after further review.'
+        
+        await notificationService.createNotification({
+          user_id: selectedReport.reporter_id,
+          title: 'Report Update 🔄',
+          message: feedbackMessage,
+          type: 'admin_feedback',
+          data: { 
+            report_id: selectedReport.id, 
+            action: 'user_unblocked',
+            unblocked_user_id: userId,
+            admin_notes: adminNotes || null
+          },
+          read: false,
+        } as any)
+      }
+
+      Alert.alert('Success', 'User has been unblocked and reporter has been notified')
     } catch (error) {
       console.error('Error unblocking user:', error)
       Alert.alert('Error', 'Failed to unblock user')
@@ -234,8 +315,24 @@ export default function AdminReportsScreen({ navigation }: any) {
         throw new Error(result.error)
       }
 
+      // Send notification to suggester about approval
+      if (selectedSuggestion?.suggested_by_user?.id) {
+        await notificationService.createNotification({
+          user_id: selectedSuggestion.suggested_by_user.id,
+          title: 'Safe Space Approved! 🎉',
+          message: `Your suggestion "${selectedSuggestion.name}" has been approved and added to our safe spaces directory. Thank you for helping grow our community!`,
+          type: 'admin_feedback',
+          data: { 
+            suggestion_id: suggestionId, 
+            action: 'approved',
+            place_name: selectedSuggestion.name
+          },
+          read: false,
+        } as any)
+      }
+
       setSuggestions(prev => prev.filter(s => s.id !== suggestionId))
-      Alert.alert('Success', 'Suggestion has been approved and added to safe spaces')
+      Alert.alert('Success', 'Suggestion has been approved and suggester has been notified')
       setShowSuggestionDetails(false)
       setSelectedSuggestion(null)
     } catch (error) {
@@ -252,8 +349,29 @@ export default function AdminReportsScreen({ navigation }: any) {
         throw new Error(result.error)
       }
 
+      // Send notification to suggester about rejection with reason
+      if (selectedSuggestion?.suggested_by_user?.id) {
+        const feedbackMessage = rejectionReason 
+          ? `Your suggestion "${selectedSuggestion.name}" was not approved. Reason: ${rejectionReason}. Thank you for your contribution to our community.`
+          : `Your suggestion "${selectedSuggestion.name}" was not approved. Thank you for your contribution to our community.`
+        
+        await notificationService.createNotification({
+          user_id: selectedSuggestion.suggested_by_user.id,
+          title: 'Safe Space Suggestion Update',
+          message: feedbackMessage,
+          type: 'admin_feedback',
+          data: { 
+            suggestion_id: suggestionId, 
+            action: 'rejected',
+            place_name: selectedSuggestion.name,
+            rejection_reason: rejectionReason || null
+          },
+          read: false,
+        } as any)
+      }
+
       setSuggestions(prev => prev.filter(s => s.id !== suggestionId))
-      Alert.alert('Success', 'Suggestion has been rejected')
+      Alert.alert('Success', 'Suggestion has been rejected and suggester has been notified')
       setShowSuggestionDetails(false)
       setSelectedSuggestion(null)
       setRejectionReason("")
@@ -500,7 +618,7 @@ export default function AdminReportsScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.detailsContent}>
+            <ScrollView style={styles.detailsContent} showsVerticalScrollIndicator={true}>
               <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Reason:</Text>
               <Text style={[styles.detailValue, { color: theme.colors.textSecondary }]}>{selectedReport.reason}</Text>
 
@@ -523,7 +641,7 @@ export default function AdminReportsScreen({ navigation }: any) {
 
               <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Admin Notes:</Text>
               <TextInput
-                style={[styles.notesInput, { borderColor: theme.colors.border, color: theme.colors.text }]}
+                style={[styles.notesInput, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.background }]}
                 placeholder="Add admin notes..."
                 placeholderTextColor={theme.colors.textTertiary}
                 value={adminNotes}
@@ -557,7 +675,7 @@ export default function AdminReportsScreen({ navigation }: any) {
 
               {selectedReport.status !== 'blocked' ? (
                 <TouchableOpacity
-                  style={[styles.blockButton, { borderColor: theme.colors.error }]}
+                  style={[styles.blockButton, { borderColor: theme.colors.error, backgroundColor: 'transparent' }]}
                   onPress={() => {
                     Alert.alert(
                       'Block User',
@@ -598,7 +716,7 @@ export default function AdminReportsScreen({ navigation }: any) {
                   <Text style={[styles.blockButtonText, { color: 'white' }]}>Unblock User</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </ScrollView>
           </View>
         </View>
       )}
@@ -659,6 +777,17 @@ export default function AdminReportsScreen({ navigation }: any) {
               <Text style={[styles.detailValue, { color: theme.colors.textSecondary }]}>
                 {new Date(selectedSuggestion.created_at).toLocaleDateString()}
               </Text>
+
+              <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Rejection Reason (if rejecting):</Text>
+              <TextInput
+                style={[styles.notesInput, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.background }]}
+                placeholder="Optional reason for rejection..."
+                placeholderTextColor={theme.colors.textTertiary}
+                value={rejectionReason}
+                onChangeText={setRejectionReason}
+                multiline
+                numberOfLines={2}
+              />
 
               <View style={styles.actionButtons}>
                 <TouchableOpacity
@@ -782,8 +911,8 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   detailsContainer: {
-    width: '90%',
-    maxHeight: '80%',
+    width: '95%',
+    maxHeight: '90%',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -801,6 +930,10 @@ const styles = StyleSheet.create({
   },
   detailsContent: {
     padding: 20,
+    maxHeight: 400,
+  },
+  actionScrollView: {
+    maxHeight: 150,
   },
   detailLabel: {
     fontSize: 16,
@@ -843,11 +976,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderWidth: 2,
     borderRadius: 8,
     marginTop: 16,
+    marginBottom: 20,
+    minHeight: 48,
   },
   blockButtonText: {
     fontSize: 16,
