@@ -878,11 +878,6 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.comments_count}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleSharePost(item)}>
-            <MaterialIcons name="share" size={20} color={theme.colors.textSecondary} />
-            <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.shares_count}</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.actionButton, isSaveProcessing && { opacity: 0.6 }]}
             onPress={() => handleSavePost(item.id)}
@@ -1151,11 +1146,6 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleSavePost(optionsPost.id) }}>
               <MaterialIcons name={optionsPost.is_saved ? "bookmark" : "bookmark-border"} size={20} color={theme.colors.text} />
               <Text style={{ marginLeft: 10, color: theme.colors.text }}>{optionsPost.is_saved ? "Unsave" : "Save"}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }} onPress={() => { setShowOptionsModal(false); handleSharePost(optionsPost) }}>
-              <MaterialIcons name="share" size={20} color={theme.colors.text} />
-              <Text style={{ marginLeft: 10, color: theme.colors.text }}>Share to Contacts</Text>
             </TouchableOpacity>
           </View>
         )}

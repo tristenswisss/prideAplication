@@ -97,9 +97,6 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
     Linking.openURL(url)
   }
 
-  const handleShare = () => {
-    Alert.alert("Share Business", "Share functionality would be implemented here")
-  }
 
   const handleWriteReview = () => {
     if (!user) {
@@ -202,9 +199,6 @@ export default function BusinessDetailsScreen({ route, navigation }: BusinessDet
             <View style={styles.topRightButtons}>
               <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
                 <MaterialIcons name={isFavorite ? "favorite" : "favorite-border"} size={24} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
-                <MaterialIcons name="share" size={24} color="white" />
               </TouchableOpacity>
             </View>
           </LinearGradient>

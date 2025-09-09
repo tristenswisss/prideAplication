@@ -20,7 +20,6 @@ interface PostCardProps {
   onLike: (postId: string) => void
   onSave: (postId: string) => void
   onComment: (post: Post) => void
-  onShare: (post: Post) => void
   onMoreOptions: (post: Post) => void
   onUserPress: (userId: string) => void
   isLikeProcessing: boolean
@@ -32,7 +31,6 @@ export default function PostCard({
   onLike,
   onSave,
   onComment,
-  onShare,
   onMoreOptions,
   onUserPress,
   isLikeProcessing,
@@ -220,11 +218,6 @@ export default function PostCard({
         <TouchableOpacity style={styles.actionButton} onPress={() => onComment(localPost)}>
           <MaterialIcons name="chat-bubble-outline" size={20} color={theme.colors.textSecondary} />
           <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{localPost.comments_count}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => onShare(localPost)}>
-          <MaterialIcons name="share" size={20} color={theme.colors.textSecondary} />
-          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{localPost.shares_count}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
