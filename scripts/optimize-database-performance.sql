@@ -65,3 +65,74 @@ CREATE INDEX IF NOT EXISTS idx_events_tags ON events USING GIN(tags);
 COMMENT ON INDEX idx_events_date IS 'Optimizes event queries by date';
 COMMENT ON INDEX idx_messages_conversation_id IS 'Optimizes message loading for conversations';
 COMMENT ON INDEX idx_conversations_participants IS 'Optimizes participant-based conversation queries';
+
+-- Database functions for post interactions
+CREATE OR REPLACE FUNCTION increment_post_likes(post_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE posts SET likes_count = likes_count + 1 WHERE id = post_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION decrement_post_likes(post_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE posts SET likes_count = GREATEST(likes_count - 1, 0) WHERE id = post_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION increment_post_shares(post_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE posts SET shares_count = shares_count + 1 WHERE id = post_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION increment_post_comments(post_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE posts SET comments_count = comments_count + 1 WHERE id = post_id;
+END;
+$$;
+
+-- Ensure proper unique constraints exist
+DO $$
+BEGIN
+    -- Add unique constraint for post_likes if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'post_likes_post_id_user_id_key'
+    ) THEN
+        ALTER TABLE post_likes ADD CONSTRAINT post_likes_post_id_user_id_key UNIQUE (post_id, user_id);
+    END IF;
+
+    -- Add unique constraint for saved_posts if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'saved_posts_post_id_user_id_key'
+    ) THEN
+        ALTER TABLE saved_posts ADD CONSTRAINT saved_posts_post_id_user_id_key UNIQUE (post_id, user_id);
+    END IF;
+
+    -- Add unique constraint for post_shares if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'post_shares_post_id_user_id_key'
+    ) THEN
+        ALTER TABLE post_shares ADD CONSTRAINT post_shares_post_id_user_id_key UNIQUE (post_id, user_id);
+    END IF;
+END $$;
+
+-- Grant execute permissions to authenticated users
+GRANT EXECUTE ON FUNCTION increment_post_likes(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION decrement_post_likes(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_post_shares(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_post_comments(UUID) TO authenticated;

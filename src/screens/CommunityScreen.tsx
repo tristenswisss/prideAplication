@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import {
   View,
   Text,
@@ -31,6 +32,7 @@ import AppModal from "../../components/AppModal"
 import { notificationService } from "../../services/notificationService"
 import { useTheme } from "../../Contexts/ThemeContext"
 import { adminService } from "../../services/adminService"
+import { supabase } from "../../lib/supabase"
 
 export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [posts, setPosts] = useState<Post[]>([])
@@ -53,9 +55,81 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [showOptionsModal, setShowOptionsModal] = useState(false)
   const [optionsPost, setOptionsPost] = useState<Post | null>(null)
+  const [userInteractions, setUserInteractions] = useState<{
+    likedPosts: Set<string>
+    savedPosts: Set<string>
+  }>({ likedPosts: new Set(), savedPosts: new Set() })
+  const [processingLikes, setProcessingLikes] = useState<Set<string>>(new Set())
+  const [processingSaves, setProcessingSaves] = useState<Set<string>>(new Set())
 
   const { user } = useAuth()
   const { theme } = useTheme()
+
+  // Load user interactions from storage
+  const loadUserInteractions = async () => {
+    if (!user?.id) return
+    try {
+      const stored = await AsyncStorage.getItem(`user_interactions_${user.id}`)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        setUserInteractions({
+          likedPosts: new Set(parsed.likedPosts || []),
+          savedPosts: new Set(parsed.savedPosts || []),
+        })
+      }
+    } catch (error) {
+      console.error("Error loading user interactions:", error)
+    }
+  }
+
+  // Save user interactions to storage
+  const saveUserInteractions = async (interactions: typeof userInteractions) => {
+    if (!user?.id) return
+    try {
+      const data = {
+        likedPosts: Array.from(interactions.likedPosts),
+        savedPosts: Array.from(interactions.savedPosts),
+      }
+      await AsyncStorage.setItem(`user_interactions_${user.id}`, JSON.stringify(data))
+    } catch (error) {
+      console.error("Error saving user interactions:", error)
+    }
+  }
+
+  // Force refresh interactions from server (useful when there's a sync issue)
+  const refreshInteractions = async () => {
+    if (!user?.id) return
+
+    try {
+      console.log("Force refreshing interactions from server...")
+      const [likedData, savedData] = await Promise.all([
+        supabase.from("post_likes").select("post_id").eq("user_id", user.id),
+        supabase.from("saved_posts").select("post_id").eq("user_id", user.id)
+      ])
+
+      const likedPostIds = new Set<string>()
+      const savedPostIds = new Set<string>()
+
+      if (likedData.data) {
+        likedData.data.forEach((item: any) => likedPostIds.add(item.post_id))
+      }
+      if (savedData.data) {
+        savedData.data.forEach((item: any) => savedPostIds.add(item.post_id))
+      }
+
+      const newInteractions = {
+        likedPosts: likedPostIds,
+        savedPosts: savedPostIds,
+      }
+
+      setUserInteractions(newInteractions)
+      saveUserInteractions(newInteractions)
+
+      console.log(`Refreshed interactions: ${likedPostIds.size} liked, ${savedPostIds.size} saved`)
+    } catch (error) {
+      console.error("Error refreshing interactions:", error)
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -64,6 +138,11 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     })
     return unsubscribe
   }, [navigation, user?.id])
+
+  // Load user interactions on mount
+  useEffect(() => {
+    loadUserInteractions()
+  }, [user?.id])
 
   useEffect(() => {
     loadPosts()
@@ -77,7 +156,10 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       } catch {}
     }
     checkAdmin()
-    const unsubPosts = realtime.subscribeToPosts((row: any) => {
+    const unsubPosts = realtime.subscribeToPosts(async (row: any) => {
+      // When a new post is added, refresh interactions to stay in sync
+      await refreshInteractions()
+
       setPosts((prev) => {
         if (prev.some((p) => p.id === row.id)) return prev
         return [{ ...(row as any), is_liked: false, is_saved: false }, ...prev]
@@ -164,6 +246,45 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     try {
       setLoading(true)
       const data = await socialService.getFeedPosts(user?.id)
+
+      // Sync local interactions with server state more robustly
+      if (user?.id) {
+        // Get fresh interaction data from server
+        const [likedData, savedData] = await Promise.all([
+          supabase.from("post_likes").select("post_id").eq("user_id", user.id),
+          supabase.from("saved_posts").select("post_id").eq("user_id", user.id)
+        ])
+
+        const likedPostIds = new Set<string>()
+        const savedPostIds = new Set<string>()
+
+        // Use server data as the source of truth
+        if (likedData.data) {
+          likedData.data.forEach((item: any) => likedPostIds.add(item.post_id))
+        }
+        if (savedData.data) {
+          savedData.data.forEach((item: any) => savedPostIds.add(item.post_id))
+        }
+
+        // Also check the post data for any additional likes/saves
+        data.forEach(post => {
+          if (post.is_liked) likedPostIds.add(post.id)
+          if (post.is_saved) savedPostIds.add(post.id)
+        })
+
+        const newInteractions = {
+          likedPosts: likedPostIds,
+          savedPosts: savedPostIds,
+        }
+
+        setUserInteractions(newInteractions)
+
+        // Save to local storage
+        saveUserInteractions(newInteractions)
+
+        console.log(`Synced interactions: ${likedPostIds.size} liked, ${savedPostIds.size} saved`)
+      }
+
       setPosts(data)
     } catch (error) {
       console.error("Error loading posts:", error)
@@ -259,6 +380,12 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
   const handleLikePost = async (postId: string) => {
     if (!user) return
 
+    // Prevent race conditions - check if already processing
+    if (processingLikes.has(postId)) {
+      console.log(`Like already processing for post ${postId}`)
+      return
+    }
+
     try {
       const targetPost = posts.find((p) => p.id === postId)
 
@@ -269,8 +396,12 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       }
 
       const wasLiked = !!targetPost?.is_liked
+      console.log(`Toggling like for post ${postId}: wasLiked=${wasLiked}`)
 
-      await socialService.likePost(postId, user.id)
+      // Mark as processing to prevent race conditions
+      setProcessingLikes(prev => new Set(prev).add(postId))
+
+      // Update local state immediately for better UX
       setPosts(
         posts.map((post) =>
           post.id === postId
@@ -282,6 +413,25 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
             : post,
         ),
       )
+
+      // Update local interactions cache
+      setUserInteractions(prev => {
+        const newInteractions = { ...prev }
+        if (wasLiked) {
+          newInteractions.likedPosts.delete(postId)
+        } else {
+          newInteractions.likedPosts.add(postId)
+        }
+        saveUserInteractions(newInteractions)
+        return newInteractions
+      })
+
+      // Make API call
+      await socialService.likePost(postId, user.id)
+      console.log(`Successfully toggled like for post ${postId}`)
+
+      // Refresh interactions to ensure sync
+      await refreshInteractions()
 
       // Notify post owner only when a like is newly added (not on unlike)
       const post = targetPost
@@ -295,20 +445,85 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
           read: false,
         } as any)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error liking post:", error)
+
+      // Show user-friendly error message
+      if (error?.code === '23505') {
+        Alert.alert("Sync Issue", "Refreshing your interactions...", [
+          { text: "OK", onPress: () => refreshInteractions() }
+        ])
+      } else {
+        Alert.alert("Error", "Failed to like post. Please try again.")
+      }
+
+      // Revert local state on error
+      setPosts(
+        posts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                is_liked: !post.is_liked,
+                likes_count: post.likes_count + (post.is_liked ? -1 : 1),
+              }
+            : post,
+        ),
+      )
+      // Revert local interactions cache
+      setUserInteractions(prev => {
+        const newInteractions = { ...prev }
+        const wasLiked = newInteractions.likedPosts.has(postId)
+        if (wasLiked) {
+          newInteractions.likedPosts.delete(postId)
+        } else {
+          newInteractions.likedPosts.add(postId)
+        }
+        saveUserInteractions(newInteractions)
+        return newInteractions
+      })
+    } finally {
+      // Remove from processing set
+      setProcessingLikes(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(postId)
+        return newSet
+      })
     }
   }
 
   const handleSavePost = async (postId: string) => {
     if (!user) return
 
+    // Prevent race conditions - check if already processing
+    if (processingSaves.has(postId)) return
+
     try {
       const target = posts.find((p) => p.id === postId)
       const wasSaved = !!target?.is_saved
 
-      await socialService.savePost(postId, user.id)
+      // Mark as processing to prevent race conditions
+      setProcessingSaves(prev => new Set(prev).add(postId))
+
+      // Update local state immediately for better UX
       setPosts(posts.map((post) => (post.id === postId ? { ...post, is_saved: !post.is_saved } : post)))
+
+      // Update local interactions cache
+      setUserInteractions(prev => {
+        const newInteractions = { ...prev }
+        if (wasSaved) {
+          newInteractions.savedPosts.delete(postId)
+        } else {
+          newInteractions.savedPosts.add(postId)
+        }
+        saveUserInteractions(newInteractions)
+        return newInteractions
+      })
+
+      // Make API call
+      await socialService.savePost(postId, user.id)
+
+      // Refresh interactions to ensure sync
+      await refreshInteractions()
 
       // Notify post owner only when a save is newly added (not on unsave)
       if (!wasSaved && target && target.user_id !== user.id) {
@@ -323,6 +538,27 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
       }
     } catch (error) {
       console.error("Error saving post:", error)
+      // Revert local state on error
+      setPosts(posts.map((post) => (post.id === postId ? { ...post, is_saved: !post.is_saved } : post)))
+      // Revert local interactions cache
+      setUserInteractions(prev => {
+        const newInteractions = { ...prev }
+        const wasSaved = newInteractions.savedPosts.has(postId)
+        if (wasSaved) {
+          newInteractions.savedPosts.delete(postId)
+        } else {
+          newInteractions.savedPosts.add(postId)
+        }
+        saveUserInteractions(newInteractions)
+        return newInteractions
+      })
+    } finally {
+      // Remove from processing set
+      setProcessingSaves(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(postId)
+        return newSet
+      })
     }
   }
 
@@ -545,105 +781,123 @@ export default function CommunityScreen({ navigation }: CommunityScreenProps) {
     setShowOptionsModal(true)
   }
 
-  const renderPost = ({ item }: { item: Post }) => (
-    <View style={[styles.postCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
-      {/* Post Header */}
-      <View style={styles.postHeader}>
-        <TouchableOpacity
-          onPress={() => item.user?.id && navigation.navigate("UserProfile", { userId: item.user.id })}
-        >
-          {item.user?.avatar_url ? (
-            <Image source={{ uri: item.user?.avatar_url }} style={styles.userAvatar} />
-          ) : (
-            <View style={[styles.userAvatar, { alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.card }]}>
-              <MaterialIcons name="person" size={24} color={theme.colors.textTertiary} />
-            </View>
-          )}
-        </TouchableOpacity>
-        <View style={styles.userInfo}>
+  const renderPost = ({ item }: { item: Post }) => {
+    // Use local state as primary source, fallback to server state
+    const isLiked = userInteractions.likedPosts.has(item.id) || item.is_liked
+    const isSaved = userInteractions.savedPosts.has(item.id) || item.is_saved
+    const isLikeProcessing = processingLikes.has(item.id)
+    const isSaveProcessing = processingSaves.has(item.id)
+
+    return (
+      <View style={[styles.postCard, { backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow }]}>
+        {/* Post Header */}
+        <View style={styles.postHeader}>
           <TouchableOpacity
             onPress={() => item.user?.id && navigation.navigate("UserProfile", { userId: item.user.id })}
           >
-            <View style={styles.userNameRow}>
-              <Text style={[styles.userName, { color: theme.colors.text }]}>{item.user?.name}</Text>
-              {item.user?.verified && <MaterialIcons name="verified" size={16} color={theme.colors.success} />}
-            </View>
-            <Text style={[styles.userHandle, { color: theme.colors.textSecondary }]}>
-              @{item.user?.username || item.user?.name.toLowerCase().replace(/\s+/g, "")}
+            {item.user?.avatar_url ? (
+              <Image source={{ uri: item.user?.avatar_url }} style={styles.userAvatar} />
+            ) : (
+              <View style={[styles.userAvatar, { alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.card }]}>
+                <MaterialIcons name="person" size={24} color={theme.colors.textTertiary} />
+              </View>
+            )}
+          </TouchableOpacity>
+          <View style={styles.userInfo}>
+            <TouchableOpacity
+              onPress={() => item.user?.id && navigation.navigate("UserProfile", { userId: item.user.id })}
+            >
+              <View style={styles.userNameRow}>
+                <Text style={[styles.userName, { color: theme.colors.text }]}>{item.user?.name}</Text>
+                {item.user?.verified && <MaterialIcons name="verified" size={16} color={theme.colors.success} />}
+              </View>
+              <Text style={[styles.userHandle, { color: theme.colors.textSecondary }]}>
+                @{item.user?.username || item.user?.name.toLowerCase().replace(/\s+/g, "")}
+              </Text>
+            </TouchableOpacity>
+            <Text style={[styles.postTime, { color: theme.colors.textTertiary }]}>{formatTimeAgo(item.created_at)}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.moreButton}
+            onPress={() => handleMoreOptions(item)}
+          >
+            <MaterialIcons name="more-vert" size={20} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Post Content */}
+        <Text style={[styles.postContent, { color: theme.colors.text }]}>{item.content}</Text>
+
+        {/* Post Images */}
+        {item.images.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesContainer}>
+            {item.images.map((image, index) => (
+              <Image key={index} source={{ uri: image }} style={styles.postImage} />
+            ))}
+          </ScrollView>
+        )}
+
+        {/* Location */}
+        {item.location && (
+          <View style={styles.locationContainer}>
+            <MaterialIcons name="location-on" size={16} color={theme.colors.textSecondary} />
+            <Text style={[styles.locationText, { color: theme.colors.textSecondary }]}>{item.location.name}</Text>
+          </View>
+        )}
+
+        {/* Tags */}
+        {item.tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {item.tags.map((tag, index) => (
+              <Text key={index} style={[styles.hashtag, { color: theme.colors.secondary }]}>
+                #{tag}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {/* Post Actions */}
+        <View style={[styles.postActions, { borderTopColor: theme.colors.divider }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, isLikeProcessing && { opacity: 0.6 }]}
+            onPress={() => handleLikePost(item.id)}
+            disabled={isLikeProcessing}
+          >
+            <MaterialIcons
+              name={isLiked ? "favorite" : "favorite-border"}
+              size={20}
+              color={isLiked ? theme.colors.primary : theme.colors.textSecondary}
+            />
+            <Text style={[styles.actionText, { color: theme.colors.textSecondary }, isLiked && [styles.likedText, { color: theme.colors.primary }]]}>
+              {item.likes_count}
             </Text>
           </TouchableOpacity>
-          <Text style={[styles.postTime, { color: theme.colors.textTertiary }]}>{formatTimeAgo(item.created_at)}</Text>
+
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleShowComments(item)}>
+            <MaterialIcons name="chat-bubble-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.comments_count}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleSharePost(item)}>
+            <MaterialIcons name="share" size={20} color={theme.colors.textSecondary} />
+            <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.shares_count}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, isSaveProcessing && { opacity: 0.6 }]}
+            onPress={() => handleSavePost(item.id)}
+            disabled={isSaveProcessing}
+          >
+            <MaterialIcons
+              name={isSaved ? "bookmark" : "bookmark-border"}
+              size={20}
+              color={isSaved ? theme.colors.secondary : theme.colors.textSecondary}
+            />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.moreButton}
-          onPress={() => handleMoreOptions(item)}
-        >
-          <MaterialIcons name="more-vert" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
       </View>
-
-      {/* Post Content */}
-      <Text style={[styles.postContent, { color: theme.colors.text }]}>{item.content}</Text>
-
-      {/* Post Images */}
-      {item.images.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesContainer}>
-          {item.images.map((image, index) => (
-            <Image key={index} source={{ uri: image }} style={styles.postImage} />
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Location */}
-      {item.location && (
-        <View style={styles.locationContainer}>
-          <MaterialIcons name="location-on" size={16} color={theme.colors.textSecondary} />
-          <Text style={[styles.locationText, { color: theme.colors.textSecondary }]}>{item.location.name}</Text>
-        </View>
-      )}
-
-      {/* Tags */}
-      {item.tags.length > 0 && (
-        <View style={styles.tagsContainer}>
-          {item.tags.map((tag, index) => (
-            <Text key={index} style={[styles.hashtag, { color: theme.colors.secondary }]}>
-              #{tag}
-            </Text>
-          ))}
-        </View>
-      )}
-
-      {/* Post Actions */}
-      <View style={[styles.postActions, { borderTopColor: theme.colors.divider }]}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleLikePost(item.id)}>
-          <MaterialIcons
-            name={item.is_liked ? "favorite" : "favorite-border"}
-            size={20}
-            color={item.is_liked ? theme.colors.primary : theme.colors.textSecondary}
-          />
-          <Text style={[styles.actionText, { color: theme.colors.textSecondary }, item.is_liked && [styles.likedText, { color: theme.colors.primary }]]}>{item.likes_count}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleShowComments(item)}>
-          <MaterialIcons name="chat-bubble-outline" size={20} color={theme.colors.textSecondary} />
-          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.comments_count}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleSharePost(item)}>
-          <MaterialIcons name="share" size={20} color={theme.colors.textSecondary} />
-          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>{item.shares_count}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleSavePost(item.id)}>
-          <MaterialIcons
-            name={item.is_saved ? "bookmark" : "bookmark-border"}
-            size={20}
-            color={item.is_saved ? theme.colors.secondary : theme.colors.textSecondary}
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
-  )
+    )
+  }
 
   const renderComment = ({ item }: { item: Comment }) => (
     <View style={styles.commentCard}>

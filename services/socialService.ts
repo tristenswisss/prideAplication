@@ -44,11 +44,20 @@ export const socialService: SocialService = {
       // Fetch blocked users and hidden posts for current user (to filter client-side)
       let blockedUserIds: string[] = []
       let hiddenPostIds: string[] = []
+      let likedPostIds: string[] = []
+      let savedPostIds: string[] = []
 
       if (currentUserId) {
-        const [{ data: blockedData, error: blockedError }, { data: hiddenData, error: hiddenError }] = await Promise.all([
+        const [
+          { data: blockedData, error: blockedError },
+          { data: hiddenData, error: hiddenError },
+          { data: likedData, error: likedError },
+          { data: savedData, error: savedError }
+        ] = await Promise.all([
           supabase.from("blocked_users").select("blocked_user_id").eq("user_id", currentUserId),
           supabase.from("hidden_posts").select("post_id").eq("user_id", currentUserId),
+          supabase.from("post_likes").select("post_id").eq("user_id", currentUserId),
+          supabase.from("saved_posts").select("post_id").eq("user_id", currentUserId),
         ])
 
         if (!blockedError && Array.isArray(blockedData)) {
@@ -56,6 +65,12 @@ export const socialService: SocialService = {
         }
         if (!hiddenError && Array.isArray(hiddenData)) {
           hiddenPostIds = hiddenData.map((h: any) => h.post_id)
+        }
+        if (!likedError && Array.isArray(likedData)) {
+          likedPostIds = likedData.map((l: any) => l.post_id)
+        }
+        if (!savedError && Array.isArray(savedData)) {
+          savedPostIds = savedData.map((s: any) => s.post_id)
         }
       }
 
@@ -95,8 +110,8 @@ export const socialService: SocialService = {
           show_profile: post.users?.profiles?.show_profile,
           appear_in_search: post.users?.profiles?.appear_in_search,
         },
-        is_liked: false, // Would be determined by checking likes table
-        is_saved: false, // Would be determined by checking saved posts table
+        is_liked: currentUserId ? likedPostIds.includes(post.id) : false,
+        is_saved: currentUserId ? savedPostIds.includes(post.id) : false,
       }))
 
       // Apply client-side filtering for hidden posts and blocked users
@@ -208,27 +223,121 @@ export const socialService: SocialService = {
   // Like a post
   likePost: async (postId: string, userId: string): Promise<void> => {
     try {
-      // Check if already liked
-      const { data: existingLike } = await supabase
+      console.log(`likePost called: postId=${postId}, userId=${userId}`)
+
+      // Check if already liked - handle the case where single() might throw
+      const { data: existingLike, error: checkError } = await supabase
         .from("post_likes")
         .select("id")
         .eq("post_id", postId)
         .eq("user_id", userId)
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to avoid errors
+
+      console.log(`Existing like check: existingLike=${!!existingLike}, error=${checkError?.code}`)
+
+      // If there's an error other than "not found", throw it
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError
+      }
 
       if (existingLike) {
-        // Unlike
-        await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", userId)
+        console.log(`Unliking post ${postId}`)
+        // Unlike - delete the like record
+        const { error: deleteError } = await supabase
+          .from("post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", userId)
 
-        // Decrement likes count
-        await supabase.rpc("decrement_post_likes", { post_id: postId })
+        if (deleteError) throw deleteError
+
+        // Get current likes count and decrement
+        const { data: postData, error: postError } = await supabase
+          .from("posts")
+          .select("likes_count")
+          .eq("id", postId)
+          .single()
+
+        if (postError) throw postError
+
+        if (postData) {
+          const newCount = Math.max((postData.likes_count || 0) - 1, 0)
+          console.log(`Decrementing likes count from ${postData.likes_count} to ${newCount}`)
+          const { error: updateError } = await supabase
+            .from("posts")
+            .update({ likes_count: newCount })
+            .eq("id", postId)
+
+          if (updateError) throw updateError
+        }
       } else {
-        // Like
-        await supabase.from("post_likes").insert({ post_id: postId, user_id: userId })
+        console.log(`Liking post ${postId}`)
+        // Like - insert new like record (handle potential race condition)
+        const { error: insertError } = await supabase
+          .from("post_likes")
+          .insert({ post_id: postId, user_id: userId })
 
-        // Increment likes count
-        await supabase.rpc("increment_post_likes", { post_id: postId })
+        if (insertError) {
+          console.log(`Insert error: ${insertError.code} - ${insertError.message}`)
+          // If it's a duplicate key error, that means it was already liked
+          // This can happen due to race conditions
+          if (insertError.code === '23505') {
+            console.log(`Duplicate key error - post was already liked, unliking instead`)
+            // Already liked, so unlike instead
+            const { error: deleteError } = await supabase
+              .from("post_likes")
+              .delete()
+              .eq("post_id", postId)
+              .eq("user_id", userId)
+
+            if (deleteError) throw deleteError
+
+            // Decrement count
+            const { data: postData, error: postError } = await supabase
+              .from("posts")
+              .select("likes_count")
+              .eq("id", postId)
+              .single()
+
+            if (postError) throw postError
+
+            if (postData) {
+              const newCount = Math.max((postData.likes_count || 0) - 1, 0)
+              console.log(`Decrementing likes count from ${postData.likes_count} to ${newCount}`)
+              const { error: updateError } = await supabase
+                .from("posts")
+                .update({ likes_count: newCount })
+                .eq("id", postId)
+
+              if (updateError) throw updateError
+            }
+          } else {
+            throw insertError
+          }
+        } else {
+          console.log(`Successfully inserted like`)
+          // Successfully inserted, increment count
+          const { data: postData, error: postError } = await supabase
+            .from("posts")
+            .select("likes_count")
+            .eq("id", postId)
+            .single()
+
+          if (postError) throw postError
+
+          if (postData) {
+            const newCount = (postData.likes_count || 0) + 1
+            console.log(`Incrementing likes count from ${postData.likes_count} to ${newCount}`)
+            const { error: updateError } = await supabase
+              .from("posts")
+              .update({ likes_count: newCount })
+              .eq("id", postId)
+
+            if (updateError) throw updateError
+          }
+        }
       }
+      console.log(`likePost completed successfully for post ${postId}`)
     } catch (error) {
       console.error("Error liking post:", error)
       throw error
@@ -238,20 +347,50 @@ export const socialService: SocialService = {
   // Save a post
   savePost: async (postId: string, userId: string): Promise<void> => {
     try {
-      // Check if already saved
-      const { data: existingSave } = await supabase
+      // Check if already saved - handle the case where single() might throw
+      const { data: existingSave, error: checkError } = await supabase
         .from("saved_posts")
         .select("id")
         .eq("post_id", postId)
         .eq("user_id", userId)
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to avoid errors
+
+      // If there's an error other than "not found", throw it
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError
+      }
 
       if (existingSave) {
-        // Unsave
-        await supabase.from("saved_posts").delete().eq("post_id", postId).eq("user_id", userId)
+        // Unsave - delete the save record
+        const { error: deleteError } = await supabase
+          .from("saved_posts")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", userId)
+
+        if (deleteError) throw deleteError
       } else {
-        // Save
-        await supabase.from("saved_posts").insert({ post_id: postId, user_id: userId })
+        // Save - insert new save record (handle potential race condition)
+        const { error: insertError } = await supabase
+          .from("saved_posts")
+          .insert({ post_id: postId, user_id: userId })
+
+        if (insertError) {
+          // If it's a duplicate key error, that means it was already saved
+          // This can happen due to race conditions
+          if (insertError.code === '23505') {
+            // Already saved, so unsave instead
+            const { error: deleteError } = await supabase
+              .from("saved_posts")
+              .delete()
+              .eq("post_id", postId)
+              .eq("user_id", userId)
+
+            if (deleteError) throw deleteError
+          } else {
+            throw insertError
+          }
+        }
       }
     } catch (error) {
       console.error("Error saving post:", error)
@@ -290,10 +429,50 @@ export const socialService: SocialService = {
   // Share a post
   sharePost: async (postId: string, userId: string): Promise<void> => {
     try {
-      await supabase.from("post_shares").insert({ post_id: postId, user_id: userId })
+      // Check if already shared by this user
+      const { data: existingShare, error: checkError } = await supabase
+        .from("post_shares")
+        .select("id")
+        .eq("post_id", postId)
+        .eq("user_id", userId)
+        .maybeSingle()
 
-      // Increment shares count
-      await supabase.rpc("increment_post_shares", { post_id: postId })
+      // If there's an error other than "not found", throw it
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError
+      }
+
+      // Only share if not already shared
+      if (!existingShare) {
+        const { error: insertError } = await supabase
+          .from("post_shares")
+          .insert({ post_id: postId, user_id: userId })
+
+        if (insertError) {
+          // If it's a duplicate key error, that means it was already shared
+          if (insertError.code !== '23505') {
+            throw insertError
+          }
+        }
+
+        // Get current shares count and increment
+        const { data: postData, error: postError } = await supabase
+          .from("posts")
+          .select("shares_count")
+          .eq("id", postId)
+          .single()
+
+        if (postError) throw postError
+
+        if (postData) {
+          const { error: updateError } = await supabase
+            .from("posts")
+            .update({ shares_count: (postData.shares_count || 0) + 1 })
+            .eq("id", postId)
+
+          if (updateError) throw updateError
+        }
+      }
     } catch (error) {
       console.error("Error sharing post:", error)
       throw error
@@ -370,8 +549,21 @@ export const socialService: SocialService = {
         throw error
       }
 
-      // Increment comments count on post
-      await supabase.rpc("increment_post_comments", { post_id: commentData.post_id })
+      // Get current comments count and increment
+      const { data: postData } = await supabase
+        .from("posts")
+        .select("comments_count")
+        .eq("id", commentData.post_id)
+        .single()
+
+      if (postData) {
+        const { error: updateError } = await supabase
+          .from("posts")
+          .update({ comments_count: (postData.comments_count || 0) + 1 })
+          .eq("id", commentData.post_id)
+
+        if (updateError) throw updateError
+      }
 
       return {
         ...data,
